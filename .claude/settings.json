@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nanobanana": {
+      "command": "npx",
+      "args": ["-y", "@ycse/nanobanana-mcp"]
+    }
+  }
+}
