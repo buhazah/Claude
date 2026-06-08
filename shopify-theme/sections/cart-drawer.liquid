@@ -1,0 +1,158 @@
+<!-- Cart Drawer -->
+<div id="cart-drawer" class="cart-drawer" role="dialog" aria-modal="true" aria-label="Cart">
+
+  <div class="cart-drawer__header">
+    <div>
+      <span class="cart-drawer__title">Your Cart</span>
+      <span class="cart-drawer__count" data-cart-count>
+        ({{ cart.item_count }} item{% if cart.item_count != 1 %}s{% endif %})
+      </span>
+    </div>
+    <button id="cart-close" class="cart-drawer__close" aria-label="Close cart">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="cart-drawer__items" id="cart-drawer-items">
+    {%- if cart.item_count > 0 -%}
+      {%- for item in cart.items -%}
+        <div class="cart-item" data-line="{{ forloop.index }}">
+          <a href="{{ item.url }}">
+            {%- if item.image -%}
+              {{
+                item.image
+                | image_url: width: 200
+                | image_tag:
+                  class: 'cart-item__image',
+                  loading: 'lazy',
+                  alt: item.image.alt | default: item.title | escape
+              }}
+            {%- else -%}
+              {{ 'product-1' | placeholder_svg_tag: 'cart-item__image placeholder-svg' }}
+            {%- endif -%}
+          </a>
+          <div class="cart-item__details">
+            <div>
+              <p class="cart-item__name">{{ item.product.title }}</p>
+              {%- unless item.variant.title == 'Default Title' -%}
+                <p class="cart-item__variant">{{ item.variant.title }}</p>
+              {%- endunless -%}
+            </div>
+            <div class="cart-item__footer">
+              <div class="cart-item__qty">
+                <button
+                  class="cart-item__qty-btn"
+                  aria-label="Decrease quantity"
+                  onclick="updateCartItem({{ forloop.index }}, {{ item.quantity | minus: 1 }})"
+                >−</button>
+                <span class="cart-item__qty-num">{{ item.quantity }}</span>
+                <button
+                  class="cart-item__qty-btn"
+                  aria-label="Increase quantity"
+                  onclick="updateCartItem({{ forloop.index }}, {{ item.quantity | plus: 1 }})"
+                >+</button>
+              </div>
+              <p class="cart-item__price">{{ item.line_price | money }}</p>
+            </div>
+          </div>
+        </div>
+      {%- endfor -%}
+
+      <!-- Upsell suggestion -->
+      {%- assign upsell_product = section.settings.upsell_product -%}
+      {%- if upsell_product != blank -%}
+        {%- unless cart.items | map: 'product_id' | contains: upsell_product.id -%}
+          <div class="cart-upsell">
+            <p class="cart-upsell__label">Complete your look</p>
+            <div class="cart-upsell__product">
+              {%- if upsell_product.featured_image -%}
+                <a href="{{ upsell_product.url }}">
+                  {{
+                    upsell_product.featured_image
+                    | image_url: width: 120
+                    | image_tag:
+                      class: 'cart-upsell__image',
+                      loading: 'lazy',
+                      alt: upsell_product.title | escape
+                  }}
+                </a>
+              {%- endif -%}
+              <div>
+                <p class="cart-upsell__name">{{ upsell_product.title }}</p>
+                <p class="cart-upsell__price">{{ upsell_product.price | money }}</p>
+              </div>
+              <button
+                class="cart-upsell__add"
+                onclick="
+                  fetch('/cart/add.js', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({items:[{id:{{ upsell_product.variants.first.id }},quantity:1}]})
+                  }).then(()=>location.reload());
+                "
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        {%- endunless -%}
+      {%- endif -%}
+
+    {%- else -%}
+      <div style="text-align: center; padding: 4rem 2rem; color: var(--color-charcoal-mid);">
+        <p style="font-family: var(--font-display); font-size: 2.2rem; font-weight: 300; margin-bottom: 1.6rem;">Your cart is empty</p>
+        <p style="font-family: var(--font-body); font-size: 1.4rem; font-weight: 300; margin-bottom: 2.4rem;">Find the piece that speaks to you.</p>
+        <a href="/collections/all" class="btn-ghost" onclick="document.getElementById('cart-close').click()">
+          Shop Now
+        </a>
+      </div>
+    {%- endif -%}
+  </div>
+
+  {%- if cart.item_count > 0 -%}
+    <div class="cart-drawer__footer">
+      <div class="cart-drawer__subtotal">
+        <span class="cart-drawer__subtotal-label">Subtotal</span>
+        <span class="cart-drawer__subtotal-price">{{ cart.total_price | money }}</span>
+      </div>
+      {%- if cart.total_price < 15000 -%}
+        <p class="cart-drawer__shipping-note">
+          Add {{ 15000 | minus: cart.total_price | money }} more for free shipping
+        </p>
+      {%- else -%}
+        <p class="cart-drawer__shipping-note" style="color: var(--color-gold);">
+          ✓ You qualify for free shipping
+        </p>
+      {%- endif -%}
+      <a href="{{ routes.checkout }}" class="cart-drawer__checkout">
+        Checkout — {{ cart.total_price | money }}
+      </a>
+    </div>
+  {%- endif -%}
+</div>
+
+<script>
+  async function updateCartItem(line, quantity) {
+    await fetch('/cart/change.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line, quantity })
+    });
+    location.reload();
+  }
+</script>
+
+{% schema %}
+{
+  "name": "Cart Drawer",
+  "settings": [
+    {
+      "type": "product",
+      "id": "upsell_product",
+      "label": "Cart upsell product"
+    }
+  ]
+}
+{% endschema %}

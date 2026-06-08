@@ -1,0 +1,76 @@
+{% comment %}
+  Reusable product card snippet.
+  Usage: {% render 'product-card-brand', product: product, tagline: 'optional', lazy: true %}
+{% endcomment %}
+
+{%- assign lazy_load = lazy | default: true -%}
+
+<article class="product-card">
+  <a href="{{ product.url }}" aria-label="{{ product.title | escape }}">
+    <div class="product-card__image-wrap">
+      {%- if product.featured_image -%}
+        {{
+          product.featured_image
+          | image_url: width: 800
+          | image_tag:
+            class: 'product-card__image',
+            loading: lazy_load | ternary: 'lazy', 'eager',
+            widths: '300, 500, 700, 800',
+            sizes: '(max-width: 480px) 100vw, (max-width: 900px) 50vw, 33vw',
+            alt: product.featured_image.alt | default: product.title | escape
+        }}
+      {%- else -%}
+        {{ 'product-1' | placeholder_svg_tag: 'product-card__image placeholder-svg' }}
+      {%- endif -%}
+
+      {%- if product.compare_at_price > product.price -%}
+        <span class="product-card__badge">Sale</span>
+      {%- elsif product.tags contains 'new' -%}
+        <span class="product-card__badge">New</span>
+      {%- endif -%}
+
+      {%- unless product.available -%}
+        <span class="product-card__badge" style="background: var(--color-charcoal-mid);">Sold Out</span>
+      {%- endunless -%}
+
+      {%- if product.available -%}
+        <button
+          class="product-card__quick-add"
+          aria-label="Quick add {{ product.title | escape }}"
+          onclick="
+            event.preventDefault();
+            event.stopPropagation();
+            this.textContent='Adding...';
+            const btn = this;
+            fetch('/cart/add.js', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({items:[{id:{{ product.variants.first.id }},quantity:1}]})
+            }).then(()=>{
+              btn.textContent='Added ✓';
+              const d=document.getElementById('cart-drawer');
+              const o=document.getElementById('cart-overlay');
+              if(d){d.classList.add('cart-drawer--open');if(o)o.classList.add('cart-drawer__overlay--visible');document.body.style.overflow='hidden';}
+              setTimeout(()=>btn.textContent='Quick Add',2000);
+            }).catch(()=>btn.textContent='Quick Add');
+          "
+        >
+          Quick Add
+        </button>
+      {%- endif -%}
+    </div>
+
+    <div class="product-card__info">
+      <h3 class="product-card__name">{{ product.title }}</h3>
+      {%- if tagline != blank -%}
+        <p class="product-card__tagline">{{ tagline }}</p>
+      {%- endif -%}
+      <p class="product-card__price">
+        {%- if product.compare_at_price > product.price -%}
+          <span class="product-card__price--compare">{{ product.compare_at_price | money }}</span>
+        {%- endif -%}
+        {{ product.price | money }}
+      </p>
+    </div>
+  </a>
+</article>

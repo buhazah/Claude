@@ -1,0 +1,159 @@
+<section class="featured-products shopify-section" id="featured-products-{{ section.id }}">
+
+  <div class="featured-products__header fade-in">
+    {%- if section.settings.eyebrow != blank -%}
+      <span class="section-eyebrow">{{ section.settings.eyebrow }}</span>
+    {%- endif -%}
+    <h2 class="section-title">{{ section.settings.title }}</h2>
+    {%- if section.settings.subtitle != blank -%}
+      <p class="section-subtitle">{{ section.settings.subtitle }}</p>
+    {%- endif -%}
+  </div>
+
+  <div class="featured-products__grid">
+    {%- for block in section.blocks limit: 3 -%}
+      {%- assign product = block.settings.product -%}
+
+      {%- if product != blank -%}
+        <article class="product-card fade-in fade-in-delay-{{ forloop.index }}" {{ block.shopify_attributes }}>
+          <a href="{{ product.url }}" class="product-card__link" aria-label="{{ product.title }}">
+            <div class="product-card__image-wrap">
+              {%- if product.featured_image -%}
+                {{
+                  product.featured_image
+                  | image_url: width: 800
+                  | image_tag:
+                    class: 'product-card__image',
+                    loading: 'lazy',
+                    widths: '400, 600, 800',
+                    sizes: '(max-width: 560px) 100vw, (max-width: 900px) 50vw, 33vw',
+                    alt: product.featured_image.alt | default: product.title | escape
+                }}
+              {%- else -%}
+                {{ 'product-1' | placeholder_svg_tag: 'product-card__image placeholder-svg' }}
+              {%- endif -%}
+
+              {%- if product.compare_at_price > product.price -%}
+                <span class="product-card__badge">Sale</span>
+              {%- elsif product.tags contains 'new' -%}
+                <span class="product-card__badge">New</span>
+              {%- endif -%}
+
+              <button
+                class="product-card__quick-add"
+                data-product-id="{{ product.variants.first.id }}"
+                aria-label="Quick add {{ product.title }}"
+                onclick="event.preventDefault(); event.stopPropagation();"
+              >
+                Quick Add
+              </button>
+            </div>
+
+            <div class="product-card__info">
+              <h3 class="product-card__name">{{ product.title }}</h3>
+              {%- if block.settings.tagline != blank -%}
+                <p class="product-card__tagline">{{ block.settings.tagline }}</p>
+              {%- endif -%}
+              <p class="product-card__price">
+                {%- if product.compare_at_price > product.price -%}
+                  <span class="product-card__price--compare">{{ product.compare_at_price | money }}</span>
+                {%- endif -%}
+                {{ product.price | money }}
+              </p>
+            </div>
+          </a>
+        </article>
+
+      {%- else -%}
+        {%- comment -%} Placeholder card for editor {%- endcomment -%}
+        <article class="product-card fade-in fade-in-delay-{{ forloop.index }}" {{ block.shopify_attributes }}>
+          <div class="product-card__image-wrap">
+            {{ 'product-' | append: forloop.index | placeholder_svg_tag: 'product-card__image placeholder-svg' }}
+          </div>
+          <div class="product-card__info">
+            <h3 class="product-card__name">Select a product</h3>
+            <p class="product-card__tagline">Your tagline here</p>
+            <p class="product-card__price">$00.00</p>
+          </div>
+        </article>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+
+  {%- if section.settings.cta_label != blank -%}
+    <div class="text-center" style="margin-top: 4rem;">
+      <a href="{{ section.settings.cta_url }}" class="btn-ghost">
+        {{ section.settings.cta_label }}
+      </a>
+    </div>
+  {%- endif -%}
+
+</section>
+
+{% schema %}
+{
+  "name": "Featured Products",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "The Edit"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Section title",
+      "default": "Worn Daily"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Three pieces worth reaching for, every single day."
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA label",
+      "default": "View All Jewelry"
+    },
+    {
+      "type": "url",
+      "id": "cta_url",
+      "label": "CTA link"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "product",
+      "name": "Product",
+      "limit": 3,
+      "settings": [
+        {
+          "type": "product",
+          "id": "product",
+          "label": "Product"
+        },
+        {
+          "type": "text",
+          "id": "tagline",
+          "label": "Editorial tagline",
+          "default": "Your everyday essential"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Featured Products",
+      "blocks": [
+        { "type": "product" },
+        { "type": "product" },
+        { "type": "product" }
+      ]
+    }
+  ]
+}
+{% endschema %}

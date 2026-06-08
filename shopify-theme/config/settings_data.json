@@ -1,0 +1,76 @@
+{
+  "current": {
+    "colors_text": "#1E1E1E",
+    "colors_background_1": "#F9F6F1",
+    "colors_background_2": "#F0EBE3",
+    "colors_solid_button_labels": "#F9F6F1",
+    "colors_outline_button_labels": "#1E1E1E",
+    "colors_accent_1": "#B8956A",
+    "colors_accent_2": "#1E1E1E",
+
+    "type_body_font": "jost_n3",
+    "type_header_font": "cormorant_garamond_n3",
+
+    "body_scale": 100,
+    "heading_scale": 130,
+
+    "page_width": 1440,
+    "spacing_sections": 0,
+
+    "spacing_grid_horizontal": 24,
+    "spacing_grid_vertical": 32,
+
+    "card_image_padding": 0,
+    "card_corner_radius": 0,
+    "card_text_alignment": "left",
+    "card_border_thickness": 0,
+    "card_border_opacity": 0,
+    "card_shadow_opacity": 0,
+    "card_shadow_horizontal_offset": 0,
+    "card_shadow_vertical_offset": 4,
+    "card_shadow_blur": 8,
+
+    "media_padding": 0,
+    "media_border_opacity": 0,
+    "media_border_thickness": 0,
+    "media_border_radius": 0,
+    "media_shadow_opacity": 0,
+    "media_shadow_horizontal_offset": 0,
+    "media_shadow_vertical_offset": 4,
+    "media_shadow_blur": 8,
+
+    "text_boxes_border_thickness": 0,
+    "text_boxes_border_opacity": 0,
+    "text_boxes_radius": 0,
+    "text_boxes_shadow_opacity": 0,
+    "text_boxes_shadow_horizontal_offset": 0,
+    "text_boxes_shadow_vertical_offset": 4,
+    "text_boxes_shadow_blur": 8,
+
+    "badge_corner_radius": 0,
+
+    "popup_border_thickness": 0,
+    "popup_border_opacity": 0,
+    "popup_corner_radius": 0,
+    "popup_shadow_opacity": 0,
+    "popup_shadow_horizontal_offset": 0,
+    "popup_shadow_vertical_offset": 4,
+    "popup_shadow_blur": 8,
+
+    "drawer_border_thickness": 0,
+    "drawer_border_opacity": 0,
+    "drawer_shadow_opacity": 8,
+    "drawer_shadow_horizontal_offset": -4,
+    "drawer_shadow_vertical_offset": 0,
+    "drawer_shadow_blur": 40,
+
+    "predictive_search_enabled": true,
+    "cart_type": "drawer",
+
+    "animations_reveal_on_scroll": false,
+    "animations_hover_elements": "none",
+
+    "favicon": ""
+  },
+  "presets": {}
+}

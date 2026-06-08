@@ -1,0 +1,54 @@
+<section class="collection-hero shopify-section" id="collection-header-{{ section.id }}">
+  {%- if section.settings.eyebrow != blank -%}
+    <span class="section-eyebrow">{{ section.settings.eyebrow }}</span>
+  {%- endif -%}
+  <h1 class="collection-hero__title">
+    {%- if collection.title != blank -%}
+      {{ collection.title }}
+    {%- else -%}
+      {{ section.settings.fallback_title | default: 'All Jewelry' }}
+    {%- endif -%}
+  </h1>
+  {%- if collection.description != blank -%}
+    <p class="collection-hero__description">{{ collection.description }}</p>
+  {%- elsif section.settings.description != blank -%}
+    <p class="collection-hero__description">{{ section.settings.description }}</p>
+  {%- endif -%}
+  {%- if collection.products_count > 0 -%}
+    <p style="font-family: var(--font-body); font-size: 1.2rem; font-weight: 300; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-charcoal-mid); margin-top: 1.6rem;">
+      {{ collection.products_count }} piece{%- if collection.products_count != 1 -%}s{%- endif -%}
+    </p>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "Collection Header",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "The Collection"
+    },
+    {
+      "type": "text",
+      "id": "fallback_title",
+      "label": "Fallback title",
+      "default": "All Jewelry"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Fallback description",
+      "default": "Pieces worth wearing every day. Designed to last."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection Header"
+    }
+  ]
+}
+{% endschema %}

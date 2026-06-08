@@ -1,0 +1,101 @@
+<section class="philosophy-section shopify-section" id="philosophy-{{ section.id }}">
+  <div class="philosophy-section__inner">
+
+    <div class="philosophy-section__image-wrap fade-in">
+      {%- if section.settings.image != blank -%}
+        {{
+          section.settings.image
+          | image_url: width: 1000
+          | image_tag:
+            class: 'philosophy-section__image',
+            loading: 'lazy',
+            widths: '500, 700, 1000',
+            sizes: '(max-width: 900px) 100vw, 50vw',
+            alt: section.settings.image.alt | default: section.settings.title | escape
+        }}
+      {%- else -%}
+        {{ 'lifestyle-2' | placeholder_svg_tag: 'philosophy-section__image placeholder-svg' }}
+      {%- endif -%}
+    </div>
+
+    <div class="philosophy-section__content fade-in fade-in-delay-1">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="philosophy-section__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+
+      <h2 class="philosophy-section__title">{{ section.settings.title }}</h2>
+
+      {%- if section.settings.body != blank -%}
+        <div class="philosophy-section__body">{{ section.settings.body }}</div>
+      {%- endif -%}
+
+      {%- if section.settings.quote != blank -%}
+        <blockquote class="philosophy-section__quote">
+          {{ section.settings.quote }}
+        </blockquote>
+      {%- endif -%}
+
+      {%- if section.settings.cta_label != blank -%}
+        <a href="{{ section.settings.cta_url }}" class="btn-secondary">
+          {{ section.settings.cta_label }}
+        </a>
+      {%- endif -%}
+    </div>
+
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Philosophy Section",
+  "tag": "section",
+  "class": "section-full-width",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Editorial image"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Our Philosophy"
+    },
+    {
+      "type": "textarea",
+      "id": "title",
+      "label": "Title",
+      "default": "Less, but only the best."
+    },
+    {
+      "type": "richtext",
+      "id": "body",
+      "label": "Body text",
+      "default": "<p>We design with restraint. Every piece is considered — stripped back to what matters. No excess, no noise. Just materials and form that earn their place on your body.</p><p>We believe jewelry should feel like a second skin. So we obsess over weight, finish, and proportion until something clicks.</p>"
+    },
+    {
+      "type": "textarea",
+      "id": "quote",
+      "label": "Pull quote",
+      "default": "The right piece becomes invisible. You forget you're wearing it — until someone notices."
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA label",
+      "default": "Our Story"
+    },
+    {
+      "type": "url",
+      "id": "cta_url",
+      "label": "CTA link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Philosophy Section"
+    }
+  ]
+}
+{% endschema %}

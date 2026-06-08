@@ -1,0 +1,100 @@
+<section class="shopify-section" id="collection-grid-{{ section.id }}">
+  {%- paginate collection.products by section.settings.products_per_page -%}
+    <div class="collection-grid">
+      {%- for product in collection.products -%}
+        <article class="product-card fade-in fade-in-delay-{{ forloop.index | modulo: 3 | plus: 1 }}">
+          <a href="{{ product.url }}" aria-label="{{ product.title }}">
+            <div class="product-card__image-wrap">
+              {%- if product.featured_image -%}
+                {{
+                  product.featured_image
+                  | image_url: width: 800
+                  | image_tag:
+                    class: 'product-card__image',
+                    loading: 'lazy',
+                    widths: '300, 500, 700, 800',
+                    sizes: '(max-width: 480px) 100vw, (max-width: 900px) 50vw, 33vw',
+                    alt: product.featured_image.alt | default: product.title | escape
+                }}
+              {%- else -%}
+                {{ 'product-1' | placeholder_svg_tag: 'product-card__image placeholder-svg' }}
+              {%- endif -%}
+
+              {%- if product.compare_at_price > product.price -%}
+                <span class="product-card__badge">Sale</span>
+              {%- elsif product.tags contains 'new' -%}
+                <span class="product-card__badge">New</span>
+              {%- endif -%}
+
+              {%- unless product.available -%}
+                <span class="product-card__badge" style="background: var(--color-charcoal-mid);">Sold Out</span>
+              {%- endunless -%}
+
+              <button
+                class="product-card__quick-add"
+                aria-label="Add {{ product.title }} to cart"
+                onclick="
+                  event.preventDefault();
+                  event.stopPropagation();
+                  fetch('/cart/add.js', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({items:[{id:{{ product.variants.first.id }},quantity:1}]})
+                  }).then(()=>{
+                    this.textContent='Added ✓';
+                    const d=document.getElementById('cart-drawer');
+                    const o=document.getElementById('cart-overlay');
+                    if(d){d.classList.add('cart-drawer--open');if(o)o.classList.add('cart-drawer__overlay--visible');document.body.style.overflow='hidden';}
+                    setTimeout(()=>this.textContent='Quick Add',2000);
+                  });
+                "
+              >
+                Quick Add
+              </button>
+            </div>
+            <h2 class="product-card__name">{{ product.title }}</h2>
+            <p class="product-card__price">
+              {%- if product.compare_at_price > product.price -%}
+                <span class="product-card__price--compare">{{ product.compare_at_price | money }}</span>
+              {%- endif -%}
+              {{ product.price | money }}
+            </p>
+          </a>
+        </article>
+      {%- else -%}
+        <p style="grid-column: 1/-1; text-align: center; font-family: var(--font-body); color: var(--color-charcoal-mid); padding: 4rem 0;">
+          No products in this collection yet.
+        </p>
+      {%- endfor -%}
+    </div>
+
+    {%- if paginate.pages > 1 -%}
+      <div style="text-align: center; padding: 4rem var(--spacing-lg);">
+        {{ paginate | default_pagination }}
+      </div>
+    {%- endif -%}
+  {%- endpaginate -%}
+</section>
+
+{% schema %}
+{
+  "name": "Collection Grid",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "range",
+      "id": "products_per_page",
+      "min": 6,
+      "max": 24,
+      "step": 3,
+      "label": "Products per page",
+      "default": 9
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection Grid"
+    }
+  ]
+}
+{% endschema %}

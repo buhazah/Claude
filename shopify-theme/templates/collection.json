@@ -1,0 +1,17 @@
+{
+  "sections": {
+    "header": {
+      "type": "collection-header-brand",
+      "settings": {
+        "eyebrow": "The Collection"
+      }
+    },
+    "grid": {
+      "type": "collection-grid-brand",
+      "settings": {
+        "products_per_page": 9
+      }
+    }
+  },
+  "order": ["header", "grid"]
+}

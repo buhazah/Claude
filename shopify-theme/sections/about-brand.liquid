@@ -1,0 +1,187 @@
+<!-- About Page Hero -->
+<section class="about-hero shopify-section" id="about-hero-{{ section.id }}">
+  {%- if section.settings.hero_image != blank -%}
+    {{
+      section.settings.hero_image
+      | image_url: width: 2000
+      | image_tag:
+        class: 'about-hero__image',
+        loading: 'eager',
+        fetchpriority: 'high',
+        widths: '600, 900, 1400, 2000',
+        sizes: '100vw',
+        alt: section.settings.hero_image.alt | escape
+    }}
+  {%- else -%}
+    {{ 'lifestyle-2' | placeholder_svg_tag: 'about-hero__image placeholder-svg' }}
+  {%- endif -%}
+  <div class="about-hero__content">
+    <h1 class="about-hero__title">{{ section.settings.hero_title | default: 'Less is more.\nAlways.' }}</h1>
+  </div>
+</section>
+
+<!-- Brand Story -->
+<section class="about-story shopify-section" id="about-story-{{ section.id }}">
+  <div class="fade-in">
+    <span class="about-story__label">{{ section.settings.story_label | default: 'Our Story' }}</span>
+    <h2 class="about-story__title">{{ section.settings.story_title | default: 'Built for the way you actually live.' }}</h2>
+    <div class="about-story__body">
+      {%- if section.settings.story_body != blank -%}
+        {{ section.settings.story_body }}
+      {%- else -%}
+        <p>We started with a simple question: why does fine jewelry feel so precious it never gets worn?</p>
+        <p>The most beautiful piece is the one you reach for without thinking. The one that survives a swim, a sprint, a late night. That's what we make.</p>
+        <p>Every design goes through months of wear testing. If it doesn't feel like nothing on the body, we start over. We work with a small atelier that has been crafting gold vermeil for three generations.</p>
+        <p>We don't do seasons. We don't do drops. We add to our collection only when we find something worth your attention — and ours.</p>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+<!-- Brand Pillars -->
+<section class="about-pillars shopify-section" id="about-pillars-{{ section.id }}">
+  <div class="about-pillars__inner">
+    {%- for block in section.blocks -%}
+      <div class="about-pillar fade-in fade-in-delay-{{ forloop.index }}" {{ block.shopify_attributes }}>
+        <div class="about-pillar__number">{{ forloop.index | prepend: '0' }}</div>
+        <h3 class="about-pillar__title">{{ block.settings.title }}</h3>
+        <p class="about-pillar__text">{{ block.settings.text }}</p>
+      </div>
+    {%- endfor -%}
+  </div>
+</section>
+
+<!-- Final Story CTA -->
+<section class="final-cta shopify-section" style="padding: 8rem 2rem;">
+  <div class="final-cta__content fade-in">
+    <span class="final-cta__eyebrow">{{ section.settings.cta_eyebrow | default: 'Now You Know Us' }}</span>
+    <h2 class="final-cta__title" style="font-size: clamp(3.2rem, 5vw, 5.6rem);">
+      {{ section.settings.cta_title | default: "Let's find your piece." }}
+    </h2>
+    <a href="{{ section.settings.cta_url | default: '/collections/all' }}" class="btn-primary">
+      {{ section.settings.cta_label | default: 'Shop the Collection' }}
+    </a>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "About Brand",
+  "tag": "section",
+  "class": "section-full-width",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Hero"
+    },
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Hero image"
+    },
+    {
+      "type": "textarea",
+      "id": "hero_title",
+      "label": "Hero title",
+      "default": "Less is more. Always."
+    },
+    {
+      "type": "header",
+      "content": "Brand Story"
+    },
+    {
+      "type": "text",
+      "id": "story_label",
+      "label": "Eyebrow label",
+      "default": "Our Story"
+    },
+    {
+      "type": "textarea",
+      "id": "story_title",
+      "label": "Story title",
+      "default": "Built for the way you actually live."
+    },
+    {
+      "type": "richtext",
+      "id": "story_body",
+      "label": "Story body"
+    },
+    {
+      "type": "header",
+      "content": "CTA"
+    },
+    {
+      "type": "text",
+      "id": "cta_eyebrow",
+      "label": "CTA eyebrow",
+      "default": "Now You Know Us"
+    },
+    {
+      "type": "text",
+      "id": "cta_title",
+      "label": "CTA title",
+      "default": "Let's find your piece."
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA button",
+      "default": "Shop the Collection"
+    },
+    {
+      "type": "url",
+      "id": "cta_url",
+      "label": "CTA link"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "pillar",
+      "name": "Brand Pillar",
+      "limit": 3,
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Pillar title",
+          "default": "Restraint"
+        },
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "Pillar description",
+          "default": "We remove rather than add. Every line, weight, and finish is earned."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "About Brand",
+      "blocks": [
+        {
+          "type": "pillar",
+          "settings": {
+            "title": "Restraint",
+            "text": "We remove rather than add. Every line, weight, and finish is earned. Nothing decorates for its own sake."
+          }
+        },
+        {
+          "type": "pillar",
+          "settings": {
+            "title": "Wearability",
+            "text": "Beautiful jewelry you never take off. Every piece is wear-tested for comfort at every angle."
+          }
+        },
+        {
+          "type": "pillar",
+          "settings": {
+            "title": "Responsibility",
+            "text": "Recycled metals. Conflict-free stones. A small atelier with living wages. This is our baseline."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

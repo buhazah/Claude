@@ -1,0 +1,73 @@
+<section class="trust-bar shopify-section" id="trust-bar-{{ section.id }}">
+  <div class="trust-bar__inner">
+    {%- for block in section.blocks -%}
+      {%- if forloop.index > 1 -%}
+        <div class="trust-bar__divider" aria-hidden="true"></div>
+      {%- endif -%}
+      <div class="trust-bar__item" {{ block.shopify_attributes }}>
+        {%- if block.settings.icon != blank -%}
+          <span class="trust-bar__icon" aria-hidden="true">{{ block.settings.icon }}</span>
+        {%- else -%}
+          <svg class="trust-bar__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        {%- endif -%}
+        <span class="trust-bar__text">{{ block.settings.text }}</span>
+      </div>
+    {%- endfor -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Trust Bar",
+  "tag": "section",
+  "class": "section-full-width",
+  "max_blocks": 3,
+  "blocks": [
+    {
+      "type": "trust_item",
+      "name": "Trust Item",
+      "settings": [
+        {
+          "type": "text",
+          "id": "icon",
+          "label": "Icon (SVG or emoji)",
+          "info": "Leave blank to use default checkmark"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Trust message",
+          "default": "Free shipping over $150"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Trust Bar",
+      "blocks": [
+        {
+          "type": "trust_item",
+          "settings": {
+            "text": "Free shipping over $150"
+          }
+        },
+        {
+          "type": "trust_item",
+          "settings": {
+            "text": "30-day returns"
+          }
+        },
+        {
+          "type": "trust_item",
+          "settings": {
+            "text": "Sustainably sourced"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

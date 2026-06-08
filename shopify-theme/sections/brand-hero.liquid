@@ -1,0 +1,118 @@
+{{ 'brand.css' | asset_url | stylesheet_tag }}
+
+<section class="brand-hero shopify-section" id="brand-hero-{{ section.id }}">
+
+  <div class="brand-hero__image-wrap">
+    {%- if section.settings.hero_image != blank -%}
+      {{
+        section.settings.hero_image
+        | image_url: width: 2000
+        | image_tag:
+          class: 'brand-hero__image',
+          loading: 'eager',
+          fetchpriority: 'high',
+          widths: '600, 900, 1200, 1600, 2000',
+          sizes: '100vw',
+          alt: section.settings.hero_image.alt | escape
+      }}
+    {%- else -%}
+      {{ 'lifestyle-1' | placeholder_svg_tag: 'brand-hero__image placeholder-svg' }}
+    {%- endif -%}
+    <div class="brand-hero__overlay"></div>
+  </div>
+
+  <div class="brand-hero__content">
+    {%- if section.settings.eyebrow != blank -%}
+      <span class="brand-hero__eyebrow">{{ section.settings.eyebrow }}</span>
+    {%- endif -%}
+
+    <h1 class="brand-hero__title">{{ section.settings.title }}</h1>
+
+    {%- if section.settings.subtitle != blank -%}
+      <p class="brand-hero__subtitle">{{ section.settings.subtitle }}</p>
+    {%- endif -%}
+
+    <div class="brand-hero__actions">
+      {%- if section.settings.cta_primary_label != blank -%}
+        <a
+          href="{{ section.settings.cta_primary_url }}"
+          class="btn-primary"
+          aria-label="{{ section.settings.cta_primary_label }}"
+        >
+          {{ section.settings.cta_primary_label }}
+        </a>
+      {%- endif -%}
+
+      {%- if section.settings.cta_secondary_label != blank -%}
+        <a
+          href="{{ section.settings.cta_secondary_url }}"
+          class="btn-secondary"
+          aria-label="{{ section.settings.cta_secondary_label }}"
+        >
+          {{ section.settings.cta_secondary_label }}
+        </a>
+      {%- endif -%}
+    </div>
+  </div>
+
+</section>
+
+{% schema %}
+{
+  "name": "Brand Hero",
+  "tag": "section",
+  "class": "section-full-width",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Hero image"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "New Collection"
+    },
+    {
+      "type": "textarea",
+      "id": "title",
+      "label": "Headline",
+      "default": "Worn every day.\nLoved for life."
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Fine jewelry designed to move with you. Crafted for the moments that matter most."
+    },
+    {
+      "type": "text",
+      "id": "cta_primary_label",
+      "label": "Primary CTA label",
+      "default": "Shop the Collection"
+    },
+    {
+      "type": "url",
+      "id": "cta_primary_url",
+      "label": "Primary CTA link"
+    },
+    {
+      "type": "text",
+      "id": "cta_secondary_label",
+      "label": "Secondary CTA label",
+      "default": "Our Story"
+    },
+    {
+      "type": "url",
+      "id": "cta_secondary_url",
+      "label": "Secondary CTA link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Brand Hero"
+    }
+  ]
+}
+{% endschema %}

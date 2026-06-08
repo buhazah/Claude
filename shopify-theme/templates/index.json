@@ -1,0 +1,161 @@
+{
+  "sections": {
+    "announcement": {
+      "type": "announcement-bar",
+      "settings": {
+        "text": "Free shipping on orders over $150 — <a href='/collections/all'>Shop now</a>",
+        "color_scheme": "background-1"
+      }
+    },
+    "brand-hero": {
+      "type": "brand-hero",
+      "settings": {
+        "eyebrow": "New Collection",
+        "title": "Worn every day.\nLoved for life.",
+        "subtitle": "Fine jewelry designed to move with you. Crafted for the moments that matter most.",
+        "cta_primary_label": "Shop the Collection",
+        "cta_primary_url": "/collections/all",
+        "cta_secondary_label": "Our Story",
+        "cta_secondary_url": "/pages/about"
+      }
+    },
+    "trust-bar": {
+      "type": "trust-bar",
+      "block_order": ["trust-1", "trust-2", "trust-3"],
+      "blocks": {
+        "trust-1": {
+          "type": "trust_item",
+          "settings": {
+            "text": "Free shipping over $150"
+          }
+        },
+        "trust-2": {
+          "type": "trust_item",
+          "settings": {
+            "text": "30-day returns"
+          }
+        },
+        "trust-3": {
+          "type": "trust_item",
+          "settings": {
+            "text": "Sustainably sourced"
+          }
+        }
+      }
+    },
+    "featured-products": {
+      "type": "featured-products-brand",
+      "block_order": ["prod-1", "prod-2", "prod-3"],
+      "blocks": {
+        "prod-1": {
+          "type": "product",
+          "settings": {
+            "tagline": "Your everyday essential"
+          }
+        },
+        "prod-2": {
+          "type": "product",
+          "settings": {
+            "tagline": "Worn morning to midnight"
+          }
+        },
+        "prod-3": {
+          "type": "product",
+          "settings": {
+            "tagline": "The perfect layer"
+          }
+        }
+      },
+      "settings": {
+        "eyebrow": "The Edit",
+        "title": "Worn Daily",
+        "subtitle": "Three pieces worth reaching for, every single day.",
+        "cta_label": "View All Jewelry",
+        "cta_url": "/collections/all"
+      }
+    },
+    "philosophy": {
+      "type": "philosophy-section",
+      "settings": {
+        "eyebrow": "Our Philosophy",
+        "title": "Less, but only the best.",
+        "quote": "The right piece becomes invisible. You forget you're wearing it — until someone notices.",
+        "cta_label": "Our Story",
+        "cta_url": "/pages/about"
+      }
+    },
+    "bundle": {
+      "type": "bundle-section",
+      "block_order": ["bundle-1", "bundle-2", "bundle-3"],
+      "blocks": {
+        "bundle-1": { "type": "bundle_product", "settings": {} },
+        "bundle-2": { "type": "bundle_product", "settings": {} },
+        "bundle-3": { "type": "bundle_product", "settings": {} }
+      },
+      "settings": {
+        "eyebrow": "Stack & Save",
+        "title": "The Everyday Stack",
+        "subtitle": "Three pieces that belong together. Bundle and save 15%.",
+        "cta_label": "Add Bundle to Cart"
+      }
+    },
+    "reviews": {
+      "type": "reviews-minimal",
+      "block_order": ["review-1", "review-2", "review-3"],
+      "blocks": {
+        "review-1": {
+          "type": "review",
+          "settings": {
+            "rating": 5,
+            "review_text": "I've worn it every day for six months and it still looks brand new. Worth every penny.",
+            "author": "Sarah M.",
+            "product_name": "Paperclip Chain Necklace"
+          }
+        },
+        "review-2": {
+          "type": "review",
+          "settings": {
+            "rating": 5,
+            "review_text": "The weight is perfect. Not too delicate, not too heavy. It layers beautifully with everything.",
+            "author": "Priya K.",
+            "product_name": "Thin Band Ring"
+          }
+        },
+        "review-3": {
+          "type": "review",
+          "settings": {
+            "rating": 5,
+            "review_text": "Finally found a pair of studs I can sleep in. The quality is genuinely exceptional.",
+            "author": "Olivia T.",
+            "product_name": "Dome Stud Earrings"
+          }
+        }
+      },
+      "settings": {
+        "title": "What they say",
+        "average_rating": 5,
+        "review_count": 284
+      }
+    },
+    "final-cta": {
+      "type": "final-cta",
+      "settings": {
+        "bg_text": "Gold",
+        "eyebrow": "Start Your Collection",
+        "title": "Find your\nperfect piece.",
+        "subtitle": "Free shipping on orders over $150. Easy returns within 30 days.",
+        "cta_label": "Shop Now",
+        "cta_url": "/collections/all"
+      }
+    }
+  },
+  "order": [
+    "brand-hero",
+    "trust-bar",
+    "featured-products",
+    "philosophy",
+    "bundle",
+    "reviews",
+    "final-cta"
+  ]
+}

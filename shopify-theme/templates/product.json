@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product-brand",
+      "settings": {
+        "tagline": "The piece you'll reach for every morning.",
+        "description": "<p>A refined essential. Crafted in 14k gold vermeil over sterling silver with a satin finish that only improves with wear. The proportions are deliberate — substantial enough to notice, light enough to forget you're wearing it.</p>",
+        "materials": "<p>14k gold vermeil — 2.5 microns over sterling silver. Nickel-free. Available in 16\" and 18\" lengths.</p>"
+      }
+    }
+  },
+  "order": ["main"]
+}

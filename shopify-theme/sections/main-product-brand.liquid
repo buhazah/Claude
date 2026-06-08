@@ -1,0 +1,377 @@
+{%- assign product = product -%}
+{%- assign current_variant = product.selected_or_first_available_variant -%}
+{%- assign featured_media = current_variant.featured_media | default: product.featured_media -%}
+
+<section class="product-page" id="product-{{ product.id }}">
+  <div class="product-page__layout">
+
+    <!-- Images -->
+    <div class="product-images">
+      <div class="product-images__grid">
+        {%- assign media_count = 0 -%}
+        {%- for media in product.media limit: 4 -%}
+          <div
+            class="product-images__grid-item img-zoom"
+            data-media-id="{{ media.id }}"
+          >
+            {%- if media.media_type == 'image' -%}
+              {{
+                media
+                | image_url: width: 1200
+                | image_tag:
+                  class: 'product-images__img',
+                  loading: forloop.first | ternary: 'eager', 'lazy',
+                  widths: '400, 600, 800, 1000, 1200',
+                  sizes: '(max-width: 768px) 100vw, 50vw',
+                  alt: media.alt | default: product.title | escape
+              }}
+            {%- endif -%}
+          </div>
+          {%- assign media_count = media_count | plus: 1 -%}
+        {%- endfor -%}
+
+        {%- if media_count == 0 -%}
+          <div class="product-images__grid-item">
+            {{ 'product-1' | placeholder_svg_tag: 'product-images__img placeholder-svg' }}
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+
+    <!-- Product Info -->
+    <div class="product-info">
+
+      <nav class="product-info__breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ routes.root_url }}">Home</a>
+        <span aria-hidden="true"> / </span>
+        {%- if product.collections.first -%}
+          <a href="{{ product.collections.first.url }}">{{ product.collections.first.title }}</a>
+          <span aria-hidden="true"> / </span>
+        {%- endif -%}
+        <span>{{ product.title }}</span>
+      </nav>
+
+      <h1 class="product-info__title">{{ product.title }}</h1>
+
+      {%- if product.metafields.custom.tagline != blank -%}
+        <p class="product-info__tagline">{{ product.metafields.custom.tagline }}</p>
+      {%- elsif section.settings.tagline != blank -%}
+        <p class="product-info__tagline">{{ section.settings.tagline }}</p>
+      {%- endif -%}
+
+      <div class="product-info__price" id="price-{{ section.id }}">
+        {%- if current_variant.compare_at_price > current_variant.price -%}
+          <span class="product-info__price-compare">{{ current_variant.compare_at_price | money }}</span>
+        {%- endif -%}
+        <span class="product-info__price-current">{{ current_variant.price | money }}</span>
+      </div>
+
+      <form data-atc-form action="{{ routes.cart_add_url }}" method="post" enctype="multipart/form-data">
+
+        <!-- Variants -->
+        {%- unless product.has_only_default_variant -%}
+          {%- for option in product.options_with_values -%}
+            <div class="product-variants">
+              <div class="product-variants__label">
+                <span>{{ option.name }}</span>
+                {%- if option.name == 'Size' -%}
+                  <a href="#" style="color: var(--color-gold); font-size: 1.2rem;">Size Guide</a>
+                {%- endif -%}
+              </div>
+              <div class="product-variants__options" role="group" aria-label="{{ option.name }}">
+                {%- for value in option.values -%}
+                  {%- assign variant_option = 'option' | append: option.position -%}
+                  {%- assign current_value_selected = false -%}
+                  {%- if current_variant[variant_option] == value -%}
+                    {%- assign current_value_selected = true -%}
+                  {%- endif -%}
+                  <button
+                    type="button"
+                    class="product-variants__option{% if current_value_selected %} product-variants__option--active{% endif %}"
+                    data-option="{{ option.position }}"
+                    data-value="{{ value | escape }}"
+                    aria-pressed="{{ current_value_selected }}"
+                  >
+                    {{ value }}
+                  </button>
+                {%- endfor -%}
+              </div>
+            </div>
+          {%- endfor -%}
+        {%- endunless -%}
+
+        <input type="hidden" name="id" value="{{ current_variant.id }}" id="variant-id-{{ section.id }}">
+        <input type="hidden" name="quantity" value="1">
+
+        <div class="product-atc">
+          <button
+            type="submit"
+            class="product-atc__btn"
+            data-atc-btn
+            {% unless current_variant.available %}disabled{% endunless %}
+          >
+            {%- if current_variant.available -%}
+              Add to Cart
+            {%- else -%}
+              Sold Out
+            {%- endif -%}
+          </button>
+          <button type="button" class="product-atc__wishlist" aria-label="Save to wishlist">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Trust block -->
+      <div class="pdp-trust">
+        <div class="pdp-trust__item">
+          <svg class="pdp-trust__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+          </svg>
+          <p class="pdp-trust__text"><strong>Free shipping</strong> on orders over $150. Delivered in 3–5 business days.</p>
+        </div>
+        <div class="pdp-trust__item">
+          <svg class="pdp-trust__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+          </svg>
+          <p class="pdp-trust__text"><strong>30-day returns.</strong> Unworn items only. We handle the process for you.</p>
+        </div>
+        <div class="pdp-trust__item">
+          <svg class="pdp-trust__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+          </svg>
+          <p class="pdp-trust__text"><strong>Sustainably sourced.</strong> Recycled metals and conflict-free stones only.</p>
+        </div>
+      </div>
+
+      <!-- Product Tabs -->
+      <div class="product-tabs">
+        <nav class="product-tabs__nav" role="tablist">
+          <button
+            class="product-tabs__tab product-tabs__tab--active"
+            role="tab"
+            aria-selected="true"
+            data-tab="details"
+          >Details</button>
+          <button
+            class="product-tabs__tab"
+            role="tab"
+            aria-selected="false"
+            data-tab="care"
+          >Care</button>
+          <button
+            class="product-tabs__tab"
+            role="tab"
+            aria-selected="false"
+            data-tab="shipping"
+          >Shipping</button>
+        </nav>
+
+        <div class="product-tabs__panel product-tabs__panel--active" role="tabpanel" data-panel="details">
+          {%- if product.description != blank -%}
+            {{ product.description }}
+          {%- else -%}
+            <p>
+              {{ section.settings.description | default: "A refined essential. Crafted in 14k gold vermeil over sterling silver with a satin finish that only improves with wear. The proportions are deliberate — substantial enough to notice, light enough to forget you're wearing it." }}
+            </p>
+            {%- if section.settings.materials != blank -%}
+              <p>{{ section.settings.materials }}</p>
+            {%- endif -%}
+          {%- endif -%}
+        </div>
+
+        <div class="product-tabs__panel" role="tabpanel" data-panel="care">
+          <p>Store in the provided pouch when not wearing. Avoid contact with water, perfume, and lotions.</p>
+          <p>Polish gently with the included cloth to restore shine. Our pieces are designed to last — a little care goes a long way.</p>
+        </div>
+
+        <div class="product-tabs__panel" role="tabpanel" data-panel="shipping">
+          <p>Free standard shipping on all orders over $150. Orders ship within 1–2 business days.</p>
+          <p>Returns accepted within 30 days of delivery for unworn items in original packaging. We provide a prepaid return label.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Complete the Look -->
+{%- if section.settings.related_product_1 != blank or section.settings.related_product_2 != blank -%}
+  <section class="complete-look">
+    <div class="complete-look__header fade-in">
+      <span class="section-eyebrow">Complete the Look</span>
+      <h2 class="section-title">Pairs beautifully with</h2>
+    </div>
+    <div class="complete-look__grid">
+      {%- assign related_products = section.settings.related_product_1 | append: ',' | append: section.settings.related_product_2 -%}
+      {%- for i in (1..2) -%}
+        {%- assign rp_setting = 'related_product_' | append: i -%}
+        {%- assign rp = section.settings[rp_setting] -%}
+        {%- if rp != blank -%}
+          <article class="product-card fade-in fade-in-delay-{{ i }}">
+            <a href="{{ rp.url }}">
+              <div class="product-card__image-wrap">
+                {%- if rp.featured_image -%}
+                  {{
+                    rp.featured_image
+                    | image_url: width: 600
+                    | image_tag:
+                      class: 'product-card__image',
+                      loading: 'lazy',
+                      alt: rp.featured_image.alt | default: rp.title | escape
+                  }}
+                {%- else -%}
+                  {{ 'product-1' | placeholder_svg_tag: 'product-card__image placeholder-svg' }}
+                {%- endif -%}
+              </div>
+              <h3 class="product-card__name">{{ rp.title }}</h3>
+              <p class="product-card__price">{{ rp.price | money }}</p>
+            </a>
+          </article>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </section>
+{%- endif -%}
+
+<script>
+  (function () {
+    const form = document.querySelector('[data-atc-form]');
+    if (!form) return;
+
+    const variantInput = form.querySelector('[name="id"]');
+    const priceEl = document.getElementById('price-{{ section.id }}');
+    const optionBtns = form.querySelectorAll('.product-variants__option');
+
+    const variants = {{ product.variants | json }};
+
+    function getSelectedOptions() {
+      const selected = {};
+      form.querySelectorAll('.product-variants__options').forEach((group, i) => {
+        const active = group.querySelector('.product-variants__option--active');
+        if (active) selected[i + 1] = active.dataset.value;
+      });
+      return selected;
+    }
+
+    function findVariant(opts) {
+      return variants.find(v => {
+        return Object.entries(opts).every(([pos, val]) => v['option' + pos] === val);
+      });
+    }
+
+    optionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const group = btn.closest('.product-variants__options');
+        group.querySelectorAll('.product-variants__option').forEach(b => {
+          b.classList.remove('product-variants__option--active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('product-variants__option--active');
+        btn.setAttribute('aria-pressed', 'true');
+
+        const opts = getSelectedOptions();
+        const variant = findVariant(opts);
+        if (variant) {
+          variantInput.value = variant.id;
+          const atcBtn = form.querySelector('[data-atc-btn]');
+          if (variant.available) {
+            atcBtn.disabled = false;
+            atcBtn.textContent = 'Add to Cart';
+          } else {
+            atcBtn.disabled = true;
+            atcBtn.textContent = 'Sold Out';
+          }
+          if (priceEl) {
+            const price = Shopify.formatMoney(variant.price);
+            priceEl.querySelector('.product-info__price-current').textContent = price;
+          }
+        }
+      });
+    });
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = form.querySelector('[data-atc-btn]');
+      btn.disabled = true;
+      btn.textContent = 'Adding...';
+      try {
+        const body = { items: [{ id: parseInt(variantInput.value), quantity: 1 }] };
+        const res = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (res.ok) {
+          btn.textContent = 'Added ✓';
+          const drawer = document.getElementById('cart-drawer');
+          const overlay = document.getElementById('cart-overlay');
+          if (drawer) {
+            drawer.classList.add('cart-drawer--open');
+            if (overlay) overlay.classList.add('cart-drawer__overlay--visible');
+            document.body.style.overflow = 'hidden';
+          }
+          setTimeout(() => {
+            btn.textContent = 'Add to Cart';
+            btn.disabled = false;
+          }, 2500);
+        } else {
+          btn.textContent = 'Add to Cart';
+          btn.disabled = false;
+        }
+      } catch {
+        btn.textContent = 'Add to Cart';
+        btn.disabled = false;
+      }
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Product Brand",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "tagline",
+      "label": "Default editorial tagline",
+      "default": "The piece you'll reach for every morning."
+    },
+    {
+      "type": "richtext",
+      "id": "description",
+      "label": "Default description (if product has no description)",
+      "default": "<p>A refined essential. Crafted in 14k gold vermeil over sterling silver with a satin finish that only improves with wear.</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "materials",
+      "label": "Materials details",
+      "default": "<p>14k gold vermeil — 2.5 microns over sterling silver. Nickel-free. Length: 16\" with 2\" extension.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Complete the Look"
+    },
+    {
+      "type": "product",
+      "id": "related_product_1",
+      "label": "Related product 1"
+    },
+    {
+      "type": "product",
+      "id": "related_product_2",
+      "label": "Related product 2"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Brand"
+    }
+  ]
+}
+{% endschema %}

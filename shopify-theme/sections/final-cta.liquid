@@ -1,0 +1,73 @@
+<section class="final-cta shopify-section" id="final-cta-{{ section.id }}">
+
+  {%- if section.settings.bg_text != blank -%}
+    <span class="final-cta__bg-text" aria-hidden="true">{{ section.settings.bg_text }}</span>
+  {%- endif -%}
+
+  <div class="final-cta__content fade-in">
+    {%- if section.settings.eyebrow != blank -%}
+      <span class="final-cta__eyebrow">{{ section.settings.eyebrow }}</span>
+    {%- endif -%}
+
+    <h2 class="final-cta__title">{{ section.settings.title }}</h2>
+
+    {%- if section.settings.subtitle != blank -%}
+      <p class="final-cta__subtitle">{{ section.settings.subtitle }}</p>
+    {%- endif -%}
+
+    <a href="{{ section.settings.cta_url }}" class="btn-primary">
+      {{ section.settings.cta_label }}
+    </a>
+  </div>
+
+</section>
+
+{% schema %}
+{
+  "name": "Final CTA",
+  "tag": "section",
+  "class": "section-full-width",
+  "settings": [
+    {
+      "type": "text",
+      "id": "bg_text",
+      "label": "Background watermark text",
+      "default": "Gold"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Start Your Collection"
+    },
+    {
+      "type": "textarea",
+      "id": "title",
+      "label": "Title",
+      "default": "Find your\nperfect piece."
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Free shipping on orders over $150. Easy returns within 30 days."
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA label",
+      "default": "Shop Now"
+    },
+    {
+      "type": "url",
+      "id": "cta_url",
+      "label": "CTA link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Final CTA"
+    }
+  ]
+}
+{% endschema %}

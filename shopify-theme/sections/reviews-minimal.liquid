@@ -1,0 +1,134 @@
+<section class="reviews-section shopify-section" id="reviews-{{ section.id }}">
+
+  <div class="reviews-section__header fade-in">
+    <div class="reviews-section__rating">
+      <span class="reviews-section__stars" aria-label="{{ section.settings.average_rating }} out of 5 stars">
+        {%- assign full_stars = section.settings.average_rating | floor -%}
+        {%- for i in (1..full_stars) -%}★{%- endfor -%}
+        {%- if full_stars < 5 -%}☆{%- endif -%}
+      </span>
+      <span class="reviews-section__count">{{ section.settings.review_count }} reviews</span>
+    </div>
+    {%- if section.settings.title != blank -%}
+      <h2 class="section-title">{{ section.settings.title }}</h2>
+    {%- endif -%}
+  </div>
+
+  <div class="reviews-section__grid">
+    {%- for block in section.blocks -%}
+      <article class="review-card fade-in fade-in-delay-{{ forloop.index }}" {{ block.shopify_attributes }}>
+        <div class="review-card__stars" aria-label="{{ block.settings.rating }} stars">
+          {%- assign r = block.settings.rating | floor -%}
+          {%- for i in (1..r) -%}★{%- endfor -%}
+        </div>
+        <blockquote class="review-card__text">
+          "{{ block.settings.review_text }}"
+        </blockquote>
+        <footer>
+          <p class="review-card__author">— {{ block.settings.author }}</p>
+          {%- if block.settings.product_name != blank -%}
+            <p class="review-card__product">{{ block.settings.product_name }}</p>
+          {%- endif -%}
+        </footer>
+      </article>
+    {%- endfor -%}
+  </div>
+
+</section>
+
+{% schema %}
+{
+  "name": "Reviews",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Section title",
+      "default": "What they say"
+    },
+    {
+      "type": "range",
+      "id": "average_rating",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "label": "Average rating",
+      "default": 5
+    },
+    {
+      "type": "number",
+      "id": "review_count",
+      "label": "Total review count",
+      "default": 284
+    }
+  ],
+  "blocks": [
+    {
+      "type": "review",
+      "name": "Review",
+      "limit": 3,
+      "settings": [
+        {
+          "type": "range",
+          "id": "rating",
+          "min": 1,
+          "max": 5,
+          "step": 1,
+          "label": "Star rating",
+          "default": 5
+        },
+        {
+          "type": "textarea",
+          "id": "review_text",
+          "label": "Review text",
+          "default": "I've worn it every day for six months and it still looks new. Exactly what I was looking for."
+        },
+        {
+          "type": "text",
+          "id": "author",
+          "label": "Customer name",
+          "default": "Sarah M."
+        },
+        {
+          "type": "text",
+          "id": "product_name",
+          "label": "Product name",
+          "default": "Paperclip Chain Necklace"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Reviews",
+      "blocks": [
+        {
+          "type": "review",
+          "settings": {
+            "review_text": "I've worn it every day for six months and it still looks brand new. Worth every penny.",
+            "author": "Sarah M.",
+            "product_name": "Paperclip Chain Necklace"
+          }
+        },
+        {
+          "type": "review",
+          "settings": {
+            "review_text": "The weight is perfect. Not too delicate, not too heavy. It layers beautifully with everything.",
+            "author": "Priya K.",
+            "product_name": "Thin Band Ring"
+          }
+        },
+        {
+          "type": "review",
+          "settings": {
+            "review_text": "Finally found a pair of studs I can sleep in. The quality is genuinely exceptional.",
+            "author": "Olivia T.",
+            "product_name": "Dome Stud Earrings"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

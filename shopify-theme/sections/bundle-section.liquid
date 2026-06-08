@@ -1,0 +1,184 @@
+<section class="bundle-section shopify-section" id="bundle-{{ section.id }}">
+
+  <div class="bundle-section__header text-center fade-in">
+    {%- if section.settings.eyebrow != blank -%}
+      <span class="section-eyebrow">{{ section.settings.eyebrow }}</span>
+    {%- endif -%}
+    <h2 class="section-title">{{ section.settings.title }}</h2>
+    {%- if section.settings.subtitle != blank -%}
+      <p class="section-subtitle">{{ section.settings.subtitle }}</p>
+    {%- endif -%}
+  </div>
+
+  <div class="bundle-section__inner">
+    {%- assign bundle_total = 0 -%}
+    {%- assign product_count = 0 -%}
+    {%- for block in section.blocks -%}
+      {%- assign p = block.settings.product -%}
+      {%- if p != blank -%}
+        {%- assign bundle_total = bundle_total | plus: p.price -%}
+        {%- assign product_count = product_count | plus: 1 -%}
+      {%- endif -%}
+    {%- endfor -%}
+
+    {%- assign discounted_total = bundle_total | times: 0.85 | round -%}
+    {%- assign savings = bundle_total | minus: discounted_total -%}
+
+    <div class="bundle-card fade-in" data-bundle>
+      {%- for block in section.blocks -%}
+        {%- assign p = block.settings.product -%}
+
+        {%- if forloop.index > 1 -%}
+          <div class="bundle-card__plus" aria-hidden="true">+</div>
+        {%- endif -%}
+
+        <div class="bundle-card__product" {{ block.shopify_attributes }}>
+          {%- if p != blank -%}
+            <a href="{{ p.url }}">
+              {%- if p.featured_image -%}
+                {{
+                  p.featured_image
+                  | image_url: width: 400
+                  | image_tag:
+                    class: 'bundle-card__product-image',
+                    loading: 'lazy',
+                    widths: '200, 300, 400',
+                    alt: p.featured_image.alt | default: p.title | escape
+                }}
+              {%- else -%}
+                {{ 'product-1' | placeholder_svg_tag: 'bundle-card__product-image placeholder-svg' }}
+              {%- endif -%}
+            </a>
+            <p class="bundle-card__product-name">{{ p.title }}</p>
+            <p class="bundle-card__product-price">{{ p.price | money }}</p>
+            <input
+              type="checkbox"
+              data-bundle-item
+              data-price="{{ p.price }}"
+              data-variant="{{ p.variants.first.id }}"
+              checked
+              style="display:none"
+            >
+          {%- else -%}
+            {{ 'product-1' | placeholder_svg_tag: 'bundle-card__product-image placeholder-svg' }}
+            <p class="bundle-card__product-name">Select a product</p>
+            <p class="bundle-card__product-price">$00.00</p>
+          {%- endif -%}
+        </div>
+
+      {%- endfor -%}
+
+      <div class="bundle-card__cta">
+        {%- if savings > 0 -%}
+          <p class="bundle-card__savings">Save {{ savings | money }} when you bundle</p>
+        {%- endif -%}
+        <p class="bundle-card__total">
+          Bundle:
+          <span data-bundle-total>{{ discounted_total | money }}</span>
+          <small style="font-size:1.4rem; color: var(--color-charcoal-mid); font-family: var(--font-body); text-decoration: line-through; margin-left: 0.8rem;">{{ bundle_total | money }}</small>
+        </p>
+        <button class="btn-primary" style="min-width: 24rem;" onclick="addBundleToCart(this)">
+          {{ section.settings.cta_label | default: 'Add Bundle to Cart' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<script>
+  function addBundleToCart(btn) {
+    const bundle = btn.closest('[data-bundle]');
+    const items = Array.from(bundle.querySelectorAll('[data-bundle-item]:checked')).map(cb => ({
+      id: parseInt(cb.dataset.variant),
+      quantity: 1
+    }));
+
+    if (!items.length) return;
+
+    btn.textContent = 'Adding...';
+    btn.disabled = true;
+
+    fetch('/cart/add.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items })
+    })
+    .then(r => r.json())
+    .then(() => {
+      btn.textContent = 'Added to Cart ✓';
+      const drawer = document.getElementById('cart-drawer');
+      const overlay = document.getElementById('cart-overlay');
+      if (drawer) {
+        drawer.classList.add('cart-drawer--open');
+        if (overlay) overlay.classList.add('cart-drawer__overlay--visible');
+        document.body.style.overflow = 'hidden';
+      }
+      setTimeout(() => {
+        btn.textContent = '{{ section.settings.cta_label | default: "Add Bundle to Cart" }}';
+        btn.disabled = false;
+      }, 3000);
+    })
+    .catch(() => {
+      btn.textContent = 'Try Again';
+      btn.disabled = false;
+    });
+  }
+</script>
+
+{% schema %}
+{
+  "name": "Bundle Section",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Stack & Save"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "The Everyday Stack"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Three pieces that belong together. Bundle and save 15%."
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "Button label",
+      "default": "Add Bundle to Cart"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "bundle_product",
+      "name": "Bundle Product",
+      "limit": 3,
+      "settings": [
+        {
+          "type": "product",
+          "id": "product",
+          "label": "Product"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Bundle Section",
+      "blocks": [
+        { "type": "bundle_product" },
+        { "type": "bundle_product" },
+        { "type": "bundle_product" }
+      ]
+    }
+  ]
+}
+{% endschema %}

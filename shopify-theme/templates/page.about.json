@@ -1,0 +1,41 @@
+{
+  "sections": {
+    "about": {
+      "type": "about-brand",
+      "block_order": ["pillar-1", "pillar-2", "pillar-3"],
+      "blocks": {
+        "pillar-1": {
+          "type": "pillar",
+          "settings": {
+            "title": "Restraint",
+            "text": "We remove rather than add. Every line, weight, and finish is earned. Nothing decorates for its own sake."
+          }
+        },
+        "pillar-2": {
+          "type": "pillar",
+          "settings": {
+            "title": "Wearability",
+            "text": "Beautiful jewelry you never take off. Every piece is wear-tested for comfort across real daily life."
+          }
+        },
+        "pillar-3": {
+          "type": "pillar",
+          "settings": {
+            "title": "Responsibility",
+            "text": "Recycled metals. Conflict-free stones. A small atelier with fair wages. This is our baseline, not our marketing."
+          }
+        }
+      },
+      "settings": {
+        "hero_title": "Less is more.\nAlways.",
+        "story_label": "Our Story",
+        "story_title": "Built for the way you actually live.",
+        "cta_eyebrow": "Now You Know Us",
+        "cta_title": "Let's find your piece.",
+        "cta_label": "Shop the Collection",
+        "cta_url": "/collections/all"
+      }
+    }
+  },
+  "order": ["about"]
+}
