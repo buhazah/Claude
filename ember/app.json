@@ -2,6 +2,7 @@
   "expo": {
     "name": "Ember",
     "slug": "ember",
+    "owner": "buhazah24",
     "version": "1.0.0",
     "scheme": "ember",
     "orientation": "portrait",
