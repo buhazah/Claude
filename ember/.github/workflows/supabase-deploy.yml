@@ -2,11 +2,12 @@ name: Deploy Supabase
 
 on:
   push:
-    branches: [claude/stoic-bardeen-kfx4au, main]
+    branches: [main]
     paths:
-      - 'supabase/migrations/**'
-      - 'supabase/functions/**'
-      - 'supabase/config.toml'
+      - 'ember/supabase/migrations/**'
+      - 'ember/supabase/functions/**'
+      - 'ember/supabase/config.toml'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -22,26 +23,35 @@ jobs:
         run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        working-directory: ember
 
       - name: Push database migrations
-        run: supabase db push
+        run: supabase db push --password ${{ secrets.SUPABASE_DB_PASSWORD }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        working-directory: ember
 
-      - name: Deploy Edge Functions
-        run: supabase functions deploy --no-verify-jwt match-generate coach-nudge ghost-detect trust-score-update && supabase functions deploy profile-extract opener-generate date-concierge checkin-process
+      - name: Deploy Edge Functions (crons - no JWT)
+        run: supabase functions deploy match-generate coach-nudge ghost-detect trust-score-update --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        working-directory: ember
+
+      - name: Deploy Edge Functions (user-facing - JWT required)
+        run: supabase functions deploy profile-extract opener-generate date-concierge checkin-process
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        working-directory: ember
 
       - name: Set Edge Function secrets
         run: |
           supabase secrets set \
-            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
-            DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }} \
-            VOYAGE_API_KEY=${{ secrets.VOYAGE_API_KEY }} \
-            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
-            GOOGLE_PLACES_API_KEY=${{ secrets.GOOGLE_PLACES_API_KEY }} \
-            INTERNAL_SECRET=${{ secrets.INTERNAL_SECRET }}
+            ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
+            DEEPGRAM_API_KEY="${{ secrets.DEEPGRAM_API_KEY }}" \
+            VOYAGE_API_KEY="${{ secrets.VOYAGE_API_KEY }}" \
+            STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            GOOGLE_PLACES_API_KEY="${{ secrets.GOOGLE_PLACES_API_KEY }}" \
+            INTERNAL_SECRET="${{ secrets.INTERNAL_SECRET }}"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        working-directory: ember
