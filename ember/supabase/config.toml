@@ -1,0 +1,40 @@
+project_id = "ember"
+
+[auth]
+enable_signup = true
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+# OTP: 6 digits, 5 min expiry, 3 attempts (PRD §4.1.1)
+otp_length = 6
+otp_expiry = 300
+max_frequency = "1m0s"
+
+[functions.profile-extract]
+verify_jwt = true
+
+[functions.opener-generate]
+verify_jwt = true
+
+[functions.date-concierge]
+verify_jwt = true
+
+[functions.checkin-process]
+verify_jwt = true
+
+# Crons (configure in Dashboard → Edge Functions → Schedules, or via pg_cron + pg_net):
+#   match-generate   : 0 1 * * *    (nightly, 1:00 AM UTC — PRD §6.2)
+#   coach-nudge      : 0 */6 * * *  (every 6h — PRD §6.3)
+#   ghost-detect     : 0 */6 * * *  (every 6h — PRD §6.4)
+[functions.match-generate]
+verify_jwt = false
+
+[functions.coach-nudge]
+verify_jwt = false
+
+[functions.ghost-detect]
+verify_jwt = false
+
+[functions.trust-score-update]
+verify_jwt = false

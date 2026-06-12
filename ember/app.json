@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Ember",
+    "slug": "ember",
+    "version": "1.0.0",
+    "scheme": "ember",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.ember.dating",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Ember uses your microphone for voice onboarding — answering 3 questions builds your personality profile.",
+        "NSCameraUsageDescription": "Ember uses your camera for mandatory identity verification.",
+        "NSPhotoLibraryUsageDescription": "Ember lets you choose profile photos from your library."
+      }
+    },
+    "android": {
+      "package": "com.ember.dating"
+    },
+    "plugins": ["expo-router", "expo-av", "expo-notifications", "expo-secure-store"],
+    "extra": {
+      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" }
+    }
+  }
+}
