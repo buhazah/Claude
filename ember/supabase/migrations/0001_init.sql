@@ -55,8 +55,8 @@ create table daily_matches (
   expires_at timestamptz not null default now() + interval '48 hours',
   check (user_a < user_b)
 );
--- anti-repetition: same pair never twice within 90 days (enforced in match-generate too)
-create unique index daily_matches_pair_idx on daily_matches (user_a, user_b, (delivered_at::date));
+-- index for fast per-user match lookups; anti-repetition enforced in match_candidates RPC
+create index daily_matches_pair_idx on daily_matches (user_a, user_b, delivered_at desc);
 
 -- ── conversations & messages ─────────────────────────────────────────
 create type conv_status as enum ('active', 'stalling', 'ghost_detected', 'archived');
