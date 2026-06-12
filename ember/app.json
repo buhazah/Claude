@@ -20,9 +20,6 @@
     "android": {
       "package": "com.ember.dating"
     },
-    "plugins": ["expo-router", "expo-av", "expo-notifications", "expo-secure-store"],
-    "extra": {
-      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" }
-    }
+    "plugins": ["expo-router", "expo-av", "expo-notifications", "expo-secure-store"]
   }
 }
