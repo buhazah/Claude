@@ -6,9 +6,8 @@ enable_signup = true
 [auth.sms]
 enable_signup = true
 enable_confirmations = true
-# OTP: 6 digits, 5 min expiry, 3 attempts (PRD §4.1.1)
-otp_length = 6
-otp_expiry = 300
+# OTP expiry/length are configured in the Supabase Dashboard (Auth → Providers → Phone).
+# PRD §4.1.1 targets: 6 digits, 5 min expiry, 3 attempts.
 max_frequency = "1m0s"
 
 [functions.profile-extract]
