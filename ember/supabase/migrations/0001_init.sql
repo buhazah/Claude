@@ -17,10 +17,10 @@ create table profiles (
   lat double precision,
   lng double precision,
   occupation_category text,
-  photos text[] default '{}',            -- storage paths, first = card photo
-  voice_clips text[] default '{}',       -- storage paths (deleted after 30d by cron)
-  voice_transcripts jsonb,               -- [{question, transcript}]
-  personality jsonb,                     -- Claude-extracted profile (PRD §6.1)
+  photos text[] default '{}',
+  voice_clips text[] default '{}',
+  voice_transcripts jsonb,
+  personality jsonb,
   embedding vector(1024),
   bio text check (char_length(bio) <= 160),
   intent intent_type,
@@ -55,8 +55,8 @@ create table daily_matches (
   expires_at timestamptz not null default now() + interval '48 hours',
   check (user_a < user_b)
 );
--- anti-repetition: same pair never twice within 90 days (enforced in match-generate too)
-create unique index daily_matches_pair_idx on daily_matches (user_a, user_b, (delivered_at::date));
+-- index for fast per-user match lookups; anti-repetition enforced in match_candidates RPC
+create index daily_matches_pair_idx on daily_matches (user_a, user_b, delivered_at desc);
 
 -- ── conversations & messages ─────────────────────────────────────────
 create type conv_status as enum ('active', 'stalling', 'ghost_detected', 'archived');
@@ -80,7 +80,7 @@ create table conversations (
 create table messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references conversations(id) on delete cascade,
-  sender uuid references profiles(id),       -- null for system/coach messages
+  sender uuid references profiles(id),
   body text not null,
   is_coach_nudge boolean not null default false,
   read_at timestamptz,
@@ -181,7 +181,6 @@ alter table ghost_events enable row level security;
 
 create policy "own profile rw" on profiles
   for all using (id = auth.uid()) with check (id = auth.uid());
--- matched users may read each other's profile (limited columns enforced via view in app)
 create policy "matched profiles readable" on profiles for select using (
   exists (select 1 from daily_matches m
           where (m.user_a = auth.uid() and m.user_b = profiles.id)
@@ -215,6 +214,4 @@ create policy "own blocks" on blocks for all using (blocker = auth.uid()) with c
 create policy "file reports" on reports for insert with check (reporter = auth.uid());
 create policy "own ghost view" on ghost_events for select using (ghosted = auth.uid() or ghoster = auth.uid());
 
--- trust_score / reliability_score / verified / embedding are written only by
--- service-role Edge Functions; client updates blocked via column privileges:
 revoke update (trust_score, reliability_score, verified, embedding, personality) on profiles from authenticated;
