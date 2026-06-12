@@ -17,7 +17,9 @@ on:
         options: [preview, production]
   push:
     branches: [main]
-    paths: ['.github/workflows/eas-build.yml']
+    paths:
+      - '.github/workflows/eas-build.yml'
+      - 'ember/**'
 
 jobs:
   build:
