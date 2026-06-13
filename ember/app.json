@@ -20,6 +20,12 @@
     "android": {
       "package": "com.ember.dating"
     },
-    "plugins": ["expo-router", "expo-av", "expo-notifications", "expo-secure-store"]
+    "plugins": [
+      "expo-router",
+      "expo-av",
+      "expo-notifications",
+      "expo-secure-store",
+      ["expo-build-properties", { "android": { "kotlinVersion": "1.9.25" } }]
+    ]
   }
 }
