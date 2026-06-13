@@ -46,7 +46,7 @@ jobs:
         run: eas init --non-interactive --force
 
       - name: Build
-        run: eas build --platform ${{ github.event.inputs.platform || 'android' }} --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive --no-wait
+        run: eas build --platform ${{ github.event.inputs.platform || 'android' }} --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive --wait
         env:
           EXPO_PUBLIC_SUPABASE_URL: https://bauosctmdwumvuvyoemd.supabase.co
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
