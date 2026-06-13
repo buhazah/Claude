@@ -2,19 +2,6 @@ name: EAS Build
 
 on:
   workflow_dispatch:
-    inputs:
-      platform:
-        description: 'Platform to build'
-        required: true
-        default: 'android'
-        type: choice
-        options: [android, ios, all]
-      profile:
-        description: 'Build profile'
-        required: true
-        default: 'preview'
-        type: choice
-        options: [preview, production]
   push:
     branches: [main]
     paths:
@@ -22,9 +9,10 @@ on:
       - 'ember/**'
 
 jobs:
-  # Diagnostic: compile the Android project on the runner to surface the real
-  # Gradle error (EAS only reports "unknown error"). Runs on every push.
-  gradle-diagnose:
+  # Build an installable Android APK directly on the runner (full logs, no EAS
+  # queue, no Apple account needed). Release type is signed with the debug
+  # keystore by the Expo template, so the APK installs on any device.
+  android-apk:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -50,8 +38,15 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: https://bauosctmdwumvuvyoemd.supabase.co
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
-      - name: Gradle assembleDebug (full error output)
-        run: cd android && ./gradlew assembleDebug --stacktrace --no-daemon
+      - name: Build release APK
+        run: cd android && ./gradlew assembleRelease --stacktrace --no-daemon
         env:
           EXPO_PUBLIC_SUPABASE_URL: https://bauosctmdwumvuvyoemd.supabase.co
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ember-android-apk
+          path: ember/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
