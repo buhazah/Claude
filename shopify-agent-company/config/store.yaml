@@ -1,0 +1,36 @@
+# Active store config (Aluvae). This is a real, editable example — swap the
+# values (or point STORE_CONFIG at another file) to run the company on any store.
+
+store:
+  name: "Aluvae"
+  domain: "aluvaejewelry.com"
+  niche: "moissanite & sterling silver jewelry"
+  currency: "USD"
+  target_market: "US"
+
+brand_voice:
+  tone: "elevated, warm, understated — quiet luxury, not hype"
+  reading_level: "grade 6-8"
+  do:
+    - "lead with the feeling/benefit, then the material details"
+    - "short, confident sentences"
+  dont:
+    - "no exclamation spam, no 'BUY NOW!!!' energy"
+    - "no fake scarcity or invented reviews"
+
+economics:
+  default_cogs_pct: 0.30
+  target_blended_roas: 2.0
+  buyback_rate_usd: 50
+
+rules:
+  - "Never publish product/page changes without showing a diff first."
+  - "Never start, raise, or kill ad spend without explicit approval."
+  - "If a product is out of stock, recommend restock-or-deactivate, never ignore."
+  - "When data is missing, say so — never fabricate numbers, products, or reviews."
+
+agents:
+  store: true
+  creative: true
+  product_scout: false
+  finance: false

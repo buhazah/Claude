@@ -1,0 +1,5 @@
+# secrets and per-store overrides
+.env
+.venv/
+__pycache__/
+*.pyc

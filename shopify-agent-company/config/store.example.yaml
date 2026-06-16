@@ -1,0 +1,40 @@
+# Per-store profile. Copy to config/store.yaml and edit for each store.
+# The code reads this at runtime — nothing here is hardcoded in Python.
+
+store:
+  name: "Aluvae"
+  domain: "aluvaejewelry.com"
+  niche: "moissanite & sterling silver jewelry"
+  currency: "USD"
+  target_market: "US"
+
+# Brand voice the Creative Studio writes in.
+brand_voice:
+  tone: "elevated, warm, understated — quiet luxury, not hype"
+  reading_level: "grade 6-8"
+  do:
+    - "lead with the feeling/benefit, then the material details"
+    - "short, confident sentences"
+  dont:
+    - "no exclamation spam, no 'BUY NOW!!!' energy"
+    - "no fake scarcity or invented reviews"
+
+# Unit economics the Finance agent reasons with. Fill what you know.
+economics:
+  default_cogs_pct: 0.30        # cost of goods as a fraction of price
+  target_blended_roas: 2.0      # below this, an ad is a candidate to cut
+  buyback_rate_usd: 50          # owner's hourly value; tasks below this = delegate
+
+# Hard rules the master agent enforces across every agent.
+rules:
+  - "Never publish product/page changes without showing a diff first."
+  - "Never start, raise, or kill ad spend without explicit approval."
+  - "If a product is out of stock, recommend restock-or-deactivate, never ignore."
+  - "When data is missing, say so — never fabricate numbers, products, or reviews."
+
+# Which agents are active for this store. Disable any you don't want.
+agents:
+  store: true
+  creative: true
+  product_scout: false   # enable once a research MCP is configured
+  finance: false         # enable once you're tracking ad spend
