@@ -17,15 +17,27 @@ def _http_server(url: str | None, token: str | None) -> dict[str, Any] | None:
     return server
 
 
-def build_mcp_servers(enabled_agents: list[str]) -> dict[str, Any]:
+def build_mcp_servers(
+    enabled_agents: list[str],
+    *,
+    shopify_url: str | None = None,
+    shopify_token: str | None = None,
+) -> dict[str, Any]:
     """Return the MCP server map for the agents that are turned on.
 
     Keys here are referenced by tool names as ``mcp__<key>__<tool>`` in
     agents.py, so an agent only gets tools for servers it actually needs.
+
+    In single-store mode the Shopify endpoint/token come from env. In
+    multi-tenant mode the platform passes them per request via the keyword
+    args, so each customer's run talks to their own store.
     """
     servers: dict[str, Any] = {}
 
-    shopify = _http_server(os.getenv("SHOPIFY_MCP_URL"), os.getenv("SHOPIFY_MCP_TOKEN"))
+    shopify = _http_server(
+        shopify_url or os.getenv("SHOPIFY_MCP_URL"),
+        shopify_token or os.getenv("SHOPIFY_MCP_TOKEN"),
+    )
     shopify_users = {"store", "creative", "finance", "support", "ads", "fulfillment", "retention"}
     if shopify and shopify_users & set(enabled_agents):
         servers["shopify"] = shopify

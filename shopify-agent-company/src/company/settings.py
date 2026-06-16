@@ -80,5 +80,14 @@ def load_store_config(path: str | None = None) -> StoreConfig:
         return StoreConfig(raw=yaml.safe_load(f) or {})
 
 
+def store_config_from_dict(data: dict[str, Any]) -> StoreConfig:
+    """Build a StoreConfig from an in-memory dict instead of a YAML file.
+
+    Used by the multi-tenant platform API, which assembles each tenant's config
+    from the database rather than a file on disk.
+    """
+    return StoreConfig(raw=data or {})
+
+
 def read_prompt(name: str) -> str:
     return (PROMPTS_DIR / f"{name}.md").read_text()
