@@ -1,0 +1,52 @@
+name: EAS Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/eas-build.yml'
+      - 'ember/**'
+
+jobs:
+  # Build an installable Android APK directly on the runner (full logs, no EAS
+  # queue, no Apple account needed). Release type is signed with the debug
+  # keystore by the Expo template, so the APK installs on any device.
+  android-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ember
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prebuild Android project
+        run: npx expo prebuild --platform android --no-install
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://bauosctmdwumvuvyoemd.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Build release APK
+        run: cd android && ./gradlew assembleRelease --stacktrace --no-daemon
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://bauosctmdwumvuvyoemd.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ember-android-apk
+          path: ember/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
