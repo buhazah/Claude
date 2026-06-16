@@ -1,0 +1,90 @@
+name: agent-company-ci
+
+# Verifies the Shopify Agent Company stays internally consistent:
+# everything compiles, prompts render with no leftover placeholders, autonomy
+# gating works, and the local MCP server serves exactly the tools the agents call.
+
+on:
+  push:
+    paths:
+      - "shopify-agent-company/**"
+      - ".github/workflows/agent-company-ci.yml"
+  pull_request:
+    paths:
+      - "shopify-agent-company/**"
+      - ".github/workflows/agent-company-ci.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shopify-agent-company
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runtime deps (no SDK needed for these checks)
+        run: pip install PyYAML python-dotenv mcp httpx
+
+      - name: Compile all sources
+        run: python -m py_compile run.py src/company/*.py mcp_server/shopify_mcp.py
+
+      - name: Config loads and prompts render clean
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          from company.settings import load_store_config, read_prompt
+          from company.agents import active_specs, master_prompt, _render
+          cfg = load_store_config()
+          assert "{{" not in master_prompt(cfg), "placeholder left in master prompt"
+          for s in active_specs(cfg):
+              r = _render(read_prompt(s.prompt_file), cfg)
+              assert "{{" not in r, f"placeholder left in {s.name}"
+          print("prompts render clean")
+          PY
+
+      - name: Autonomy gating strips/permits write tools
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import sys, types
+          m = types.ModuleType("claude_agent_sdk")
+          class AgentDefinition:
+              def __init__(self, description, prompt, tools, model):
+                  self.tools = tools
+          m.AgentDefinition = AgentDefinition
+          sys.modules["claude_agent_sdk"] = m
+          from company.settings import load_store_config
+          from company.agents import build_subagents
+          cfg = load_store_config()
+          approve = build_subagents(cfg)["creative"].tools
+          assert not any("update-product" in t for t in approve), "approve agent must not have write tools"
+          cfg.raw.setdefault("autonomy", {})["creative"] = "auto"
+          auto = build_subagents(cfg)["creative"].tools
+          assert any("update-product" in t for t in auto), "auto agent must have write tools"
+          print("autonomy gating OK")
+          PY
+
+      - name: MCP server serves the tools the agents expect
+        env:
+          PYTHONPATH: src
+          SHOPIFY_STORE_DOMAIN: test.myshopify.com
+          SHOPIFY_ADMIN_TOKEN: shpat_test
+        run: |
+          python - <<'PY'
+          import asyncio, importlib.util
+          spec = importlib.util.spec_from_file_location("s", "mcp_server/shopify_mcp.py")
+          mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+          served = {t.name for t in asyncio.run(mod.mcp.list_tools())}
+          from company.agents import SHOPIFY_READ, SHOPIFY_WRITE
+          expected = {t.split("__")[-1] for t in SHOPIFY_READ + SHOPIFY_WRITE}
+          missing = expected - served
+          assert not missing, f"MCP server missing tools: {missing}"
+          print("tool contract matches:", len(served), "tools")
+          PY
