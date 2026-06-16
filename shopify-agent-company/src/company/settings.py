@@ -32,6 +32,21 @@ class StoreConfig:
     def enabled_agents(self) -> list[str]:
         return [name for name, on in self.raw.get("agents", {}).items() if on]
 
+    def autonomy(self, agent: str) -> str:
+        """Per-agent autonomy: 'advise' | 'approve' | 'auto'.
+
+        - advise/approve: read-only; the agent proposes, a human executes.
+        - auto: the agent may use its mutation tools without asking.
+        Defaults to 'approve' (safe) when unspecified.
+        """
+        levels = self.raw.get("autonomy", {})
+        return levels.get(agent, levels.get("default", "approve"))
+
+    @property
+    def schedule(self) -> list[dict[str, Any]]:
+        """Recurring autopilot tasks: [{name, every_minutes, task}]."""
+        return self.raw.get("schedule", [])
+
     # --- rendered text blocks injected into prompts ---
 
     def profile_block(self) -> str:

@@ -26,7 +26,8 @@ def build_mcp_servers(enabled_agents: list[str]) -> dict[str, Any]:
     servers: dict[str, Any] = {}
 
     shopify = _http_server(os.getenv("SHOPIFY_MCP_URL"), os.getenv("SHOPIFY_MCP_TOKEN"))
-    if shopify and {"store", "creative", "finance"} & set(enabled_agents):
+    shopify_users = {"store", "creative", "finance", "support", "ads", "fulfillment", "retention"}
+    if shopify and shopify_users & set(enabled_agents):
         servers["shopify"] = shopify
 
     research = _http_server(os.getenv("RESEARCH_MCP_URL"), os.getenv("RESEARCH_MCP_TOKEN"))

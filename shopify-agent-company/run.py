@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
+from company.autopilot import run_autopilot   # noqa: E402
 from company.master import run_task          # noqa: E402
 from company.settings import load_store_config  # noqa: E402
 
@@ -25,8 +26,15 @@ def main() -> None:
     print(f"🏢 Agent Company online for: {name}")
     print(f"   Active agents: {agents}\n")
 
-    if len(sys.argv) > 1:
-        asyncio.run(run_task(cfg, " ".join(sys.argv[1:])))
+    args = sys.argv[1:]
+
+    # Fully automatic mode: run the scheduled jobs on a loop, unattended.
+    if args and args[0] in ("--autopilot", "-a"):
+        asyncio.run(run_autopilot(cfg))
+        return
+
+    if args:
+        asyncio.run(run_task(cfg, " ".join(args)))
         return
 
     print("Interactive mode — type a task, Ctrl-C to quit.\n")

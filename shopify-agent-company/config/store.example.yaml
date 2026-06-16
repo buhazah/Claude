@@ -38,3 +38,24 @@ agents:
   creative: true
   product_scout: false   # enable once a research MCP is configured
   finance: false         # enable once you're tracking ad spend
+  support: true
+  ads: false             # enable once a Meta/TikTok MCP is configured
+  fulfillment: true
+  retention: true
+
+# Per-agent autonomy: 'advise'/'approve' = read-only (proposes to you);
+# 'auto' = may use mutation tools unattended. Start everything on 'approve'.
+autonomy:
+  default: approve
+
+# Autopilot schedule — run with: python run.py --autopilot
+schedule:
+  - name: "daily-conversion-audit"
+    every_minutes: 1440
+    task: "Audit traffic and conversion for the last 7 days; flag the top 3 fixes."
+  - name: "fulfillment-sweep"
+    every_minutes: 360
+    task: "Flag paid-but-unfulfilled orders and out-of-stock-but-active products."
+  - name: "support-triage"
+    every_minutes: 120
+    task: "Triage new customer messages and draft replies grounded in order data."

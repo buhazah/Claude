@@ -32,5 +32,34 @@ rules:
 agents:
   store: true
   creative: true
-  product_scout: false
-  finance: false
+  product_scout: false   # enable once a research MCP is configured
+  finance: false         # enable once you're tracking ad spend
+  support: true
+  ads: false             # enable once a Meta/TikTok MCP is configured
+  fulfillment: true
+  retention: true
+
+# Per-agent autonomy. 'advise'/'approve' = read-only, proposes to you.
+# 'auto' = the agent may use its mutation tools unattended. Start conservative:
+# only flip an agent to 'auto' once you trust its proposals.
+autonomy:
+  default: approve
+  store: approve
+  creative: approve      # set 'auto' to let it publish copy unattended
+  support: approve
+  fulfillment: approve
+  retention: approve
+  ads: approve           # keep money on 'approve' until you're confident
+
+# Autopilot schedule (run: python run.py --autopilot). Tasks go to the master,
+# which delegates. Read-only tasks are safe to fully automate today.
+schedule:
+  - name: "daily-conversion-audit"
+    every_minutes: 1440
+    task: "Audit traffic and conversion for the last 7 days. Flag the top 3 fixes. Report only changes vs the prior run."
+  - name: "fulfillment-sweep"
+    every_minutes: 360
+    task: "Check for paid-but-unfulfilled orders and any out-of-stock-but-active products. List exceptions only."
+  - name: "support-triage"
+    every_minutes: 120
+    task: "Triage new customer messages, draft replies grounded in order data, and flag anything needing human approval."

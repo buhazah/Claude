@@ -39,6 +39,26 @@ SHOPIFY_WRITE = [
     "mcp__shopify__create-product",
 ]
 
+# Every tool that changes state or spends money. Stripped from an agent unless
+# that agent's autonomy is set to 'auto' in the store config. Keep this in sync
+# when adding write tools to any AgentSpec.
+WRITE_TOOLS = set(SHOPIFY_WRITE) | {
+    "mcp__meta__ads_create_campaign",
+    "mcp__meta__ads_update_entity",
+    "mcp__meta__ads_activate_entity",
+}
+
+ADS_TOOLS = [
+    "mcp__meta__ads_get_ad_accounts",
+    "mcp__meta__ads_get_ad_entities",
+    "mcp__meta__ads_insights_performance_trend",
+]
+ADS_WRITE = [
+    "mcp__meta__ads_create_campaign",
+    "mcp__meta__ads_update_entity",
+    "mcp__meta__ads_activate_entity",
+]
+
 REGISTRY: list[AgentSpec] = [
     AgentSpec(
         name="store",
@@ -50,7 +70,7 @@ REGISTRY: list[AgentSpec] = [
         name="creative",
         prompt_file="creative_agent",
         description="Product-page copy and ad hooks/angles in the store's brand voice.",
-        tools=SHOPIFY_READ,  # reads product attributes; publishing is gated separately
+        tools=SHOPIFY_READ + SHOPIFY_WRITE,  # can publish copy, only when can_mutate
     ),
     AgentSpec(
         name="product_scout",
@@ -62,6 +82,30 @@ REGISTRY: list[AgentSpec] = [
         name="finance",
         prompt_file="finance_agent",
         description="True margin after costs/ad spend; what to scale or cut.",
+        tools=SHOPIFY_READ,
+    ),
+    AgentSpec(
+        name="support",
+        prompt_file="support_agent",
+        description="Customer support: WISMO, product Qs, refunds/returns triage.",
+        tools=SHOPIFY_READ,
+    ),
+    AgentSpec(
+        name="ads",
+        prompt_file="ads_agent",
+        description="Paid ads: read performance, propose launch/scale/cut by ROAS.",
+        tools=SHOPIFY_READ + ADS_TOOLS + ADS_WRITE,  # writes gated by can_mutate
+    ),
+    AgentSpec(
+        name="fulfillment",
+        prompt_file="fulfillment_agent",
+        description="Orders ship and tracking syncs; flag stuck/out-of-stock orders.",
+        tools=SHOPIFY_READ,
+    ),
+    AgentSpec(
+        name="retention",
+        prompt_file="retention_agent",
+        description="Email/SMS lifecycle flows: abandoned cart, post-purchase, winback.",
         tools=SHOPIFY_READ,
     ),
 ]
@@ -89,8 +133,9 @@ def build_subagents(cfg: StoreConfig):
     subagents = {}
     for spec in active_specs(cfg):
         tools = list(spec.tools)
-        if not spec.can_mutate:
-            tools = [t for t in tools if t not in SHOPIFY_WRITE]
+        # Strip every mutation tool unless this store grants the agent 'auto'.
+        if cfg.autonomy(spec.name) != "auto":
+            tools = [t for t in tools if t not in WRITE_TOOLS]
         subagents[spec.name] = AgentDefinition(
             description=spec.description,
             prompt=_render(read_prompt(spec.prompt_file), cfg),
