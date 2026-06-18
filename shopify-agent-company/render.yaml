@@ -1,0 +1,56 @@
+# Render Blueprint — one-click deploy of the Operator AI backend.
+#
+# Two services from the single Docker image:
+#   shopify-mcp     — private service holding the Shopify Admin MCP server.
+#   operator-runner — public HTTPS API the web app's edge function calls.
+#
+# Deploy: connect this repo in the Render dashboard -> "New Blueprint" -> pick
+# this file. Then fill the secret env vars (marked sync:false) in the dashboard.
+# Secrets are NEVER committed; Render injects them at runtime.
+
+services:
+  # ---------------------------------------------------------------------------
+  # Private MCP server — not exposed to the public internet. Reachable only by
+  # the runner over Render's private network at http://shopify-mcp:8000/mcp.
+  # ---------------------------------------------------------------------------
+  - type: pserv
+    name: shopify-mcp
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python mcp_server/shopify_mcp.py
+    region: oregon
+    plan: starter
+    envVars:
+      - key: PORT
+        value: "8000"
+      # Single-store fallback creds are optional here; in multi-tenant mode the
+      # per-tenant Shopify token is injected per request by the runner.
+      - key: SHOPIFY_STORE_DOMAIN
+        sync: false
+      - key: SHOPIFY_ADMIN_TOKEN
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # Public runner API. The Supabase edge function calls this with X-Platform-Key.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: operator-runner
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: uvicorn platform.app:app --host 0.0.0.0 --port $PORT
+    region: oregon
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: SHOPIFY_MCP_URL
+        value: http://shopify-mcp:8000/mcp   # internal private-network address
+      - key: ANTHROPIC_API_KEY               # your single operator key
+        sync: false
+      - key: PLATFORM_API_KEY                # shared secret with the edge function
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY            # service role — server-side only
+        sync: false

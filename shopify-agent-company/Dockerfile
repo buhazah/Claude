@@ -1,4 +1,5 @@
-# Single image used for both services (MCP server + autopilot company).
+# Single image used for all three services (MCP server, autopilot company, and
+# the multi-tenant FastAPI runner).
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -7,9 +8,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install deps first for layer caching.
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# Install deps first for layer caching. Platform deps (FastAPI/uvicorn/supabase)
+# are bundled so the same image can also serve the runner.
+COPY requirements.txt ./requirements.txt
+COPY platform/requirements.txt ./platform-requirements.txt
+RUN pip install -r requirements.txt -r platform-requirements.txt
 
 # App code. Secrets are NOT copied — they're injected at runtime via env.
 COPY . .
