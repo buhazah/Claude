@@ -16,9 +16,9 @@ var label lbl       = na
 h = hour(time, tz)
 m = minute(time, tz)
 
-// Reset at 12 AM (midnight) every day
-is_midnight = h == 0 and m == 0
-if is_midnight
+// Reset at 12 PM (noon) every day
+is_noon = h == 12 and m == 0
+if is_noon
     open_10am := na
     if not na(lbl)
         label.delete(lbl)
