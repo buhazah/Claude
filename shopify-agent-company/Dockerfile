@@ -11,8 +11,8 @@ WORKDIR /app
 # Install deps first for layer caching. Platform deps (FastAPI/uvicorn/supabase)
 # are bundled so the same image can also serve the runner.
 COPY requirements.txt ./requirements.txt
-COPY platform/requirements.txt ./platform-requirements.txt
-RUN pip install -r requirements.txt -r platform-requirements.txt
+COPY runner/requirements.txt ./runner-requirements.txt
+RUN pip install -r requirements.txt -r runner-requirements.txt
 
 # App code. Secrets are NOT copied — they're injected at runtime via env.
 COPY . .

@@ -12,7 +12,7 @@ Endpoints:
 Auth: requests must carry `X-Platform-Key` matching PLATFORM_API_KEY so only
 your web app (not the public internet) can trigger runs.
 
-Run:  uvicorn platform.app:app --host 0.0.0.0 --port 8080
+Run:  uvicorn runner.app:app --host 0.0.0.0 --port 8080
 """
 
 from __future__ import annotations

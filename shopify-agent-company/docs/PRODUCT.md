@@ -42,7 +42,7 @@ A **daily executive briefing + AI Chief of Staff**:
 | Executive agents (Analytics/Marketing/Ecommerce/Customer) | store, ads, creative, support, finance agents |
 | Decision engine risk levels | per-agent autonomy: advise / approve / auto |
 | Approval workflow | action_queue + dashboard Approve/Reject/Schedule |
-| Multi-tenant SaaS | `platform/` runner + Lovable web app |
+| Multi-tenant SaaS | `runner/` runner + Lovable web app |
 
 ## Stack note
 Keep the Claude Agent SDK engine we built; it already implements the

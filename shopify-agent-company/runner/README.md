@@ -16,7 +16,7 @@ up for. Two halves:
 
 - **Web app** (built in Lovable): everything the customer sees. Owns auth,
   Shopify OAuth, the dashboard, Stripe billing, and the Postgres tables.
-- **Agent runner** (`platform/`): the operator's single backend. Holds the one
+- **Agent runner** (`runner/`): the operator's single backend. Holds the one
   Anthropic key (customers never see it), loads a tenant's brand profile +
   Shopify token, and runs the agent company for that store.
 
@@ -31,14 +31,14 @@ up for. Two halves:
 ## Run the runner
 
 ```bash
-pip install -r requirements.txt -r platform/requirements.txt
+pip install -r requirements.txt -r runner/requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 export PLATFORM_API_KEY=$(openssl rand -hex 24)     # web app sends this header
 export SUPABASE_URL=...                              # Lovable Cloud project
 export SUPABASE_SERVICE_KEY=...                      # service role (server only)
 export SHOPIFY_MCP_URL=http://localhost:8000/mcp     # the Shopify MCP server
 
-uvicorn platform.app:app --host 0.0.0.0 --port 8080
+uvicorn runner.app:app --host 0.0.0.0 --port 8080
 ```
 
 Trigger a run (the web app does this when a customer clicks "Run audit", or a
