@@ -1,12 +1,15 @@
-# Render Blueprint — one-click deploy of the Operator AI backend.
+# Render Blueprint (repo root) — one-click deploy of the Operator AI backend.
+#
+# Render auto-detects render.yaml at the REPO ROOT. The app lives in
+# shopify-agent-company/, so the Docker paths point into that subdirectory.
 #
 # Two services from the single Docker image:
 #   shopify-mcp     — private service holding the Shopify Admin MCP server.
 #   operator-runner — public HTTPS API the web app's edge function calls.
 #
-# Deploy: connect this repo in the Render dashboard -> "New Blueprint" -> pick
-# this file. Then fill the secret env vars (marked sync:false) in the dashboard.
-# Secrets are NEVER committed; Render injects them at runtime.
+# Deploy: Render dashboard -> New -> Blueprint -> pick repo buhazah/Claude ->
+# branch claude/happy-keller-k19t1x. Then fill the secret env vars
+# (marked sync:false) in the dashboard. Secrets are NEVER committed.
 
 services:
   # ---------------------------------------------------------------------------
@@ -16,16 +19,15 @@ services:
   - type: pserv
     name: shopify-mcp
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: python mcp_server/shopify_mcp.py
+    dockerfilePath: ./shopify-agent-company/Dockerfile
+    dockerContext: ./shopify-agent-company
     region: oregon
     plan: starter
     envVars:
       - key: PORT
         value: "8000"
-      # Single-store fallback creds are optional here; in multi-tenant mode the
-      # per-tenant Shopify token is injected per request by the runner.
+      # Optional single-store fallback creds; multi-tenant mode injects the
+      # per-tenant Shopify token per request, so these can stay blank.
       - key: SHOPIFY_STORE_DOMAIN
         sync: false
       - key: SHOPIFY_ADMIN_TOKEN
@@ -37,8 +39,8 @@ services:
   - type: web
     name: operator-runner
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./shopify-agent-company/Dockerfile
+    dockerContext: ./shopify-agent-company
     dockerCommand: uvicorn platform.app:app --host 0.0.0.0 --port $PORT
     region: oregon
     plan: starter
