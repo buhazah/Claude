@@ -21,13 +21,18 @@ services:
     runtime: docker
     dockerfilePath: ./shopify-agent-company/Dockerfile
     dockerContext: ./shopify-agent-company
+    # Override the Dockerfile default CMD (python run.py --autopilot). This
+    # service is ONLY the MCP server; without this override Render boots the
+    # autopilot company instead and the deploy fails on startup.
+    dockerCommand: python mcp_server/shopify_mcp.py
     region: oregon
     plan: starter
     envVars:
       - key: PORT
         value: "8000"
-      # Optional single-store fallback creds; multi-tenant mode injects the
-      # per-tenant Shopify token per request, so these can stay blank.
+      # REQUIRED: the MCP server exits at startup if these are blank. Fill them
+      # in the Render dashboard with your store's Admin creds (e.g. Aluvae:
+      # cvqpju-j0.myshopify.com + its shpat_ Admin token).
       - key: SHOPIFY_STORE_DOMAIN
         sync: false
       - key: SHOPIFY_ADMIN_TOKEN
