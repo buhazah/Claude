@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from company.master import run_task_collect          # noqa: E402
 from company.settings import store_config_from_dict   # noqa: E402
 
-from .tenants import default_store                    # noqa: E402
+from .tenants import Tenant, default_store             # noqa: E402
 
 app = FastAPI(title="Storepilot Agent Runner")
 STORE = default_store()
@@ -42,6 +42,21 @@ SHOPIFY_MCP_URL = os.getenv("SHOPIFY_MCP_URL", "http://localhost:8000/mcp")
 
 class RunRequest(BaseModel):
     task: str
+
+
+class InlineRunRequest(BaseModel):
+    """Tenant data passed inline by the caller (e.g. a Lovable Cloud edge
+    function that already read the store row server-side). Lets the runner work
+    without any Supabase credentials of its own — secrets stay in the caller."""
+
+    task: str
+    shop_domain: str
+    shopify_token: str
+    brand_niche: str = ""
+    brand_tone: str = ""
+    target_market: str = "US"
+    # agent_name -> {"enabled": bool, "autonomy": "advise|approve|auto", ...}
+    agents: dict[str, dict] = {}
 
 
 def _auth(provided: str | None) -> None:
@@ -74,3 +89,31 @@ async def run_for_tenant(
         shopify_token=tenant.shopify_token,
     )
     return {"tenant_id": tenant_id, "result": result}
+
+
+@app.post("/run")
+async def run_inline(
+    body: InlineRunRequest,
+    x_platform_key: str | None = Header(default=None),
+) -> dict:
+    """Run a task using tenant data passed in the request body. The caller
+    (a Lovable Cloud edge function with server-side DB access) supplies the
+    store's domain + Shopify token, so the runner needs no Supabase keys."""
+    _auth(x_platform_key)
+    tenant = Tenant(
+        id=body.shop_domain,
+        shop_domain=body.shop_domain,
+        shopify_token=body.shopify_token,
+        brand_niche=body.brand_niche,
+        brand_tone=body.brand_tone,
+        target_market=body.target_market,
+        agents=body.agents,
+    )
+    cfg = store_config_from_dict(tenant.to_store_config_dict())
+    result = await run_task_collect(
+        cfg,
+        body.task,
+        shopify_url=SHOPIFY_MCP_URL,
+        shopify_token=body.shopify_token,
+    )
+    return {"shop_domain": body.shop_domain, "result": result}

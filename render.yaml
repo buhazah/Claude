@@ -52,7 +52,6 @@ services:
         sync: false
       - key: PLATFORM_API_KEY                # shared secret with the edge function
         sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_KEY            # service role — server-side only
-        sync: false
+      # No Supabase keys needed: the Lovable Cloud edge function reads the store
+      # row server-side and passes tenant data inline to POST /run. Lovable Cloud
+      # does not expose the service_role key, so the runner never touches it.
