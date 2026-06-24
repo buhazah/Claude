@@ -1,17 +1,12 @@
 {
-  "mcpServers": {
-    "nanobanana": {
-      "command": "npx",
-      "args": ["-y", "@ycse/nanobanana-mcp"]
-    }
-  },
+  "description": "Security guidance plugin — pattern-based warnings on edits, git-diff-based LLM review on stop",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$PWD/.claude/plugins/security-guidance\" bash \"$PWD/.claude/plugins/security-guidance/hooks/sg-python.sh\" \"$PWD/.claude/plugins/security-guidance/hooks/ensure_agent_sdk.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/ensure_agent_sdk.py\"",
             "timeout": 180
           }
         ]
@@ -22,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$PWD/.claude/plugins/security-guidance\" bash \"$PWD/.claude/plugins/security-guidance/hooks/sg-python.sh\" \"$PWD/.claude/plugins/security-guidance/hooks/security_reminder_hook.py\""
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/security_reminder_hook.py\""
           }
         ]
       }
@@ -32,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$PWD/.claude/plugins/security-guidance\" bash \"$PWD/.claude/plugins/security-guidance/hooks/sg-python.sh\" \"$PWD/.claude/plugins/security-guidance/hooks/security_reminder_hook.py\""
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/security_reminder_hook.py\""
           }
         ],
         "matcher": "Edit|Write|MultiEdit|NotebookEdit"
@@ -41,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$PWD/.claude/plugins/security-guidance\" bash \"$PWD/.claude/plugins/security-guidance/hooks/sg-python.sh\" \"$PWD/.claude/plugins/security-guidance/hooks/security_reminder_hook.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/security_reminder_hook.py\"",
             "if": "Bash(git commit:*)",
             "asyncRewake": true,
             "rewakeMessage": "Background security review of commit — address or acknowledge the findings below, then continue with the user's original request or continue waiting for their reply:",
@@ -49,7 +44,7 @@
           },
           {
             "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$PWD/.claude/plugins/security-guidance\" bash \"$PWD/.claude/plugins/security-guidance/hooks/sg-python.sh\" \"$PWD/.claude/plugins/security-guidance/hooks/security_reminder_hook.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/security_reminder_hook.py\"",
             "if": "Bash(git push:*)",
             "asyncRewake": true,
             "rewakeMessage": "Background security review of pushed commits not yet reviewed — address or acknowledge the findings below, then continue with the user's original request or continue waiting for their reply:",
@@ -64,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$PWD/.claude/plugins/security-guidance\" bash \"$PWD/.claude/plugins/security-guidance/hooks/sg-python.sh\" \"$PWD/.claude/plugins/security-guidance/hooks/security_reminder_hook.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/security_reminder_hook.py\"",
             "asyncRewake": true,
             "rewakeMessage": "Background security review feedback — address or acknowledge the findings below, then continue with the user's original request or continue waiting for their reply. This is supplementary, not a replacement for your previous response:",
             "rewakeSummary": "Background security review found issues"
