@@ -4,5 +4,28 @@
       "command": "npx",
       "args": ["-y", "@ycse/nanobanana-mcp"]
     }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(git *)",
+      "Bash(prettier *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; echo \"$f\" | grep -qE '\\.(css|scss|sass|less|js|jsx|ts|tsx|html|json|vue|svelte)$' && prettier --write \"$f\" 2>/dev/null || true; } 2>/dev/null || true",
+            "statusMessage": "Formatting with Prettier..."
+          }
+        ]
+      }
+    ]
   }
 }
