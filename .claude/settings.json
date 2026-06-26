@@ -26,11 +26,18 @@
         "source": "github",
         "repo": "anthropics/skills"
       }
+    },
+    "interface-design": {
+      "source": {
+        "source": "github",
+        "repo": "Dammyjay93/interface-design"
+      }
     }
   },
   "enabledPlugins": {
     "taste-skill@taste-skill": true,
-    "example-skills@anthropic-agent-skills": true
+    "example-skills@anthropic-agent-skills": true,
+    "interface-design@interface-design": true
   },
   "hooks": {
     "PostToolUse": [
