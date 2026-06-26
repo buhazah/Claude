@@ -20,10 +20,17 @@
         "source": "github",
         "repo": "Leonxlnx/taste-skill"
       }
+    },
+    "anthropic-agent-skills": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/skills"
+      }
     }
   },
   "enabledPlugins": {
-    "taste-skill@taste-skill": true
+    "taste-skill@taste-skill": true,
+    "example-skills@anthropic-agent-skills": true
   },
   "hooks": {
     "PostToolUse": [
