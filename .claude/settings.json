@@ -14,6 +14,17 @@
       "Bash(prettier *)"
     ]
   },
+  "extraKnownMarketplaces": {
+    "taste-skill": {
+      "source": {
+        "source": "github",
+        "repo": "Leonxlnx/taste-skill"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "taste-skill@taste-skill": true
+  },
   "hooks": {
     "PostToolUse": [
       {
