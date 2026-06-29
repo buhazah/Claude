@@ -3,6 +3,26 @@
     "nanobanana": {
       "command": "npx",
       "args": ["-y", "@ycse/nanobanana-mcp"]
+    },
+    "open-design": {
+      "command": "npx",
+      "args": ["-y", "open-design-mcp"],
+      "env": {
+        "OD_DAEMON_URL": "http://localhost:7456"
+      }
     }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "open-design-ade --no-open &"
+          }
+        ]
+      }
+    ]
   }
 }
