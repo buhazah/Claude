@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "brand_name": "Dog is Human",
+  "website_url": "https://dogishuman.com",
+  "extracted_at": "2026-07-01T00:00:00Z",
+  "extraction_notes": "Direct fetch returned 403; brand profile built from search intelligence, review sites, and press coverage. Confidence: Medium.",
+  "voice": {
+    "formal_casual": 6,
+    "rational_emotional": 5,
+    "playful_serious": 4,
+    "bold_subtle": 7,
+    "traditional_innovative": 8,
+    "expert_accessible": 7,
+    "descriptors": ["human-grade", "science-backed", "premium-but-warm"]
+  },
+  "colors": {
+    "primary": "#2C2C2C",
+    "secondary": ["#F5EFE0", "#8B7355"],
+    "forbidden": ["neon colors", "cheap bright primary reds/blues"],
+    "background": "#FAFAF7",
+    "text": "#1A1A1A"
+  },
+  "typography": {
+    "heading_font": null,
+    "body_font": "system-ui",
+    "pairing_descriptor": "Clean modern sans-serif; minimal, premium health brand aesthetic"
+  },
+  "imagery": {
+    "style": "professional photography",
+    "subjects": ["dogs", "product close-ups", "natural ingredients", "dog-owner lifestyle"],
+    "composition": "Clean, minimal backgrounds; generous white space; warm natural tones",
+    "forbidden": ["cheesy cartoon pet imagery", "busy collages", "synthetic-looking stock photos", "over-saturated colors"]
+  },
+  "aesthetic": {
+    "mood_keywords": ["premium", "clean", "trustworthy", "warm", "minimal"],
+    "texture": "minimal",
+    "negative_space": "generous"
+  },
+  "brand_values": ["human-grade quality", "science-backed formulation", "transparency", "dog health as a priority"],
+  "target_audience": {
+    "age_range": "28-45",
+    "profession": "health-conscious professionals and pet parents who treat their dog as family",
+    "pain_points": [
+      "worried about low-quality filler ingredients in pet supplements",
+      "overwhelmed by confusing pet health options",
+      "want vet-trusted products without a vet visit"
+    ],
+    "aspirations": [
+      "give their dog the same quality care they give themselves",
+      "confident they're doing the best for their dog's long-term health",
+      "part of a community of discerning, educated pet owners"
+    ]
+  },
+  "key_products": [
+    "DM-01 Daily Multivitamin soft chew (12 research-backed ingredients)",
+    "Skin Balm (mango seed butter, coconut oil, sea buckthorn oil)",
+    "Hip & Joint Support",
+    "Daily Duo (Beef)"
+  ],
+  "usp": "Human-grade, vet-formulated dog supplements — made with the same ingredient standards you'd demand for yourself",
+  "price_point": "$60-$80/month subscription",
+  "founded_by": "Tim Chen & Kathan Mally (UChicago alumni)",
+  "made_in": "Vermont, USA"
+}
