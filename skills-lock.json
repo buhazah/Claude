@@ -144,6 +144,18 @@
       "sourceType": "github",
       "skillPath": "agent_reach/skill/SKILL.md",
       "computedHash": "6226439c1c27041abd25b6b2de54271d86febb506102e8e8315dddab8129523c"
+    },
+    "remotion-production": {
+      "source": "DojoCodingLabs/remotion-superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-production/SKILL.md",
+      "computedHash": "b6970da05bda1b0cb1a767717fb10e9391d71a60a2a5551dd5b3c0368003a09c"
+    },
+    "setup-guide": {
+      "source": "DojoCodingLabs/remotion-superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/setup-guide/SKILL.md",
+      "computedHash": "3ddc8296696b987bb8742a58f8a1e083f220b87de4bed74750a75ba252f0e262"
     }
   }
 }
