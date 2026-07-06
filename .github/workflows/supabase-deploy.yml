@@ -3,7 +3,7 @@ name: Deploy Supabase
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [claude/laughing-turing-aGi4y, main]
     paths:
       - 'ember/supabase/migrations/**'
       - 'ember/supabase/functions/**'
