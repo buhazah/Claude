@@ -22,9 +22,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!ready) return;
-    const inOnboarding = segments[0] === "(onboarding)";
+    const segs = segments as string[];
+    const inOnboarding = segs[0] === "(onboarding)";
     if (!session && !inOnboarding) router.replace("/(onboarding)/phone");
-    if (session && inOnboarding && segments[1] === "phone") router.replace("/(tabs)");
+    if (session && inOnboarding && segs[1] === "phone") router.replace("/(tabs)");
   }, [ready, session, segments]);
 
   return (
