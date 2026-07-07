@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// Salon images live under salons/{salonId}/... and are publicly readable.
+// Only authenticated users may upload; ownership of the salon is enforced
+// app-side today and should move to custom claims when the marketplace grows.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /salons/{salonId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

@@ -1,0 +1,82 @@
+rules_version = '2';
+
+// Security model
+// --------------
+// users     : a user can read/write only their own profile document.
+// salons    : public read (discovery); writes restricted to the owner.
+// services  : public read; writes restricted to the salon owner.
+// offers    : public read; writes restricted to the salon owner.
+// bookings  : readable/writable by the booking customer and the salon owner.
+//
+// Keep rules in lockstep with lib/core/constants/firestore_collections.dart.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function ownsSalon(salonId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/salons/$(salonId)).data.ownerId
+             == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSelf(userId);
+    }
+
+    match /salons/{salonId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /blockedSlots/{slotId} {
+        allow read: if true;
+        allow write: if ownsSalon(salonId);
+      }
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create: if ownsSalon(request.resource.data.salonId);
+      allow update, delete: if ownsSalon(resource.data.salonId);
+    }
+
+    match /offers/{offerId} {
+      allow read: if true;
+      allow create: if ownsSalon(request.resource.data.salonId);
+      allow update, delete: if ownsSalon(resource.data.salonId);
+    }
+
+    match /bookings/{bookingId} {
+      // Customers create their own bookings, always starting as "pending".
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      // Customer or salon owner can read.
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid
+            || ownsSalon(resource.data.salonId));
+
+      // Status transitions:
+      //  - customer may cancel their own booking
+      //  - owner may confirm / cancel / complete
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'updatedAt'])
+        && (
+          (resource.data.userId == request.auth.uid
+            && request.resource.data.status == 'cancelled')
+          || ownsSalon(resource.data.salonId)
+        );
+
+      allow delete: if false;
+    }
+  }
+}
