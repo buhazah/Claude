@@ -1,0 +1,28 @@
+name: Flutter CI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'salon_booking_app/**'
+      - '.github/workflows/flutter-ci.yml'
+  pull_request:
+    paths:
+      - 'salon_booking_app/**'
+      - '.github/workflows/flutter-ci.yml'
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: salon_booking_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
