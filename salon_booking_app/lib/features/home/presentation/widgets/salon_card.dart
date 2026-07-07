@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/geo_utils.dart';
-import '../../../salons/domain/entities/salon.dart';
 import '../../../../core/widgets/rating_badge.dart';
+import '../../../salons/domain/entities/salon.dart';
 
 /// Discovery list card: cover image, name, audience, rating, distance, price.
 class SalonCard extends StatelessWidget {
