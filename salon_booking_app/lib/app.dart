@@ -17,6 +17,10 @@ class SalonBookingApp extends ConsumerWidget {
       title: 'Serene — Salon Booking',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      // Pinned to light until the screen-migration phase removes direct
+      // static-color references (docs/DESIGN_SYSTEM.md → "Dark mode").
+      themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }

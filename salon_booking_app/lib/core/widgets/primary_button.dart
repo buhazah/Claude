@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Full-width primary CTA with a built-in loading state, so screens never
-/// juggle their own "disable while submitting" logic.
+import '../design_system/components/app_button.dart';
+
+/// Legacy alias for the design-system button — existing call sites keep
+/// their API; new code uses [AppButton] directly (variants + sizes).
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,
@@ -18,24 +20,11 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
-      onPressed: loading ? null : onPressed,
-      child: loading
-          ? const SizedBox(
-              height: 22,
-              width: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            )
-          : icon == null
-              ? Text(label)
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 20),
-                    const SizedBox(width: 8),
-                    Text(label),
-                  ],
-                ),
+    return AppButton(
+      label: label,
+      onPressed: onPressed,
+      loading: loading,
+      icon: icon,
     );
   }
 }
