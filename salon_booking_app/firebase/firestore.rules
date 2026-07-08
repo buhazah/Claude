@@ -2,11 +2,21 @@ rules_version = '2';
 
 // Security model
 // --------------
-// users     : a user can read/write only their own profile document.
-// salons    : public read (discovery); writes restricted to the owner.
-// services  : public read; writes restricted to the salon owner.
-// offers    : public read; writes restricted to the salon owner.
-// bookings  : readable/writable by the booking customer and the salon owner.
+// users        : a user can read/write only their own profile document.
+// businesses   : public read (discovery); create/update by the owner, but
+//                `approved` / `rating` / `ownerId` are never owner-writable —
+//                admin approval gates marketplace visibility.
+//   resources    : public read; owner-write.
+//   blockedSlots : public read (needed for availability); owner-write.
+//   busySlots    : public read, times-only projection of taken slots.
+//                  Created by the booking customer in the same batch as the
+//                  booking; deleted on cancellation by customer or owner.
+// services     : public read; writes restricted to the business owner.
+// offers       : public read; owner-write, EXCEPT an increment-by-one of
+//                `redemptionCount` which any signed-in user may perform
+//                (it rides in the booking batch).
+// bookings     : private to the customer + business owner. Created only as
+//                `pending`; status transitions are validated.
 //
 // Keep rules in lockstep with lib/core/constants/firestore_collections.dart.
 service cloud.firestore {
@@ -20,60 +30,130 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
-    function ownsSalon(salonId) {
+    function ownsBusiness(businessId) {
       return signedIn()
-        && get(/databases/$(database)/documents/salons/$(salonId)).data.ownerId
-             == request.auth.uid;
+        && get(/databases/$(database)/documents/businesses/$(businessId))
+             .data.ownerId == request.auth.uid;
     }
 
     match /users/{userId} {
       allow read, write: if isSelf(userId);
     }
 
-    match /salons/{salonId} {
+    match /businesses/{businessId} {
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      // New listings always start unapproved and unrated.
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.approved == false
+        && request.resource.data.rating == 0
+        && request.resource.data.ratingCount == 0;
+
+      // Owner edits everything EXCEPT the marketplace gate and trust
+      // signals — those change only via the console / admin tooling.
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['ownerId', 'approved', 'rating', 'ratingCount']);
+
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /resources/{resourceId} {
+        allow read: if true;
+        allow write: if ownsBusiness(businessId);
+      }
 
       match /blockedSlots/{slotId} {
         allow read: if true;
-        allow write: if ownsSalon(salonId);
+        allow write: if ownsBusiness(businessId);
+      }
+
+      match /busySlots/{slotId} {
+        allow read: if true;
+        // Written by the booking customer inside the booking batch. Shape
+        // is locked down (times + bookingId only, sane duration) so this
+        // public collection can never leak data. A hostile client could
+        // still create phantom slots to grief a business — the Cloud
+        // Function slot-lock is the hardening path; owners can see and
+        // clear anomalies meanwhile.
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['start', 'end', 'bookingId'])
+          && request.resource.data.end is timestamp
+          && request.resource.data.start is timestamp
+          && request.resource.data.end > request.resource.data.start
+          && request.resource.data.end.toMillis()
+               - request.resource.data.start.toMillis() <= 8 * 60 * 60 * 1000;
+        allow update: if false;
+        // Freed by the owner, or by the customer who owns the booking.
+        allow delete: if signedIn()
+          && (ownsBusiness(businessId)
+              || get(/databases/$(database)/documents/bookings/$(resource.data.bookingId))
+                   .data.userId == request.auth.uid);
       }
     }
 
     match /services/{serviceId} {
       allow read: if true;
-      allow create: if ownsSalon(request.resource.data.salonId);
-      allow update, delete: if ownsSalon(resource.data.salonId);
+      allow create: if ownsBusiness(request.resource.data.businessId);
+      allow update, delete: if ownsBusiness(resource.data.businessId);
     }
 
     match /offers/{offerId} {
       allow read: if true;
-      allow create: if ownsSalon(request.resource.data.salonId);
-      allow update, delete: if ownsSalon(resource.data.salonId);
+      allow create: if ownsBusiness(request.resource.data.businessId)
+        && request.resource.data.redemptionCount == 0;
+      allow delete: if ownsBusiness(resource.data.businessId);
+      allow update: if signedIn()
+        && (
+          // Owner edits (toggle active etc.) — but never the counter.
+          (ownsBusiness(resource.data.businessId)
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['redemptionCount', 'businessId']))
+          ||
+          // Redemption: any signed-in user, increment-by-one, nothing else.
+          (request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['redemptionCount'])
+            && request.resource.data.redemptionCount
+                 == resource.data.redemptionCount + 1)
+        );
     }
 
     match /bookings/{bookingId} {
-      // Customers create their own bookings, always starting as "pending".
+      // Customers create their own bookings, always starting as "pending",
+      // with ownerId honestly denormalized from the business document.
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        && request.resource.data.ownerId
+             == get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+                  .data.ownerId;
 
-      // Customer or salon owner can read.
+      // Customer or business owner can read. ownerId lives on the document
+      // so list queries authorize without per-doc lookups.
       allow read: if signedIn()
         && (resource.data.userId == request.auth.uid
-            || ownsSalon(resource.data.salonId));
+            || resource.data.ownerId == request.auth.uid);
 
-      // Status transitions:
-      //  - customer may cancel their own booking
-      //  - owner may confirm / cancel / complete
+      // Validated status transitions:
+      //   customer: pending|confirmed → cancelled (their own booking)
+      //   owner   : pending → confirmed|cancelled,
+      //             confirmed → completed|cancelled
       allow update: if signedIn()
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['status', 'updatedAt'])
         && (
           (resource.data.userId == request.auth.uid
+            && resource.data.status in ['pending', 'confirmed']
             && request.resource.data.status == 'cancelled')
-          || ownsSalon(resource.data.salonId)
+          ||
+          (resource.data.ownerId == request.auth.uid
+            && (
+              (resource.data.status == 'pending'
+                && request.resource.data.status in ['confirmed', 'cancelled'])
+              || (resource.data.status == 'confirmed'
+                && request.resource.data.status in ['completed', 'cancelled'])
+            ))
         );
 
       allow delete: if false;

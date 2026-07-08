@@ -8,10 +8,10 @@ abstract final class OfferModel {
     final data = doc.data() ?? const <String, dynamic>{};
     return Offer(
       id: doc.id,
-      salonId: (data['salonId'] as String?) ?? '',
-      salonName: (data['salonName'] as String?) ?? '',
+      businessId: (data['businessId'] as String?) ?? '',
+      businessName: (data['businessName'] as String?) ?? '',
       title: (data['title'] as String?) ?? '',
-      discountPercent: ((data['discount'] as num?) ?? 0).toInt(),
+      discountPercent: ((data['discountPercent'] as num?) ?? 0).toInt(),
       startTime:
           (data['startTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
       endTime: (data['endTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -20,19 +20,23 @@ abstract final class OfferModel {
       redemptionCount: ((data['redemptionCount'] as num?) ?? 0).toInt(),
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dailyStartMinute: (data['dailyStartMinute'] as num?)?.toInt(),
+      dailyEndMinute: (data['dailyEndMinute'] as num?)?.toInt(),
     );
   }
 
   static Map<String, dynamic> toMap(Offer offer) => <String, dynamic>{
-        'salonId': offer.salonId,
-        'salonName': offer.salonName,
+        'businessId': offer.businessId,
+        'businessName': offer.businessName,
         'title': offer.title,
-        'discount': offer.discountPercent,
+        'discountPercent': offer.discountPercent,
         'startTime': Timestamp.fromDate(offer.startTime),
         'endTime': Timestamp.fromDate(offer.endTime),
         'active': offer.active,
         'maxRedemptions': offer.maxRedemptions,
         'redemptionCount': offer.redemptionCount,
         'createdAt': Timestamp.fromDate(offer.createdAt),
+        'dailyStartMinute': offer.dailyStartMinute,
+        'dailyEndMinute': offer.dailyEndMinute,
       };
 }

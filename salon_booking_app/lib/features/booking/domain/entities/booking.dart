@@ -1,3 +1,5 @@
+import '../../../../core/utils/money.dart';
+
 enum BookingStatus {
   pending('pending'),
   confirmed('confirmed'),
@@ -21,20 +23,24 @@ enum BookingStatus {
         BookingStatus.completed => 'Completed',
       };
 
-  /// Statuses that occupy a time slot on the salon calendar.
+  /// Statuses that occupy capacity on the business calendar.
   bool get blocksSlot =>
       this == BookingStatus.pending || this == BookingStatus.confirmed;
 }
 
 /// Domain booking. Service name/price/duration are snapshotted at booking
-/// time so history stays correct if the salon later edits the service.
+/// time so history stays correct if the business later edits the service.
+///
+/// Carries `ownerId` (denormalized from the business) so owner-side reads
+/// are authorized directly by security rules — no per-document lookups.
 class Booking {
   const Booking({
     required this.id,
     required this.userId,
     required this.customerName,
-    required this.salonId,
-    required this.salonName,
+    required this.businessId,
+    required this.businessName,
+    required this.ownerId,
     required this.serviceId,
     required this.serviceName,
     required this.price,
@@ -49,14 +55,15 @@ class Booking {
   final String id;
   final String userId;
   final String customerName;
-  final String salonId;
-  final String salonName;
+  final String businessId;
+  final String businessName;
+  final String ownerId;
   final String serviceId;
   final String serviceName;
 
   /// Final price after any offer discount.
-  final double price;
-  final double originalPrice;
+  final Money price;
+  final Money originalPrice;
   final int durationMinutes;
   final DateTime start;
   final BookingStatus status;

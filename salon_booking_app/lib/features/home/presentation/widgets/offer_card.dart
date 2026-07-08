@@ -11,6 +11,10 @@ class OfferCard extends StatelessWidget {
   final Offer offer;
   final VoidCallback onTap;
 
+  String get _untilLabel => offer.hasDailyWindow
+      ? 'daily until ${Formatters.minutesOfDay(offer.dailyEndMinute!)}'
+      : 'until ${Formatters.time(offer.endTime)}';
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -60,7 +64,7 @@ class OfferCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  offer.salonName,
+                  offer.businessName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
@@ -72,7 +76,7 @@ class OfferCard extends StatelessWidget {
                         size: 14, color: Colors.white70),
                     const SizedBox(width: 4),
                     Text(
-                      'until ${Formatters.time(offer.endTime)}',
+                      _untilLabel,
                       style:
                           const TextStyle(color: Colors.white70, fontSize: 12),
                     ),

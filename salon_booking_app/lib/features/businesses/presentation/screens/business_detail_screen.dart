@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/error_text.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
@@ -11,51 +12,50 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/rating_badge.dart';
 import '../../../offers/domain/services/offer_pricing.dart';
 import '../../../offers/presentation/providers/offer_providers.dart';
-import '../../domain/entities/salon.dart';
-import '../../domain/entities/salon_service.dart';
-import '../providers/salon_providers.dart';
+import '../../domain/entities/business.dart';
+import '../../domain/entities/service_offering.dart';
+import '../providers/business_providers.dart';
 
-/// Salon page: gallery, rating, live offer banner, opening hours and the
-/// services list. Tapping "Book" on a service starts the booking flow
-/// (tap 1 of 3).
-class SalonDetailScreen extends ConsumerWidget {
-  const SalonDetailScreen({super.key, required this.salonId});
+/// Business page: gallery, rating, live offer banner, services list.
+/// Tapping "Book" on a service starts the booking flow (tap 1 of 3).
+class BusinessDetailScreen extends ConsumerWidget {
+  const BusinessDetailScreen({super.key, required this.businessId});
 
-  final String salonId;
+  final String businessId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final salonAsync = ref.watch(salonProvider(salonId));
+    final businessAsync = ref.watch(businessProvider(businessId));
 
     return Scaffold(
       body: AsyncValueView(
-        value: salonAsync,
-        onRetry: () => ref.invalidate(salonProvider(salonId)),
-        data: (salon) {
-          if (salon == null) {
+        value: businessAsync,
+        onRetry: () => ref.invalidate(businessProvider(businessId)),
+        data: (business) {
+          if (business == null) {
             return const EmptyState(
               icon: Icons.storefront_outlined,
               title: 'Salon not found',
             );
           }
-          return _SalonDetailBody(salon: salon);
+          return _BusinessDetailBody(business: business);
         },
       ),
     );
   }
 }
 
-class _SalonDetailBody extends ConsumerWidget {
-  const _SalonDetailBody({required this.salon});
+class _BusinessDetailBody extends ConsumerWidget {
+  const _BusinessDetailBody({required this.business});
 
-  final Salon salon;
+  final Business business;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final services = ref.watch(salonServicesProvider(salon.id));
-    final offers = ref.watch(salonOffersProvider(salon.id));
-    final liveOffer =
-        OfferPricing.bestLiveOffer(offers.valueOrNull ?? const [], salon.id);
+    final services = ref.watch(businessServicesProvider(business.id));
+    final offers = ref.watch(businessOffersProvider(business.id));
+    final liveOffer = OfferPricing.bestLiveOffer(
+        offers.valueOrNull ?? const [], business.id);
 
     return CustomScrollView(
       slivers: [
@@ -63,7 +63,7 @@ class _SalonDetailBody extends ConsumerWidget {
           expandedHeight: 220,
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
-            background: salon.coverImage == null
+            background: business.coverImage == null
                 ? Container(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     child: const Icon(Icons.spa_rounded,
@@ -71,7 +71,7 @@ class _SalonDetailBody extends ConsumerWidget {
                   )
                 : PageView(
                     children: [
-                      for (final image in salon.images)
+                      for (final image in business.images)
                         CachedNetworkImage(imageUrl: image, fit: BoxFit.cover),
                     ],
                   ),
@@ -87,14 +87,16 @@ class _SalonDetailBody extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        salon.name,
+                        business.name,
                         style: Theme.of(context)
                             .textTheme
                             .headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    RatingBadge(rating: salon.rating, count: salon.ratingCount),
+                    RatingBadge(
+                        rating: business.rating,
+                        count: business.ratingCount),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -105,16 +107,17 @@ class _SalonDetailBody extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        '${salon.address}, ${salon.city} · ${salon.audience.label}',
+                        '${business.address}, ${business.city} · '
+                        '${business.audience.label}',
                         style:
                             const TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
                   ],
                 ),
-                if (salon.description.isNotEmpty) ...[
+                if (business.description.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Text(salon.description),
+                  Text(business.description),
                 ],
                 if (liveOffer != null) ...[
                   const SizedBox(height: 16),
@@ -132,8 +135,7 @@ class _SalonDetailBody extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             '${liveOffer.title} — ${liveOffer.discountPercent}% '
-                            'off until ${Formatters.time(liveOffer.endTime)}. '
-                            'Applied automatically at booking.',
+                            'off. Applied automatically at booking.',
                             style:
                                 const TextStyle(fontWeight: FontWeight.w600),
                           ),
@@ -167,7 +169,7 @@ class _SalonDetailBody extends ConsumerWidget {
             child: EmptyState(
               icon: Icons.wifi_off_rounded,
               title: 'Could not load services',
-              message: error.toString(),
+              message: errorText(error),
             ),
           ),
           data: (items) => items.isEmpty
@@ -183,7 +185,7 @@ class _SalonDetailBody extends ConsumerWidget {
                     itemCount: items.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) => _ServiceTile(
-                      salon: salon,
+                      business: business,
                       service: items[index],
                       discountPercent: liveOffer?.discountPercent,
                     ),
@@ -197,20 +199,20 @@ class _SalonDetailBody extends ConsumerWidget {
 
 class _ServiceTile extends ConsumerWidget {
   const _ServiceTile({
-    required this.salon,
+    required this.business,
     required this.service,
     this.discountPercent,
   });
 
-  final Salon salon;
-  final SalonService service;
+  final Business business;
+  final ServiceOffering service;
   final int? discountPercent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasDiscount = discountPercent != null && discountPercent! > 0;
     final discounted = hasDiscount
-        ? service.price * (100 - discountPercent!) / 100
+        ? service.price.discountedBy(discountPercent!)
         : service.price;
 
     return Card(
@@ -264,7 +266,7 @@ class _ServiceTile extends ConsumerWidget {
               ),
               // Tap 1 of the 3-tap booking flow.
               onPressed: () => context
-                  .push(RouteNames.bookService(salon.id, service.id)),
+                  .push(RouteNames.bookService(business.id, service.id)),
               child: const Text('Book'),
             ),
           ],

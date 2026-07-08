@@ -32,6 +32,8 @@ abstract interface class AuthRepository {
 
   Future<void> registerWithEmail({required String email, required String password});
 
+  Future<void> sendPasswordReset({required String email});
+
   /// Creates/completes the Firestore profile after first sign-in.
   Future<void> completeProfile({required String name, required UserRole role});
 

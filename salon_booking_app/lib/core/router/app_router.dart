@@ -10,16 +10,17 @@ import '../../features/auth/presentation/screens/role_selection_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/booking/presentation/screens/book_service_screen.dart';
 import '../../features/booking/presentation/screens/my_bookings_screen.dart';
+import '../../features/businesses/presentation/screens/business_detail_screen.dart';
 import '../../features/home/presentation/screens/customer_shell.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/owner/presentation/screens/availability_screen.dart';
+import '../../features/owner/presentation/screens/business_setup_screen.dart';
 import '../../features/owner/presentation/screens/manage_bookings_screen.dart';
 import '../../features/owner/presentation/screens/manage_offers_screen.dart';
 import '../../features/owner/presentation/screens/manage_services_screen.dart';
 import '../../features/owner/presentation/screens/owner_dashboard_screen.dart';
 import '../../features/owner/presentation/screens/owner_shell.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
-import '../../features/salons/presentation/screens/salon_detail_screen.dart';
 import 'route_names.dart';
 
 /// Role-based router.
@@ -123,15 +124,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: '/salon/:salonId',
-        builder: (context, state) => SalonDetailScreen(
-          salonId: state.pathParameters['salonId']!,
+        path: '/business/:businessId',
+        builder: (context, state) => BusinessDetailScreen(
+          businessId: state.pathParameters['businessId']!,
         ),
       ),
       GoRoute(
-        path: '/salon/:salonId/book/:serviceId',
+        path: '/business/:businessId/book/:serviceId',
         builder: (context, state) => BookServiceScreen(
-          salonId: state.pathParameters['salonId']!,
+          businessId: state.pathParameters['businessId']!,
           serviceId: state.pathParameters['serviceId']!,
         ),
       ),
@@ -170,6 +171,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.ownerAvailability,
         builder: (context, state) => const AvailabilityScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.ownerNewBusiness,
+        builder: (context, state) => const BusinessSetupScreen(),
       ),
     ],
   );

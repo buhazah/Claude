@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/primary_button.dart';
 import '../controllers/auth_controller.dart';
+import '../widgets/auth_feedback_listener.dart';
 
-/// Optional email/password flow (sign in + register in one screen).
+/// Optional email/password flow (sign in + register + password reset).
 class EmailLoginScreen extends ConsumerStatefulWidget {
   const EmailLoginScreen({super.key});
 
@@ -37,17 +38,22 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
     }
   }
 
+  void _forgotPassword() {
+    final email = _emailController.text.trim();
+    if (!email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Enter your email above first, then tap again.')),
+      );
+      return;
+    }
+    ref.read(authControllerProvider.notifier).sendPasswordReset(email);
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
-
-    ref.listen(authControllerProvider, (previous, next) {
-      final error = next.error;
-      if (error != null && error != previous?.error) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error)));
-      }
-    });
+    listenForAuthFeedback(context, ref);
 
     return Scaffold(
       appBar: AppBar(
@@ -85,7 +91,15 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
                       ? 'Minimum 6 characters'
                       : null,
                 ),
-                const SizedBox(height: 24),
+                if (!_isRegistering)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _forgotPassword,
+                      child: const Text('Forgot password?'),
+                    ),
+                  ),
+                const SizedBox(height: 16),
                 PrimaryButton(
                   label: _isRegistering ? 'Create account' : 'Sign in',
                   loading: auth.submitting,

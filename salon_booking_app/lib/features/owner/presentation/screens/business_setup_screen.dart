@@ -2,30 +2,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/error_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
-import '../../../salons/domain/entities/salon.dart';
+import '../../../businesses/domain/entities/business.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
 import '../providers/owner_providers.dart';
 
-/// One-time onboarding for owners: create the salon profile.
+/// Create a business profile — shown as first-run onboarding (no business
+/// yet) and pushed as a route when adding another branch.
+///
 /// Location defaults to the city center for the MVP; a map picker slots in
 /// here later without touching the repository.
-class SalonSetupScreen extends ConsumerStatefulWidget {
-  const SalonSetupScreen({super.key});
+class BusinessSetupScreen extends ConsumerStatefulWidget {
+  const BusinessSetupScreen({super.key});
 
   @override
-  ConsumerState<SalonSetupScreen> createState() => _SalonSetupScreenState();
+  ConsumerState<BusinessSetupScreen> createState() =>
+      _BusinessSetupScreenState();
 }
 
-class _SalonSetupScreenState extends ConsumerState<SalonSetupScreen> {
+class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController(text: 'Dubai');
-  SalonAudience _audience = SalonAudience.both;
+  Audience _audience = Audience.both;
+  BusinessCategory _category = BusinessCategory.salon;
   bool _submitting = false;
 
   @override
@@ -44,22 +50,27 @@ class _SalonSetupScreenState extends ConsumerState<SalonSetupScreen> {
 
     setState(() => _submitting = true);
     try {
-      // ownerSalonProvider emits the new salon and the shell swaps to the
-      // dashboard automatically.
-      await ref.read(ownerActionsProvider).createSalon(
+      final id = await ref.read(ownerActionsProvider).createBusiness(
             ownerId: user.id,
             name: _nameController.text.trim(),
             description: _descriptionController.text.trim(),
             address: _addressController.text.trim(),
             city: _cityController.text.trim(),
             audience: _audience,
+            category: _category,
             latitude: AppConstants.defaultLatitude,
             longitude: AppConstants.defaultLongitude,
           );
+      if (!mounted) return;
+      // Make the new business the active one, then leave: pop when pushed
+      // as "add branch"; when shown as the onboarding gate the owner shell
+      // swaps to the dashboard on its own.
+      ref.read(selectedBusinessIdProvider.notifier).select(id);
+      if (Navigator.of(context).canPop()) Navigator.of(context).pop();
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(errorText(e))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -72,11 +83,12 @@ class _SalonSetupScreenState extends ConsumerState<SalonSetupScreen> {
       appBar: AppBar(
         title: const Text('Set up your salon'),
         actions: [
-          TextButton(
-            onPressed: () =>
-                ref.read(authControllerProvider.notifier).signOut(),
-            child: const Text('Sign out'),
-          ),
+          if (!Navigator.of(context).canPop())
+            TextButton(
+              onPressed: () =>
+                  ref.read(authControllerProvider.notifier).signOut(),
+              child: const Text('Sign out'),
+            ),
         ],
       ),
       body: SafeArea(
@@ -88,14 +100,16 @@ class _SalonSetupScreenState extends ConsumerState<SalonSetupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'This is what customers will see when discovering your salon.',
+                  'This is what customers will see when discovering you. '
+                  'New listings are reviewed before going live.',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'Salon name'),
+                  decoration:
+                      const InputDecoration(labelText: 'Business name'),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
@@ -105,7 +119,7 @@ class _SalonSetupScreenState extends ConsumerState<SalonSetupScreen> {
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: 'Description',
-                    hintText: 'What makes your salon special?',
+                    hintText: 'What makes your place special?',
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -123,13 +137,30 @@ class _SalonSetupScreenState extends ConsumerState<SalonSetupScreen> {
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: 20),
+                const Text('Category',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final category in BusinessCategory.values)
+                      ChoiceChip(
+                        label: Text(category.label),
+                        selected: _category == category,
+                        onSelected: (_) =>
+                            setState(() => _category = category),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
                 const Text('Clientele',
                     style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: [
-                    for (final audience in SalonAudience.values)
+                    for (final audience in Audience.values)
                       ChoiceChip(
                         label: Text(audience.label),
                         selected: _audience == audience,
@@ -140,7 +171,7 @@ class _SalonSetupScreenState extends ConsumerState<SalonSetupScreen> {
                 ),
                 const SizedBox(height: 32),
                 PrimaryButton(
-                  label: 'Create salon',
+                  label: 'Create business',
                   loading: _submitting,
                   onPressed: _submit,
                 ),

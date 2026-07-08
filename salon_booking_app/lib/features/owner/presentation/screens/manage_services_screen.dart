@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/error_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/app_sheet.dart';
 import '../../../../core/widgets/async_value_view.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/primary_button.dart';
-import '../../../salons/domain/entities/salon_service.dart';
-import '../../../salons/presentation/providers/salon_providers.dart';
+import '../../../businesses/domain/entities/service_offering.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
 import '../providers/owner_providers.dart';
 
 /// Owner service management: add / edit / delete with price and duration.
@@ -16,22 +19,23 @@ class ManageServicesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final salon = ref.watch(ownerSalonProvider).valueOrNull;
-    if (salon == null) {
+    final business = ref.watch(ownerBusinessProvider).valueOrNull;
+    if (business == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final services = ref.watch(salonServicesProvider(salon.id));
+    final services = ref.watch(businessServicesProvider(business.id));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Services')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _ServiceFormSheet.show(context, salonId: salon.id),
+        onPressed: () =>
+            _ServiceFormSheet.show(context, businessId: business.id),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add service'),
       ),
       body: AsyncValueView(
         value: services,
-        onRetry: () => ref.invalidate(salonServicesProvider(salon.id)),
+        onRetry: () => ref.invalidate(businessServicesProvider(business.id)),
         data: (items) => items.isEmpty
             ? const EmptyState(
                 icon: Icons.design_services_outlined,
@@ -61,7 +65,7 @@ class ManageServicesScreen extends ConsumerWidget {
                             icon: const Icon(Icons.edit_outlined),
                             onPressed: () => _ServiceFormSheet.show(
                               context,
-                              salonId: salon.id,
+                              businessId: business.id,
                               existing: service,
                             ),
                           ),
@@ -84,7 +88,7 @@ class ManageServicesScreen extends ConsumerWidget {
   Future<void> _confirmDelete(
     BuildContext context,
     WidgetRef ref,
-    SalonService service,
+    ServiceOffering service,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -106,29 +110,28 @@ class ManageServicesScreen extends ConsumerWidget {
     if (confirmed == true) {
       await ref
           .read(ownerActionsProvider)
-          .deleteService(service.id, service.salonId);
+          .deleteService(service.id, service.businessId);
     }
   }
 }
 
 /// Bottom sheet form used for both "add" and "edit".
 class _ServiceFormSheet extends ConsumerStatefulWidget {
-  const _ServiceFormSheet({required this.salonId, this.existing});
+  const _ServiceFormSheet({required this.businessId, this.existing});
 
-  final String salonId;
-  final SalonService? existing;
+  final String businessId;
+  final ServiceOffering? existing;
 
   static Future<void> show(
     BuildContext context, {
-    required String salonId,
-    SalonService? existing,
+    required String businessId,
+    ServiceOffering? existing,
   }) =>
-      showModalBottomSheet(
+      showAppSheet(
         context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
+        title: existing == null ? 'Add service' : 'Edit service',
         builder: (context) =>
-            _ServiceFormSheet(salonId: salonId, existing: existing),
+            _ServiceFormSheet(businessId: businessId, existing: existing),
       );
 
   @override
@@ -150,7 +153,7 @@ class _ServiceFormSheetState extends ConsumerState<_ServiceFormSheet> {
     _priceController = TextEditingController(
       text: widget.existing == null
           ? ''
-          : widget.existing!.price.toStringAsFixed(0),
+          : widget.existing!.price.aed.toStringAsFixed(0),
     );
     _durationMinutes = widget.existing?.durationMinutes ?? 30;
   }
@@ -166,11 +169,11 @@ class _ServiceFormSheetState extends ConsumerState<_ServiceFormSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
-      final service = SalonService(
+      final service = ServiceOffering(
         id: widget.existing?.id ?? '',
-        salonId: widget.salonId,
+        businessId: widget.businessId,
         name: _nameController.text.trim(),
-        price: double.parse(_priceController.text.trim()),
+        price: Money.tryParseAed(_priceController.text)!,
         durationMinutes: _durationMinutes,
       );
       await ref.read(ownerActionsProvider).saveService(service);
@@ -178,7 +181,7 @@ class _ServiceFormSheetState extends ConsumerState<_ServiceFormSheet> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(errorText(e))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -188,71 +191,59 @@ class _ServiceFormSheetState extends ConsumerState<_ServiceFormSheet> {
   @override
   Widget build(BuildContext context) {
     const durations = [15, 30, 45, 60, 90, 120];
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.existing == null ? 'Add service' : 'Edit service',
-              style: Theme.of(context).textTheme.titleLarge,
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _nameController,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Service name',
+              hintText: 'e.g. Haircut & styling',
             ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Service name',
-                hintText: 'e.g. Haircut & styling',
-              ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Required' : null,
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: _priceController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Price (AED)',
+              prefixIcon: Icon(Icons.payments_outlined),
             ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _priceController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Price (AED)',
-                prefixIcon: Icon(Icons.payments_outlined),
-              ),
-              validator: (v) {
-                final parsed = double.tryParse(v?.trim() ?? '');
-                if (parsed == null || parsed <= 0) return 'Enter a price';
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            const Text('Duration',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final minutes in durations)
-                  ChoiceChip(
-                    label: Text(Formatters.duration(minutes)),
-                    selected: _durationMinutes == minutes,
-                    onSelected: (_) =>
-                        setState(() => _durationMinutes = minutes),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: widget.existing == null ? 'Add service' : 'Save changes',
-              loading: _submitting,
-              onPressed: _submit,
-            ),
-          ],
-        ),
+            validator: (v) {
+              final parsed = Money.tryParseAed(v ?? '');
+              if (parsed == null || parsed.isZero) return 'Enter a price';
+              return null;
+            },
+          ),
+          const SizedBox(height: 20),
+          const Text('Duration',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final minutes in durations)
+                ChoiceChip(
+                  label: Text(Formatters.duration(minutes)),
+                  selected: _durationMinutes == minutes,
+                  onSelected: (_) =>
+                      setState(() => _durationMinutes = minutes),
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          PrimaryButton(
+            label: widget.existing == null ? 'Add service' : 'Save changes',
+            loading: _submitting,
+            onPressed: _submit,
+          ),
+        ],
       ),
     );
   }

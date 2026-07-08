@@ -1,18 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../domain/entities/salon.dart';
+import '../../../../core/utils/money.dart';
+import '../../domain/entities/business.dart';
 import '../../domain/entities/working_hours.dart';
 
-/// Firestore DTO for `salons/{id}`.
+/// Firestore DTO for `businesses/{id}`.
 ///
-/// Working hours are stored as `{ "1": {closed, open, close}, ... }` keyed by
-/// DateTime.weekday, with "HH:mm"-independent integer minutes for painless
-/// querying and no timezone ambiguity.
-abstract final class SalonModel {
-  static Salon fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+/// Working hours are stored as `{ "1": {closed, open, close}, ... }` keyed
+/// by DateTime.weekday, with integer minutes (no timezone ambiguity).
+abstract final class BusinessModel {
+  static Business fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const <String, dynamic>{};
     final geo = data['location'] as GeoPoint?;
-    return Salon(
+    return Business(
       id: doc.id,
       ownerId: (data['ownerId'] as String?) ?? '',
       name: (data['name'] as String?) ?? '',
@@ -26,28 +26,33 @@ abstract final class SalonModel {
           .toList(),
       rating: ((data['rating'] as num?) ?? 0).toDouble(),
       ratingCount: ((data['ratingCount'] as num?) ?? 0).toInt(),
-      audience: SalonAudience.parse(data['type'] as String?),
-      startingPrice: ((data['startingPrice'] as num?) ?? 0).toDouble(),
+      audience: Audience.parse(data['audience'] as String?),
+      category: BusinessCategory.parse(data['category'] as String?),
+      approved: (data['approved'] as bool?) ?? false,
+      startingPrice:
+          Money(((data['startingPriceFils'] as num?) ?? 0).toInt()),
       workingHours: _hoursFromMap(data['workingHours']),
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
-  static Map<String, dynamic> toMap(Salon salon) => <String, dynamic>{
-        'ownerId': salon.ownerId,
-        'name': salon.name,
-        'description': salon.description,
-        'address': salon.address,
-        'city': salon.city,
-        'location': GeoPoint(salon.latitude, salon.longitude),
-        'images': salon.images,
-        'rating': salon.rating,
-        'ratingCount': salon.ratingCount,
-        'type': salon.audience.value,
-        'startingPrice': salon.startingPrice,
-        'workingHours': hoursToMap(salon.workingHours),
-        'createdAt': Timestamp.fromDate(salon.createdAt),
+  static Map<String, dynamic> toMap(Business business) => <String, dynamic>{
+        'ownerId': business.ownerId,
+        'name': business.name,
+        'description': business.description,
+        'address': business.address,
+        'city': business.city,
+        'location': GeoPoint(business.latitude, business.longitude),
+        'images': business.images,
+        'rating': business.rating,
+        'ratingCount': business.ratingCount,
+        'audience': business.audience.value,
+        'category': business.category.value,
+        'approved': business.approved,
+        'startingPriceFils': business.startingPrice.fils,
+        'workingHours': hoursToMap(business.workingHours),
+        'createdAt': Timestamp.fromDate(business.createdAt),
       };
 
   static Map<String, dynamic> hoursToMap(WeeklyHours hours) =>

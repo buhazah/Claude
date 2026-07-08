@@ -7,6 +7,7 @@ import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../controllers/auth_controller.dart';
+import '../widgets/auth_feedback_listener.dart';
 
 /// Entry screen: phone number (primary) with an email fallback link.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -42,12 +43,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (previous?.verificationId == null && next.verificationId != null) {
         context.push(RouteNames.otp);
       }
-      final error = next.error;
-      if (error != null && error != previous?.error) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error)));
-      }
     });
+    listenForAuthFeedback(context, ref);
 
     return Scaffold(
       body: SafeArea(

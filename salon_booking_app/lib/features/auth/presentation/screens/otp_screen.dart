@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../controllers/auth_controller.dart';
+import '../widgets/auth_feedback_listener.dart';
 
 /// SMS code entry. On success the auth stream emits and the router
 /// redirects (role selection for new users, home/dashboard otherwise).
@@ -27,13 +28,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
 
-    ref.listen(authControllerProvider, (previous, next) {
-      final error = next.error;
-      if (error != null && error != previous?.error) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error)));
-      }
-    });
+    listenForAuthFeedback(context, ref);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Verify phone')),

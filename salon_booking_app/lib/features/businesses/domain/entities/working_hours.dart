@@ -6,7 +6,7 @@ class DayHours {
     required this.closeMinutes,
   });
 
-  /// Sensible default for new salons: 10:00–22:00.
+  /// Sensible default for new businesses: 10:00–22:00.
   const DayHours.standard()
       : closed = false,
         openMinutes = 10 * 60,

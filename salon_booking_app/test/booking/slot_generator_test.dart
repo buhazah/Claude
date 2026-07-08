@@ -1,28 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:salon_booking_app/features/booking/domain/entities/booking.dart';
+import 'package:salon_booking_app/features/booking/domain/entities/time_range.dart';
 import 'package:salon_booking_app/features/booking/domain/services/slot_generator.dart';
-import 'package:salon_booking_app/features/salons/domain/entities/blocked_slot.dart';
-import 'package:salon_booking_app/features/salons/domain/entities/working_hours.dart';
+import 'package:salon_booking_app/features/businesses/domain/entities/working_hours.dart';
 
-Booking _booking(DateTime start, int minutes, BookingStatus status) =>
-    Booking(
-      id: 'b1',
-      userId: 'u1',
-      customerName: 'Test',
-      salonId: 's1',
-      salonName: 'Salon',
-      serviceId: 'svc1',
-      serviceName: 'Cut',
-      price: 100,
-      originalPrice: 100,
-      durationMinutes: minutes,
-      start: start,
-      status: status,
-      createdAt: DateTime(2026),
-    );
+TimeRange _range(DateTime start, int minutes) =>
+    TimeRange(start: start, end: start.add(Duration(minutes: minutes)));
 
 void main() {
-  // A Wednesday. Salon open 10:00–13:00 for compact expectations.
+  // A Wednesday. Business open 10:00–13:00 for compact expectations.
   final day = DateTime(2026, 7, 8);
   final hours = WeeklyHours({
     DateTime.wednesday:
@@ -35,8 +20,9 @@ void main() {
       day: day,
       serviceDurationMinutes: 60,
       workingHours: hours,
-      existingBookings: const [],
-      blockedSlots: const [],
+      capacity: 1,
+      busyRanges: const [],
+      blockedRanges: const [],
       now: earlyMorning,
     );
     // 10:00, 10:30, 11:00, 11:30, 12:00 (12:30 + 60min exceeds 13:00).
@@ -45,35 +31,65 @@ void main() {
     expect(slots.last.start, DateTime(2026, 7, 8, 12));
   });
 
-  test('excludes slots overlapping pending/confirmed bookings only', () {
+  test('capacity 1: excludes slots overlapping a busy range', () {
     final slots = SlotGenerator.generate(
       day: day,
       serviceDurationMinutes: 60,
       workingHours: hours,
-      existingBookings: [
-        _booking(DateTime(2026, 7, 8, 10, 30), 60, BookingStatus.confirmed),
-        // Cancelled bookings free up their slot.
-        _booking(DateTime(2026, 7, 8, 12), 60, BookingStatus.cancelled),
-      ],
-      blockedSlots: const [],
+      capacity: 1,
+      busyRanges: [_range(DateTime(2026, 7, 8, 10, 30), 60)],
+      blockedRanges: const [],
       now: earlyMorning,
     );
-    // 10:00–11:00 and 10:30/11:00 starts collide with the confirmed booking.
+    // 10:00/10:30/11:00 starts collide with the 10:30–11:30 busy range.
     expect(
       slots.map((s) => s.start.hour * 100 + s.start.minute).toList(),
       [1130, 1200],
     );
   });
 
-  test('excludes owner-blocked ranges', () {
+  test('capacity 2: one overlapping booking leaves the slot available', () {
+    final slots = SlotGenerator.generate(
+      day: day,
+      serviceDurationMinutes: 60,
+      workingHours: hours,
+      capacity: 2,
+      busyRanges: [_range(DateTime(2026, 7, 8, 10, 30), 60)],
+      blockedRanges: const [],
+      now: earlyMorning,
+    );
+    // Second chair free → all 5 grid slots offered.
+    expect(slots.length, 5);
+  });
+
+  test('capacity 2: two overlapping bookings fill the slot', () {
+    final slots = SlotGenerator.generate(
+      day: day,
+      serviceDurationMinutes: 60,
+      workingHours: hours,
+      capacity: 2,
+      busyRanges: [
+        _range(DateTime(2026, 7, 8, 10, 30), 60),
+        _range(DateTime(2026, 7, 8, 10, 30), 60),
+      ],
+      blockedRanges: const [],
+      now: earlyMorning,
+    );
+    expect(
+      slots.map((s) => s.start.hour * 100 + s.start.minute).toList(),
+      [1130, 1200],
+    );
+  });
+
+  test('blocked ranges block all capacity', () {
     final slots = SlotGenerator.generate(
       day: day,
       serviceDurationMinutes: 30,
       workingHours: hours,
-      existingBookings: const [],
-      blockedSlots: [
-        BlockedSlot(
-          id: 'x',
+      capacity: 5,
+      busyRanges: const [],
+      blockedRanges: [
+        TimeRange(
           start: DateTime(2026, 7, 8, 11),
           end: DateTime(2026, 7, 8, 12),
         ),
@@ -93,8 +109,9 @@ void main() {
       day: day,
       serviceDurationMinutes: 30,
       workingHours: hours,
-      existingBookings: const [],
-      blockedSlots: const [],
+      capacity: 1,
+      busyRanges: const [],
+      blockedRanges: const [],
       now: DateTime(2026, 7, 8, 11, 45),
     );
     expect(slots.first.start, DateTime(2026, 7, 8, 12));
@@ -105,8 +122,9 @@ void main() {
       day: DateTime(2026, 7, 9), // Thursday — not in the schedule map.
       serviceDurationMinutes: 30,
       workingHours: hours,
-      existingBookings: const [],
-      blockedSlots: const [],
+      capacity: 1,
+      busyRanges: const [],
+      blockedRanges: const [],
       now: earlyMorning,
     );
     expect(slots, isEmpty);

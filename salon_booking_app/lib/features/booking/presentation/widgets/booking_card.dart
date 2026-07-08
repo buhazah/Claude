@@ -16,7 +16,7 @@ class BookingCard extends StatelessWidget {
 
   final Booking booking;
 
-  /// Owner views show who booked; customer views show the salon instead.
+  /// Owner views show who booked; customer views show the business instead.
   final bool showCustomer;
   final Widget? trailing;
 
@@ -46,7 +46,7 @@ class BookingCard extends StatelessWidget {
                   ? booking.customerName.isEmpty
                       ? 'Customer'
                       : booking.customerName
-                  : booking.salonName,
+                  : booking.businessName,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 10),

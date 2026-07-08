@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../errors/error_text.dart';
 import 'empty_state.dart';
 
 /// Standard renderer for [AsyncValue] so every screen shows consistent
@@ -25,7 +26,7 @@ class AsyncValueView<T> extends StatelessWidget {
       error: (error, _) => EmptyState(
         icon: Icons.wifi_off_rounded,
         title: 'Something went wrong',
-        message: error.toString(),
+        message: errorText(error),
         actionLabel: onRetry == null ? null : 'Retry',
         onAction: onRetry,
       ),

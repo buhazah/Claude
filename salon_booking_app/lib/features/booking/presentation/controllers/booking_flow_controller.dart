@@ -1,14 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/error_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../businesses/domain/entities/business.dart';
+import '../../../businesses/domain/entities/service_offering.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
 import '../../../offers/domain/entities/offer.dart';
 import '../../../offers/domain/services/offer_pricing.dart';
 import '../../../offers/presentation/providers/offer_providers.dart';
-import '../../../salons/domain/entities/salon.dart';
-import '../../../salons/domain/entities/salon_service.dart';
 import '../../domain/entities/booking.dart';
 import '../../domain/entities/time_slot.dart';
 import '../providers/booking_providers.dart';
+
+/// Sentinel so copyWith can distinguish "not passed" from "set to null".
+const Object _unset = Object();
 
 /// State of the 3-tap booking flow:
 /// tap 1 = pick service, tap 2 = pick slot, tap 3 = confirm.
@@ -28,16 +33,18 @@ class BookingFlowState {
   final String? error;
 
   BookingFlowState copyWith({
-    TimeSlot? Function()? slot,
+    Object? slot = _unset,
     bool? submitting,
-    String? confirmedBookingId,
-    String? error,
+    Object? confirmedBookingId = _unset,
+    Object? error = _unset,
   }) =>
       BookingFlowState(
-        slot: slot == null ? this.slot : slot(),
+        slot: identical(slot, _unset) ? this.slot : slot as TimeSlot?,
         submitting: submitting ?? this.submitting,
-        confirmedBookingId: confirmedBookingId ?? this.confirmedBookingId,
-        error: error,
+        confirmedBookingId: identical(confirmedBookingId, _unset)
+            ? this.confirmedBookingId
+            : confirmedBookingId as String?,
+        error: identical(error, _unset) ? this.error : error as String?,
       );
 }
 
@@ -46,14 +53,14 @@ class BookingFlowController extends AutoDisposeNotifier<BookingFlowState> {
   BookingFlowState build() => const BookingFlowState();
 
   void selectSlot(TimeSlot slot) =>
-      state = state.copyWith(slot: () => slot, error: null);
+      state = state.copyWith(slot: slot, error: null);
 
-  void clearSlot() => state = state.copyWith(slot: () => null);
+  void clearSlot() => state = state.copyWith(slot: null);
 
-  /// Creates the pending booking, applying the salon's best live offer.
+  /// Creates the pending booking, applying the business's best live offer.
   Future<void> confirm({
-    required Salon salon,
-    required SalonService service,
+    required Business business,
+    required ServiceOffering service,
   }) async {
     final slot = state.slot;
     if (slot == null || state.submitting) return;
@@ -67,20 +74,25 @@ class BookingFlowController extends AutoDisposeNotifier<BookingFlowState> {
     state = state.copyWith(submitting: true, error: null);
     try {
       // Discount is decided at booking time and snapshotted onto the
-      // booking document (see OfferPricing docs).
-      final offers =
-          ref.read(salonOffersProvider(salon.id)).valueOrNull ?? const <Offer>[];
-      final offer = OfferPricing.bestLiveOffer(offers, salon.id);
+      // booking document (see OfferPricing docs). The redemption counter
+      // update rides in the same atomic batch as the booking itself.
+      final offers = ref.read(businessOffersProvider(business.id)).valueOrNull ??
+          const <Offer>[];
+      final offer = OfferPricing.bestLiveOffer(offers, business.id);
       final price = offer == null
           ? service.price
           : OfferPricing.discountedPrice(service.price, offer);
+
+      final capacity =
+          ref.read(businessCapacityProvider(business.id)).valueOrNull ?? 1;
 
       final booking = Booking(
         id: '',
         userId: user.id,
         customerName: user.name,
-        salonId: salon.id,
-        salonName: salon.name,
+        businessId: business.id,
+        businessName: business.name,
+        ownerId: business.ownerId,
         serviceId: service.id,
         serviceName: service.name,
         price: price,
@@ -92,14 +104,14 @@ class BookingFlowController extends AutoDisposeNotifier<BookingFlowState> {
         offerId: offer?.id,
       );
 
-      final id =
-          await ref.read(bookingRepositoryProvider).createBooking(booking);
-      if (offer != null) {
-        await ref.read(offerRepositoryProvider).incrementRedemption(offer.id);
-      }
+      final id = await ref.read(bookingRepositoryProvider).createBooking(
+            booking,
+            capacity: capacity,
+            redeemOfferId: offer?.id,
+          );
       state = state.copyWith(submitting: false, confirmedBookingId: id);
     } on Exception catch (e) {
-      state = state.copyWith(submitting: false, error: e.toString());
+      state = state.copyWith(submitting: false, error: errorText(e));
     }
   }
 }

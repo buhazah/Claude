@@ -2,9 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/firebase_providers.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
-import '../../../salons/presentation/providers/salon_providers.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
 import '../../data/repositories/firestore_booking_repository.dart';
 import '../../domain/entities/booking.dart';
+import '../../domain/entities/busy_slot.dart';
 import '../../domain/entities/time_slot.dart';
 import '../../domain/repositories/booking_repository.dart';
 import '../../domain/services/slot_generator.dart';
@@ -21,49 +22,51 @@ final myBookingsProvider = StreamProvider<List<Booking>>((ref) {
   return ref.watch(bookingRepositoryProvider).watchUserBookings(user.id);
 });
 
-/// A salon's bookings for one calendar day (owner schedule + availability).
-final salonDayBookingsProvider = StreamProvider.family<List<Booking>,
-    ({String salonId, DateTime day})>((ref, args) {
+/// Public busy slots of a business for one calendar day.
+final busySlotsProvider = StreamProvider.family<List<BusySlot>,
+    ({String businessId, DateTime day})>((ref, args) {
   return ref
       .watch(bookingRepositoryProvider)
-      .watchSalonBookingsForDay(args.salonId, args.day);
+      .watchBusySlots(args.businessId, args.day);
 });
 
-/// A salon's bookings in a given status (owner inbox tabs).
-final salonStatusBookingsProvider = StreamProvider.family<List<Booking>,
-    ({String salonId, BookingStatus status})>((ref, args) {
-  return ref
-      .watch(bookingRepositoryProvider)
-      .watchSalonBookingsByStatus(args.salonId, args.status);
-});
-
-/// Available slots for booking a service of [durationMinutes] at a salon
-/// on [day]. Combines salon hours + existing bookings + blocked slots and
-/// runs the pure [SlotGenerator]. Live: reacts to new bookings instantly.
+/// Available slots for booking a service of [durationMinutes] at a business
+/// on [day]. Combines working hours + capacity + busy slots + blocked slots
+/// and runs the pure [SlotGenerator]. Live: reacts to new bookings instantly.
 final availableSlotsProvider = Provider.family<AsyncValue<List<TimeSlot>>,
-    ({String salonId, int durationMinutes, DateTime day})>((ref, args) {
-  final salon = ref.watch(salonProvider(args.salonId));
-  final bookings = ref
-      .watch(salonDayBookingsProvider((salonId: args.salonId, day: args.day)));
-  final blocked = ref.watch(blockedSlotsProvider(args.salonId));
+    ({String businessId, int durationMinutes, DateTime day})>((ref, args) {
+  final business = ref.watch(businessProvider(args.businessId));
+  final capacity = ref.watch(businessCapacityProvider(args.businessId));
+  final busy = ref.watch(
+      busySlotsProvider((businessId: args.businessId, day: args.day)));
+  final blocked = ref.watch(blockedSlotsProvider(args.businessId));
 
-  if (salon.isLoading || bookings.isLoading || blocked.isLoading) {
+  if (business.isLoading ||
+      capacity.isLoading ||
+      busy.isLoading ||
+      blocked.isLoading) {
     return const AsyncValue.loading();
   }
-  final error = salon.error ?? bookings.error ?? blocked.error;
+  final error =
+      business.error ?? capacity.error ?? busy.error ?? blocked.error;
   if (error != null) {
     return AsyncValue.error(error, StackTrace.current);
   }
-  final salonValue = salon.valueOrNull;
-  if (salonValue == null) return const AsyncValue.data([]);
+  final businessValue = business.valueOrNull;
+  if (businessValue == null) return const AsyncValue.data([]);
 
   return AsyncValue.data(
     SlotGenerator.generate(
       day: args.day,
       serviceDurationMinutes: args.durationMinutes,
-      workingHours: salonValue.workingHours,
-      existingBookings: bookings.valueOrNull ?? const [],
-      blockedSlots: blocked.valueOrNull ?? const [],
+      workingHours: businessValue.workingHours,
+      capacity: capacity.valueOrNull ?? 1,
+      busyRanges: (busy.valueOrNull ?? const <BusySlot>[])
+          .map((slot) => slot.range)
+          .toList(),
+      blockedRanges: (blocked.valueOrNull ?? const [])
+          .map((slot) => slot.range)
+          .toList(),
     ),
   );
 });

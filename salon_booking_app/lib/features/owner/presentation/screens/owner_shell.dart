@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../salons/presentation/providers/salon_providers.dart';
-import 'salon_setup_screen.dart';
+import '../../../../core/errors/error_text.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
+import 'business_setup_screen.dart';
 
-/// Owner area scaffold. Gates on salon existence: owners without a salon
-/// profile see the setup screen before the dashboard.
+/// Owner area scaffold. Gates on business existence: owners without a
+/// business profile see the setup screen before the dashboard.
 class OwnerShell extends ConsumerWidget {
   const OwnerShell({super.key, required this.navigationShell});
 
@@ -14,16 +15,16 @@ class OwnerShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final salonAsync = ref.watch(ownerSalonProvider);
+    final businessAsync = ref.watch(ownerBusinessProvider);
 
-    return salonAsync.when(
+    return businessAsync.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
-        body: Center(child: Text(error.toString())),
+        body: Center(child: Text(errorText(error))),
       ),
-      data: (salon) {
-        if (salon == null) return const SalonSetupScreen();
+      data: (business) {
+        if (business == null) return const BusinessSetupScreen();
         return Scaffold(
           body: navigationShell,
           bottomNavigationBar: BottomNavigationBar(

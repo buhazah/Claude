@@ -7,6 +7,10 @@ import '../../domain/repositories/offer_repository.dart';
 import '../models/offer_model.dart';
 
 /// Firestore-backed [OfferRepository].
+///
+/// Note: redemption counting is NOT here — it rides in the booking-creation
+/// batch (see FirestoreBookingRepository.createBooking) so a discounted
+/// booking and its redemption can never disagree.
 class FirestoreOfferRepository implements OfferRepository {
   FirestoreOfferRepository({required FirebaseFirestore firestore})
       : _firestore = firestore;
@@ -26,8 +30,8 @@ class FirestoreOfferRepository implements OfferRepository {
       .map((snap) => snap.docs.map(OfferModel.fromDoc).toList());
 
   @override
-  Stream<List<Offer>> watchSalonOffers(String salonId) => _offers
-      .where('salonId', isEqualTo: salonId)
+  Stream<List<Offer>> watchBusinessOffers(String businessId) => _offers
+      .where('businessId', isEqualTo: businessId)
       .orderBy('createdAt', descending: true)
       .snapshots()
       .map((snap) => snap.docs.map(OfferModel.fromDoc).toList());
@@ -56,17 +60,6 @@ class FirestoreOfferRepository implements OfferRepository {
       await _offers.doc(offerId).delete();
     } on FirebaseException catch (e) {
       throw DataException(e.message ?? 'Could not delete the offer.');
-    }
-  }
-
-  @override
-  Future<void> incrementRedemption(String offerId) async {
-    try {
-      await _offers
-          .doc(offerId)
-          .update({'redemptionCount': FieldValue.increment(1)});
-    } on FirebaseException catch (e) {
-      throw DataException(e.message ?? 'Could not update the offer.');
     }
   }
 }

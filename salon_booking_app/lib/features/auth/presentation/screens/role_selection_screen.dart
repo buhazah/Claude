@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/app_user.dart';
 import '../controllers/auth_controller.dart';
+import '../widgets/auth_feedback_listener.dart';
 
 /// First-run onboarding: pick a name and a role.
 /// Owners are routed to salon setup next; customers land on home.
@@ -30,13 +31,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
 
-    ref.listen(authControllerProvider, (previous, next) {
-      final error = next.error;
-      if (error != null && error != previous?.error) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error)));
-      }
-    });
+    listenForAuthFeedback(context, ref);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Welcome!')),

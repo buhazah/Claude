@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../booking/domain/entities/booking.dart';
 import '../../../booking/presentation/widgets/booking_card.dart';
-import '../../../salons/presentation/providers/salon_providers.dart';
+import '../../../booking/presentation/widgets/pending_booking_actions.dart';
+import '../../../businesses/domain/entities/business.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
 import '../providers/owner_providers.dart';
 
 /// Dashboard home: today's schedule, pending requests, revenue overview.
@@ -18,7 +21,8 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final salon = ref.watch(ownerSalonProvider).valueOrNull;
+    final business = ref.watch(ownerBusinessProvider).valueOrNull;
+    final businesses = ref.watch(ownerBusinessesProvider).valueOrNull ?? [];
     final today = ref.watch(ownerTodayBookingsProvider).valueOrNull ??
         const <Booking>[];
     final pending = ref.watch(ownerPendingBookingsProvider).valueOrNull ??
@@ -29,29 +33,82 @@ class OwnerDashboardScreen extends ConsumerWidget {
         .where((b) =>
             b.status == BookingStatus.confirmed ||
             b.status == BookingStatus.completed)
-        .fold<double>(0, (sum, b) => sum + b.price);
-    final activeToday =
-        today.where((b) => b.status.blocksSlot).toList();
+        .fold<Money>(const Money.zero(), (sum, b) => sum + b.price);
+    final activeToday = today.where((b) => b.status.blocksSlot).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(salon?.name ?? 'Dashboard'),
+        title: businesses.length > 1
+            ? _BusinessSwitcher(businesses: businesses)
+            : Text(business?.name ?? 'Dashboard'),
         actions: [
-          IconButton(
-            tooltip: 'Working hours & blocked slots',
-            icon: const Icon(Icons.schedule_rounded),
-            onPressed: () => context.push(RouteNames.ownerAvailability),
-          ),
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () =>
-                ref.read(authControllerProvider.notifier).signOut(),
+          PopupMenuButton<String>(
+            onSelected: (action) {
+              switch (action) {
+                case 'availability':
+                  context.push(RouteNames.ownerAvailability);
+                case 'add-branch':
+                  context.push(RouteNames.ownerNewBusiness);
+                case 'sign-out':
+                  ref.read(authControllerProvider.notifier).signOut();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'availability',
+                child: ListTile(
+                  leading: Icon(Icons.schedule_rounded),
+                  title: Text('Hours & availability'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'add-branch',
+                child: ListTile(
+                  leading: Icon(Icons.add_business_outlined),
+                  title: Text('Add another branch'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'sign-out',
+                child: ListTile(
+                  leading: Icon(Icons.logout_rounded),
+                  title: Text('Sign out'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
       body: ListView(
         children: [
+          if (business != null && !business.approved)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.hourglass_top_rounded,
+                        color: AppColors.warning),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Listing under review — customers can\'t see it '
+                        'yet. You can set everything up in the meantime.',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             child: Row(
@@ -90,7 +147,18 @@ class OwnerDashboardScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   for (final booking in pending.take(3)) ...[
-                    _PendingBookingCard(booking: booking),
+                    BookingCard(
+                      booking: booking,
+                      showCustomer: true,
+                      trailing: PendingBookingActions(
+                        onAccept: () => ref
+                            .read(ownerActionsProvider)
+                            .acceptBooking(booking.id),
+                        onReject: () => ref
+                            .read(ownerActionsProvider)
+                            .rejectBooking(booking.id),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                   ],
                 ],
@@ -120,6 +188,38 @@ class OwnerDashboardScreen extends ConsumerWidget {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Branch dropdown for owners with more than one business.
+class _BusinessSwitcher extends ConsumerWidget {
+  const _BusinessSwitcher({required this.businesses});
+
+  final List<Business> businesses;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(ownerBusinessProvider).valueOrNull;
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: current?.id,
+        isExpanded: true,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+        items: [
+          for (final business in businesses)
+            DropdownMenuItem<String>(
+              value: business.id,
+              child: Text(business.name, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: (id) =>
+            ref.read(selectedBusinessIdProvider.notifier).select(id),
       ),
     );
   }
@@ -169,44 +269,6 @@ class _StatCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Pending card with inline accept/reject actions.
-class _PendingBookingCard extends ConsumerWidget {
-  const _PendingBookingCard({required this.booking});
-
-  final Booking booking;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final actions = ref.read(ownerActionsProvider);
-    return BookingCard(
-      booking: booking,
-      showCustomer: true,
-      trailing: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 42),
-                foregroundColor: AppColors.danger,
-              ),
-              onPressed: () => actions.rejectBooking(booking.id),
-              child: const Text('Reject'),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
-              onPressed: () => actions.acceptBooking(booking.id),
-              child: const Text('Accept'),
-            ),
-          ),
-        ],
       ),
     );
   }

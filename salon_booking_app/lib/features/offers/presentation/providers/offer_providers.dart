@@ -18,8 +18,8 @@ final liveOffersProvider = StreamProvider<List<Offer>>((ref) {
       );
 });
 
-/// One salon's offers (owner management + salon detail banner).
-final salonOffersProvider = StreamProvider.family<List<Offer>, String>(
-  (ref, salonId) =>
-      ref.watch(offerRepositoryProvider).watchSalonOffers(salonId),
+/// One business's offers (owner management + detail banner).
+final businessOffersProvider = StreamProvider.family<List<Offer>, String>(
+  (ref, businessId) =>
+      ref.watch(offerRepositoryProvider).watchBusinessOffers(businessId),
 );

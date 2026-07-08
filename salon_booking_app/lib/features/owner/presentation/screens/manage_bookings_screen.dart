@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/async_value_view.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../booking/domain/entities/booking.dart';
-import '../../../booking/presentation/providers/booking_providers.dart';
 import '../../../booking/presentation/widgets/booking_card.dart';
-import '../../../salons/presentation/providers/salon_providers.dart';
+import '../../../booking/presentation/widgets/pending_booking_actions.dart';
 import '../providers/owner_providers.dart';
 
 /// Owner booking management: pending inbox + day-by-day schedule.
@@ -32,11 +30,6 @@ class _ManageBookingsScreenState extends ConsumerState<ManageBookingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final salon = ref.watch(ownerSalonProvider).valueOrNull;
-    if (salon == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -52,7 +45,7 @@ class _ManageBookingsScreenState extends ConsumerState<ManageBookingsScreen> {
         body: TabBarView(
           children: [
             // --- Pending requests ---
-            _PendingTab(),
+            const _PendingTab(),
 
             // --- Schedule by day ---
             Column(
@@ -83,8 +76,8 @@ class _ManageBookingsScreenState extends ConsumerState<ManageBookingsScreen> {
                 Expanded(
                   child: Consumer(
                     builder: (context, ref, _) {
-                      final bookings = ref.watch(salonDayBookingsProvider(
-                          (salonId: salon.id, day: _scheduleDay)));
+                      final bookings =
+                          ref.watch(ownerDayBookingsProvider(_scheduleDay));
                       return AsyncValueView(
                         value: bookings,
                         data: (items) {
@@ -141,6 +134,8 @@ class _ManageBookingsScreenState extends ConsumerState<ManageBookingsScreen> {
 }
 
 class _PendingTab extends ConsumerWidget {
+  const _PendingTab();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pending = ref.watch(ownerPendingBookingsProvider);
@@ -164,28 +159,9 @@ class _PendingTab extends ConsumerWidget {
                 return BookingCard(
                   booking: booking,
                   showCustomer: true,
-                  trailing: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, 42),
-                            foregroundColor: AppColors.danger,
-                          ),
-                          onPressed: () => actions.rejectBooking(booking.id),
-                          child: const Text('Reject'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                              minimumSize: const Size(0, 42)),
-                          onPressed: () => actions.acceptBooking(booking.id),
-                          child: const Text('Accept'),
-                        ),
-                      ),
-                    ],
+                  trailing: PendingBookingActions(
+                    onAccept: () => actions.acceptBooking(booking.id),
+                    onReject: () => actions.rejectBooking(booking.id),
                   ),
                 );
               },

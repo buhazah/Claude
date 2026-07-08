@@ -5,18 +5,18 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/geo_utils.dart';
 import '../../../../core/widgets/rating_badge.dart';
-import '../../../salons/domain/entities/salon.dart';
+import '../../../businesses/domain/entities/business.dart';
 
 /// Discovery list card: cover image, name, audience, rating, distance, price.
-class SalonCard extends StatelessWidget {
-  const SalonCard({
+class BusinessCard extends StatelessWidget {
+  const BusinessCard({
     super.key,
-    required this.salon,
+    required this.business,
     required this.distanceKm,
     required this.onTap,
   });
 
-  final Salon salon;
+  final Business business;
   final double distanceKm;
   final VoidCallback onTap;
 
@@ -31,7 +31,7 @@ class SalonCard extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: 16 / 8,
-              child: salon.coverImage == null
+              child: business.coverImage == null
                   ? Container(
                       color: AppColors.primary.withValues(alpha: 0.08),
                       child: const Icon(
@@ -41,7 +41,7 @@ class SalonCard extends StatelessWidget {
                       ),
                     )
                   : CachedNetworkImage(
-                      imageUrl: salon.coverImage!,
+                      imageUrl: business.coverImage!,
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => const ColoredBox(
                         color: AppColors.background,
@@ -58,7 +58,7 @@ class SalonCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          salon.name,
+                          business.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -68,15 +68,15 @@ class SalonCard extends StatelessWidget {
                         ),
                       ),
                       RatingBadge(
-                        rating: salon.rating,
-                        count: salon.ratingCount,
+                        rating: business.rating,
+                        count: business.ratingCount,
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      _Tag(label: salon.audience.label),
+                      _Tag(label: business.audience.label),
                       const SizedBox(width: 8),
                       const Icon(Icons.place_outlined,
                           size: 14, color: AppColors.textSecondary),
@@ -89,9 +89,9 @@ class SalonCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      if (salon.startingPrice > 0)
+                      if (!business.startingPrice.isZero)
                         Text(
-                          'from ${Formatters.price(salon.startingPrice)}',
+                          'from ${Formatters.price(business.startingPrice)}',
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,

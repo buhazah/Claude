@@ -1,39 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/error_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/app_sheet.dart';
 import '../../../../core/widgets/async_value_view.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../businesses/domain/entities/business.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
 import '../../../offers/domain/entities/offer.dart';
 import '../../../offers/presentation/providers/offer_providers.dart';
-import '../../../salons/domain/entities/salon.dart';
-import '../../../salons/presentation/providers/salon_providers.dart';
 import '../providers/owner_providers.dart';
 
-/// Owner offer management: create time-boxed discounts, toggle, delete.
+/// Owner offer management: create time-boxed discounts (optionally with a
+/// recurring daily window), toggle, delete.
 class ManageOffersScreen extends ConsumerWidget {
   const ManageOffersScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final salon = ref.watch(ownerSalonProvider).valueOrNull;
-    if (salon == null) {
+    final business = ref.watch(ownerBusinessProvider).valueOrNull;
+    if (business == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final offers = ref.watch(salonOffersProvider(salon.id));
+    final offers = ref.watch(businessOffersProvider(business.id));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Offers')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _OfferFormSheet.show(context, salon: salon),
+        onPressed: () => _OfferFormSheet.show(context, business: business),
         icon: const Icon(Icons.add_rounded),
         label: const Text('New offer'),
       ),
       body: AsyncValueView(
         value: offers,
-        onRetry: () => ref.invalidate(salonOffersProvider(salon.id)),
+        onRetry: () => ref.invalidate(businessOffersProvider(business.id)),
         data: (items) => items.isEmpty
             ? const EmptyState(
                 icon: Icons.local_offer_outlined,
@@ -62,6 +65,10 @@ class _OfferTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(ownerActionsProvider);
     final live = offer.isLiveAt(DateTime.now());
+    final window = offer.hasDailyWindow
+        ? 'daily ${Formatters.minutesOfDay(offer.dailyStartMinute!)}–'
+            '${Formatters.minutesOfDay(offer.dailyEndMinute!)} · '
+        : '';
 
     return Card(
       child: Padding(
@@ -93,8 +100,8 @@ class _OfferTile extends ConsumerWidget {
                       style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                    '${Formatters.dayTime(offer.startTime)} → '
-                    '${Formatters.dayTime(offer.endTime)}'
+                    '$window${Formatters.day(offer.startTime)} → '
+                    '${Formatters.day(offer.endTime)}'
                     '${offer.maxRedemptions > 0 ? ' · ${offer.redemptionCount}/${offer.maxRedemptions} used' : ''}',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
@@ -122,16 +129,16 @@ class _OfferTile extends ConsumerWidget {
 
 /// Bottom-sheet form for creating an offer.
 class _OfferFormSheet extends ConsumerStatefulWidget {
-  const _OfferFormSheet({required this.salon});
+  const _OfferFormSheet({required this.business});
 
-  final Salon salon;
+  final Business business;
 
-  static Future<void> show(BuildContext context, {required Salon salon}) =>
-      showModalBottomSheet(
+  static Future<void> show(BuildContext context,
+          {required Business business}) =>
+      showAppSheet(
         context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (context) => _OfferFormSheet(salon: salon),
+        title: 'New offer',
+        builder: (context) => _OfferFormSheet(business: business),
       );
 
   @override
@@ -145,17 +152,17 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
   int _discountPercent = 20;
   late DateTime _start;
   late DateTime _end;
+  bool _useDailyWindow = false;
+  TimeOfDay _dailyStart = const TimeOfDay(hour: 15, minute: 0);
+  TimeOfDay _dailyEnd = const TimeOfDay(hour: 18, minute: 0);
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
-    // Sensible default: a happy-hour style window later today (3pm–6pm).
     final now = DateTime.now();
-    _start = DateTime(now.year, now.month, now.day, 15);
-    if (_start.isBefore(now)) _start = now;
-    _end = DateTime(now.year, now.month, now.day, 18);
-    if (!_end.isAfter(_start)) _end = _start.add(const Duration(hours: 3));
+    _start = DateTime(now.year, now.month, now.day);
+    _end = _start.add(const Duration(days: 7));
   }
 
   @override
@@ -165,30 +172,39 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
     super.dispose();
   }
 
-  Future<void> _pick(bool isStart) async {
+  Future<void> _pickDate(bool isStart) async {
     final base = isStart ? _start : _end;
     final date = await showDatePicker(
       context: context,
       initialDate: base,
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 60)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
     );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(base),
-    );
-    if (time == null) return;
-    final picked =
-        DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    if (date == null) return;
     setState(() {
       if (isStart) {
-        _start = picked;
+        _start = DateTime(date.year, date.month, date.day);
         if (!_end.isAfter(_start)) {
-          _end = _start.add(const Duration(hours: 3));
+          _end = _start.add(const Duration(days: 1));
         }
       } else {
-        _end = picked;
+        // End of the chosen day.
+        _end = DateTime(date.year, date.month, date.day, 23, 59);
+      }
+    });
+  }
+
+  Future<void> _pickDailyTime(bool isStart) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? _dailyStart : _dailyEnd,
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isStart) {
+        _dailyStart = picked;
+      } else {
+        _dailyEnd = picked;
       }
     });
   }
@@ -197,7 +213,16 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
     if (!_formKey.currentState!.validate()) return;
     if (!_end.isAfter(_start)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('End time must be after start time')),
+        const SnackBar(content: Text('End date must be after start date')),
+      );
+      return;
+    }
+    final dailyStartMinute = _dailyStart.hour * 60 + _dailyStart.minute;
+    final dailyEndMinute = _dailyEnd.hour * 60 + _dailyEnd.minute;
+    if (_useDailyWindow && dailyEndMinute <= dailyStartMinute) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Daily window end must be after its start')),
       );
       return;
     }
@@ -205,8 +230,8 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
     try {
       final offer = Offer(
         id: '',
-        salonId: widget.salon.id,
-        salonName: widget.salon.name,
+        businessId: widget.business.id,
+        businessName: widget.business.name,
         title: _titleController.text.trim(),
         discountPercent: _discountPercent,
         startTime: _start,
@@ -216,13 +241,15 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
             int.tryParse(_maxRedemptionsController.text.trim()) ?? 0,
         redemptionCount: 0,
         createdAt: DateTime.now(),
+        dailyStartMinute: _useDailyWindow ? dailyStartMinute : null,
+        dailyEndMinute: _useDailyWindow ? dailyEndMinute : null,
       );
       await ref.read(ownerActionsProvider).createOffer(offer);
       if (mounted) Navigator.of(context).pop();
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(errorText(e))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -232,80 +259,94 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
   @override
   Widget build(BuildContext context) {
     const discounts = [10, 15, 20, 25, 30, 40, 50];
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _titleController,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Title',
+              hintText: 'e.g. Afternoon happy hour',
+            ),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Required' : null,
+          ),
+          const SizedBox(height: 20),
+          const Text('Discount',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
             children: [
-              Text('New offer', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _titleController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'e.g. Afternoon happy hour',
+              for (final percent in discounts)
+                ChoiceChip(
+                  label: Text('$percent%'),
+                  selected: _discountPercent == percent,
+                  onSelected: (_) =>
+                      setState(() => _discountPercent = percent),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
-              ),
-              const SizedBox(height: 20),
-              const Text('Discount',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final percent in discounts)
-                    ChoiceChip(
-                      label: Text('$percent%'),
-                      selected: _discountPercent == percent,
-                      onSelected: (_) =>
-                          setState(() => _discountPercent = percent),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.play_circle_outline_rounded),
-                title: const Text('Starts'),
-                subtitle: Text(Formatters.dayTime(_start)),
-                onTap: () => _pick(true),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.stop_circle_outlined),
-                title: const Text('Ends'),
-                subtitle: Text(Formatters.dayTime(_end)),
-                onTap: () => _pick(false),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _maxRedemptionsController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Max redemptions (0 = unlimited)',
-                  prefixIcon: Icon(Icons.confirmation_number_outlined),
-                ),
-              ),
-              const SizedBox(height: 24),
-              PrimaryButton(
-                label: 'Publish offer',
-                loading: _submitting,
-                onPressed: _submit,
-              ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.play_circle_outline_rounded),
+            title: const Text('Runs from'),
+            subtitle: Text(Formatters.day(_start)),
+            onTap: () => _pickDate(true),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.stop_circle_outlined),
+            title: const Text('Until'),
+            subtitle: Text(Formatters.day(_end)),
+            onTap: () => _pickDate(false),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Daily happy-hour window'),
+            subtitle: const Text('e.g. only 3:00–6:00 PM each day'),
+            value: _useDailyWindow,
+            onChanged: (value) => setState(() => _useDailyWindow = value),
+          ),
+          if (_useDailyWindow)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _pickDailyTime(true),
+                    child: Text('From ${_dailyStart.format(context)}'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _pickDailyTime(false),
+                    child: Text('To ${_dailyEnd.format(context)}'),
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _maxRedemptionsController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Max redemptions (0 = unlimited)',
+              prefixIcon: Icon(Icons.confirmation_number_outlined),
+            ),
+          ),
+          const SizedBox(height: 24),
+          PrimaryButton(
+            label: 'Publish offer',
+            loading: _submitting,
+            onPressed: _submit,
+          ),
+        ],
       ),
     );
   }

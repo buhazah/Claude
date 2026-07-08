@@ -12,9 +12,9 @@ abstract final class RouteNames {
   static const String myBookings = '/bookings';
   static const String profile = '/profile';
 
-  static String salonDetail(String salonId) => '/salon/$salonId';
-  static String bookService(String salonId, String serviceId) =>
-      '/salon/$salonId/book/$serviceId';
+  static String businessDetail(String businessId) => '/business/$businessId';
+  static String bookService(String businessId, String serviceId) =>
+      '/business/$businessId/book/$serviceId';
 
   // Owner
   static const String ownerDashboard = '/owner/dashboard';
@@ -22,4 +22,5 @@ abstract final class RouteNames {
   static const String ownerServices = '/owner/services';
   static const String ownerOffers = '/owner/offers';
   static const String ownerAvailability = '/owner/availability';
+  static const String ownerNewBusiness = '/owner/business/new';
 }

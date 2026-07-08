@@ -3,28 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/error_text.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../businesses/domain/entities/service_offering.dart';
+import '../../../businesses/presentation/providers/business_providers.dart';
 import '../../../offers/domain/services/offer_pricing.dart';
 import '../../../offers/presentation/providers/offer_providers.dart';
-import '../../../salons/domain/entities/salon_service.dart';
-import '../../../salons/presentation/providers/salon_providers.dart';
 import '../controllers/booking_flow_controller.dart';
 import '../providers/booking_providers.dart';
 
 /// Taps 2 and 3 of the booking flow: pick a slot, confirm.
-/// (Tap 1 was "Book" on a service in the salon detail screen.)
+/// (Tap 1 was "Book" on a service in the business detail screen.)
 class BookServiceScreen extends ConsumerStatefulWidget {
   const BookServiceScreen({
     super.key,
-    required this.salonId,
+    required this.businessId,
     required this.serviceId,
   });
 
-  final String salonId;
+  final String businessId;
   final String serviceId;
 
   @override
@@ -43,9 +44,9 @@ class _BookServiceScreenState extends ConsumerState<BookServiceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final salon = ref.watch(salonProvider(widget.salonId)).valueOrNull;
+    final business = ref.watch(businessProvider(widget.businessId)).valueOrNull;
     final services =
-        ref.watch(salonServicesProvider(widget.salonId)).valueOrNull;
+        ref.watch(businessServicesProvider(widget.businessId)).valueOrNull;
     final flow = ref.watch(bookingFlowControllerProvider);
 
     ref.listen(bookingFlowControllerProvider, (previous, next) {
@@ -58,16 +59,16 @@ class _BookServiceScreenState extends ConsumerState<BookServiceScreen> {
 
     // Booked! Show the confirmation view instead of the picker.
     if (flow.confirmedBookingId != null) {
-      return _ConfirmationView(salonName: salon?.name ?? '');
+      return _ConfirmationView(businessName: business?.name ?? '');
     }
 
-    if (salon == null || services == null) {
+    if (business == null || services == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    SalonService? service;
+    ServiceOffering? service;
     for (final s in services) {
       if (s.id == widget.serviceId) service = s;
     }
@@ -80,21 +81,21 @@ class _BookServiceScreenState extends ConsumerState<BookServiceScreen> {
       );
     }
 
-    final offers = ref.watch(salonOffersProvider(salon.id)).valueOrNull;
+    final offers = ref.watch(businessOffersProvider(business.id)).valueOrNull;
     final liveOffer =
-        OfferPricing.bestLiveOffer(offers ?? const [], salon.id);
+        OfferPricing.bestLiveOffer(offers ?? const [], business.id);
     final price = liveOffer == null
         ? service.price
         : OfferPricing.discountedPrice(service.price, liveOffer);
 
     final slots = ref.watch(availableSlotsProvider((
-      salonId: salon.id,
+      businessId: business.id,
       durationMinutes: service.durationMinutes,
       day: _selectedDay,
     )));
 
     return Scaffold(
-      appBar: AppBar(title: Text(salon.name)),
+      appBar: AppBar(title: Text(business.name)),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -167,7 +168,7 @@ class _BookServiceScreenState extends ConsumerState<BookServiceScreen> {
               error: (error, _) => EmptyState(
                 icon: Icons.wifi_off_rounded,
                 title: 'Could not load availability',
-                message: error.toString(),
+                message: errorText(error),
               ),
               data: (available) => available.isEmpty
                   ? const EmptyState(
@@ -221,7 +222,7 @@ class _BookServiceScreenState extends ConsumerState<BookServiceScreen> {
                 ? null
                 : () => ref
                     .read(bookingFlowControllerProvider.notifier)
-                    .confirm(salon: salon, service: service!),
+                    .confirm(business: business, service: service!),
           ),
         ),
       ),
@@ -230,9 +231,9 @@ class _BookServiceScreenState extends ConsumerState<BookServiceScreen> {
 }
 
 class _ConfirmationView extends StatelessWidget {
-  const _ConfirmationView({required this.salonName});
+  const _ConfirmationView({required this.businessName});
 
-  final String salonName;
+  final String businessName;
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +258,7 @@ class _ConfirmationView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '$salonName will confirm your appointment shortly. '
+                '$businessName will confirm your appointment shortly. '
                 'Track it in My Bookings.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.textSecondary),
