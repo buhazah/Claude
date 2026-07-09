@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: jarvis
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        working-directory: jarvis
+        run: python -m pytest -q
+
+      - name: Smoke-test app import
+        working-directory: jarvis
+        env:
+          JARVIS_DATA_DIR: /tmp/jarvis-ci
+        run: |
+          python -c "import asyncio; from server.db import init_db; asyncio.run(init_db()); from server.main import app; print('import OK')"
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        working-directory: jarvis
+        run: docker build -t jarvis:ci .
+      - name: Boot container and check health
+        run: |
+          docker run -d --name jarvis -p 8700:8700 -e JARVIS_SECRET_KEY=ci-test jarvis:ci
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:8700/api/health; then echo "healthy"; exit 0; fi
+            sleep 2
+          done
+          echo "health check failed"; docker logs jarvis; exit 1

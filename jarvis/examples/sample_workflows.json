@@ -1,0 +1,41 @@
+{
+  "description": "Sample automation workflows. Create via POST /api/workflows, or run scripts/seed_examples.py to load a curated set. `schedule` is a 5-field cron (min hour day-of-month month day-of-week) or \"manual\".",
+  "workflows": [
+    {
+      "name": "Morning briefing",
+      "prompt": "Summarize my open tasks, flag anything due today, and propose my top 3 priorities for the day in a short, direct list.",
+      "schedule": "0 8 * * *",
+      "agent": "assistant"
+    },
+    {
+      "name": "Weekly business review",
+      "prompt": "Review my progress toward my revenue goal, note wins and blockers from the week, and suggest three concrete growth experiments for next week.",
+      "schedule": "0 17 * * 5",
+      "agent": "ceo"
+    },
+    {
+      "name": "Competitor watch",
+      "prompt": "Search for news and product launches from AI personal-assistant companies in the last week and summarize what is strategically notable for me.",
+      "schedule": "0 9 * * 1",
+      "agent": "research"
+    },
+    {
+      "name": "Daily learning nudge",
+      "prompt": "Based on my goals and skill gaps in memory, teach me one useful concept today in under 200 words with a concrete example.",
+      "schedule": "30 7 * * *",
+      "agent": "learning"
+    },
+    {
+      "name": "Monthly finance snapshot",
+      "prompt": "Produce a simple month-over-month view of my key numbers and highlight anything trending the wrong way. Note this is not financial advice.",
+      "schedule": "0 9 1 * *",
+      "agent": "finance"
+    },
+    {
+      "name": "Content idea generator",
+      "prompt": "Generate 5 social post ideas in my voice about what I'm building, each with a hook and a one-line body.",
+      "schedule": "0 10 * * 3",
+      "agent": "social"
+    }
+  ]
+}
