@@ -1,0 +1,46 @@
+//@version=5
+indicator("10 AM Open Line", overlay=true)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+tz         = input.string("America/New_York", "Exchange Timezone",
+             options=["America/New_York", "America/Chicago", "America/Los_Angeles",
+                      "UTC", "Europe/London", "Asia/Tokyo"])
+line_color = input.color(color.new(color.orange, 0), "Line Color")
+line_width = input.int(2, "Line Width", minval=1, maxval=5)
+show_label = input.bool(true, "Show Price Label")
+
+// ── State ────────────────────────────────────────────────────────────────────
+var float open_10am = na
+var label lbl       = na
+
+h = hour(time, tz)
+m = minute(time, tz)
+
+// Reset at 12 PM (noon) every day
+is_noon = h == 12 and m == 0
+if is_noon
+    open_10am := na
+    if not na(lbl)
+        label.delete(lbl)
+        lbl := na
+
+// Capture the opening price of the 10:00 AM candle
+if h == 10 and m == 0
+    open_10am := open
+
+// Refresh label on the most recent bar whenever the line is active
+if not na(open_10am) and show_label and barstate.islast
+    if not na(lbl)
+        label.delete(lbl)
+    lbl := label.new(
+         bar_index, open_10am,
+         "10 AM Open: " + str.tostring(open_10am, format.mintick),
+         xloc=xloc.bar_index, yloc=yloc.price,
+         color=color.new(line_color, 80),
+         textcolor=line_color,
+         style=label.style_label_left,
+         size=size.small)
+
+// ── Plot ─────────────────────────────────────────────────────────────────────
+plot(open_10am, title="10 AM Open", color=line_color,
+     linewidth=line_width, style=plot.style_line)
