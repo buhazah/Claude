@@ -2,7 +2,7 @@
 automations so a fresh install has something to explore.
 
 Usage:  python scripts/seed_examples.py
-Creates (or reuses) demo@jarvis.local / demopassword123
+Creates (or reuses) demo@jarvis.app / demopassword123
 """
 import asyncio
 import sys
@@ -18,7 +18,7 @@ from server.memory.manager import memory_manager  # noqa: E402
 from server.security import hash_password  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
-DEMO_EMAIL = "demo@jarvis.local"
+DEMO_EMAIL = "demo@jarvis.app"
 DEMO_PASSWORD = "demopassword123"
 
 EXAMPLE_MEMORIES = [

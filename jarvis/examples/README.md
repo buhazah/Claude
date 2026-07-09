@@ -7,7 +7,7 @@ Curated sample data and automations for JARVIS.
 cd jarvis
 python scripts/seed_examples.py
 ```
-Creates a demo user (`demo@jarvis.local` / `demopassword123`) with:
+Creates a demo user (`demo@jarvis.app` / `demopassword123`) with:
 - **10 example memories** — profile, business, goals, preferences, a
   relationship, a past decision, and a lesson learned.
 - **1 project** ("JARVIS Launch") with **5 tasks** across the Kanban columns,
