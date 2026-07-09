@@ -1,0 +1,40 @@
+# JARVIS one-command deployment.
+#   docker compose up --build
+# Runs the app on http://localhost:8700 with a persistent data volume.
+# Uncomment the `db` service and JARVIS_DATABASE_URL to use Postgres.
+
+services:
+  jarvis:
+    build: .
+    image: jarvis:latest
+    ports:
+      - "8700:8700"
+    env_file:
+      - .env
+    environment:
+      JARVIS_DATA_DIR: /data
+      # JARVIS_DATABASE_URL: postgresql+asyncpg://jarvis:jarvis@db:5432/jarvis
+    volumes:
+      - jarvis_data:/data
+    restart: unless-stopped
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  # db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: jarvis
+  #     POSTGRES_PASSWORD: jarvis
+  #     POSTGRES_DB: jarvis
+  #   volumes:
+  #     - jarvis_pg:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U jarvis"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+
+volumes:
+  jarvis_data:
+  # jarvis_pg:

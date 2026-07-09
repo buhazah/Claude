@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>JARVIS — AI Operating System</title>
+  <meta name="description" content="A personal AI operating system: reasoning, memory, multi-agent orchestration, automation, and voice." />
+  <link rel="stylesheet" href="/static/css/app.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='none' stroke='%2338e0ff' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='16' fill='%2338e0ff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- ============================ AUTH ============================ -->
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-orb"><span></span></div>
+      <h1 class="auth-title">JARVIS</h1>
+      <p class="auth-sub">Your personal AI operating system</p>
+      <div id="auth-error" class="auth-error" hidden></div>
+      <form id="auth-form" autocomplete="on">
+        <label id="name-field" hidden>
+          <span>Name</span>
+          <input type="text" name="name" autocomplete="name" placeholder="Tony Stark" />
+        </label>
+        <label>
+          <span>Email</span>
+          <input type="email" name="email" required autocomplete="email" placeholder="you@domain.com" />
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" name="password" required minlength="8" autocomplete="current-password" placeholder="••••••••" />
+        </label>
+        <button type="submit" class="btn-primary" id="auth-submit">Sign in</button>
+      </form>
+      <p class="auth-toggle">
+        <span id="auth-toggle-text">New here?</span>
+        <a href="#" id="auth-toggle-link">Create an account</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================ APP ============================ -->
+  <div id="app" class="app" hidden>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-orb"><span></span></div>
+        <div class="brand-text">JARVIS</div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard"><i data-i="grid"></i><span>Dashboard</span></button>
+        <button class="nav-item" data-view="chat"><i data-i="chat"></i><span>Chat</span></button>
+        <button class="nav-item" data-view="voice"><i data-i="mic"></i><span>Voice</span></button>
+        <button class="nav-item" data-view="agents"><i data-i="agents"></i><span>Agents</span></button>
+        <button class="nav-item" data-view="tasks"><i data-i="check"></i><span>Tasks</span></button>
+        <button class="nav-item" data-view="memory"><i data-i="brain"></i><span>Memory</span></button>
+        <button class="nav-item" data-view="workflows"><i data-i="bolt"></i><span>Automations</span></button>
+        <button class="nav-item" data-view="analytics"><i data-i="chart"></i><span>Analytics</span></button>
+        <button class="nav-item" data-view="settings"><i data-i="gear"></i><span>Settings</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <button class="ghost-btn" id="cmd-open" title="Command palette (Ctrl/Cmd+K)"><i data-i="cmd"></i><span>Command</span></button>
+        <button class="ghost-btn" id="theme-toggle" title="Toggle theme"><i data-i="moon"></i><span>Theme</span></button>
+        <div class="user-chip" id="user-chip"><span class="avatar" id="avatar">A</span><span id="user-name">User</span></div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn mobile-only" id="menu-btn"><i data-i="menu"></i></button>
+        <div class="topbar-title" id="view-title">Dashboard</div>
+        <div class="topbar-actions">
+          <div class="status-pill" id="system-pill"><span class="dot"></span><span id="system-text">online</span></div>
+          <button class="icon-btn" id="logout-btn" title="Sign out"><i data-i="logout"></i></button>
+        </div>
+      </header>
+      <div class="view-scroll">
+        <section id="view-dashboard" class="view"></section>
+        <section id="view-chat" class="view" hidden></section>
+        <section id="view-voice" class="view" hidden></section>
+        <section id="view-agents" class="view" hidden></section>
+        <section id="view-tasks" class="view" hidden></section>
+        <section id="view-memory" class="view" hidden></section>
+        <section id="view-workflows" class="view" hidden></section>
+        <section id="view-analytics" class="view" hidden></section>
+        <section id="view-settings" class="view" hidden></section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Command palette -->
+  <div id="cmd-palette" class="cmd-palette" hidden>
+    <div class="cmd-box">
+      <input id="cmd-input" type="text" placeholder="Type a command or ask JARVIS…" autocomplete="off" />
+      <div id="cmd-results" class="cmd-results"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/ui.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
