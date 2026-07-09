@@ -46,7 +46,9 @@ class Settings:
     app_name: str = "JARVIS"
     version: str = "1.0.0"
     host: str = os.environ.get("JARVIS_HOST", "0.0.0.0")
-    port: int = int(os.environ.get("JARVIS_PORT", "8700"))
+    # Honor the platform-injected $PORT (Render/Railway/Heroku) when JARVIS_PORT
+    # is not explicitly set.
+    port: int = int(os.environ.get("JARVIS_PORT") or os.environ.get("PORT") or "8700")
     debug: bool = _bool("JARVIS_DEBUG", False)
 
     # Persistence

@@ -35,10 +35,34 @@ def new_id() -> str:
     return uuid.uuid4().hex
 
 
-engine = create_async_engine(settings.database_url, echo=False, future=True)
+def _normalize_db_url(url: str) -> str:
+    """Make platform-provided Postgres URLs work with the async driver.
+
+    PaaS providers (Render, Railway, Heroku, Fly) hand out `postgres://` or
+    `postgresql://` URLs meant for libpq. SQLAlchemy's async engine needs the
+    `postgresql+asyncpg://` scheme, and asyncpg rejects libpq-only query
+    params like `sslmode`/`channel_binding`, so strip those too.
+    """
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+    if "+asyncpg" in url and "?" in url:
+        base, query = url.split("?", 1)
+        kept = [
+            p for p in query.split("&")
+            if p.split("=")[0] not in {"sslmode", "channel_binding"}
+        ]
+        url = base + ("?" + "&".join(kept) if kept else "")
+    return url
+
+
+DATABASE_URL = _normalize_db_url(settings.database_url)
+
+engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-if settings.database_url.startswith("sqlite"):
+if DATABASE_URL.startswith("sqlite"):
     @event.listens_for(engine.sync_engine, "connect")
     def _sqlite_pragmas(dbapi_conn, _record):  # pragma: no cover - driver hook
         cur = dbapi_conn.cursor()

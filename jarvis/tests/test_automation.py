@@ -35,3 +35,17 @@ def test_next_run_after():
 
 def test_next_run_manual_is_none():
     assert next_run_after("manual", datetime(2026, 7, 9, 10, 0)) is None
+
+
+def test_db_url_normalization_for_paas():
+    from server.db import _normalize_db_url as n
+
+    assert n("postgres://u:p@h:5432/db") == "postgresql+asyncpg://u:p@h:5432/db"
+    # libpq-only query params asyncpg rejects are stripped
+    assert n("postgresql://u:p@h/db?sslmode=require") == "postgresql+asyncpg://u:p@h/db"
+    assert (
+        n("postgresql://u:p@h/db?sslmode=require&application_name=x")
+        == "postgresql+asyncpg://u:p@h/db?application_name=x"
+    )
+    # SQLite is left untouched
+    assert n("sqlite+aiosqlite:///x.db") == "sqlite+aiosqlite:///x.db"

@@ -61,13 +61,41 @@ User=jarvis
 WantedBy=multi-user.target
 ```
 
-## 4. PaaS (Railway / Render / Fly.io / DigitalOcean App Platform)
+## 4. One-click PaaS (Render / Railway / Fly.io / DigitalOcean)
 
-All of these build the Dockerfile directly. Configuration:
-- Expose port **8700** (or set `JARVIS_PORT` to the platform's `$PORT`).
-- Add a persistent disk mounted at `/data` (or use Postgres — see below).
+The app binds to the platform-injected `$PORT` automatically and normalizes a
+provided `postgres://`/`postgresql://` URL to the async driver at startup, so
+managed Postgres "just works".
+
+### Render (blueprint included)
+[`render.yaml`](../../render.yaml) at the repo root defines the whole stack: a
+Docker web service built from `jarvis/` plus a free managed Postgres.
+
+1. Deploy: <https://render.com/deploy?repo=https://github.com/buhazah/Claude>
+2. Render generates `JARVIS_SECRET_KEY` and wires `JARVIS_DATABASE_URL` from the
+   database automatically.
+3. Paste `ANTHROPIC_API_KEY` (and optional `ELEVENLABS_*`) when prompted.
+4. Health check `/api/health` is preconfigured.
+
+> Free Render Postgres is deleted after ~30 days — move to a paid instance for
+> anything you want to keep. The free web service also sleeps when idle.
+
+### Railway ([`railway.json`](../railway.json) included)
+New Project → Deploy from GitHub → pick this repo → set the service **Root
+Directory** to `jarvis/`. Add the Postgres plugin (Railway injects
+`DATABASE_URL` — copy it into `JARVIS_DATABASE_URL`) and set `ANTHROPIC_API_KEY`.
+
+### Fly.io / DigitalOcean / any Docker host
+All build the Dockerfile directly. Configuration:
+- The container listens on `$PORT` (falls back to 8700 for plain `docker run`).
+- Add a persistent disk mounted at `/data` **or** use Postgres (recommended).
 - Set env vars: `JARVIS_SECRET_KEY`, one LLM key, and any optional keys.
 - Health check path: `/api/health`.
+
+> **External Postgres requiring SSL**: the normalizer strips `sslmode` (asyncpg
+> doesn't accept it as a query param). If your provider mandates TLS, pass it via
+> `connect_args={"ssl": True}` in `create_async_engine` or use the provider's
+> internal (same-network) connection string, which typically doesn't need it.
 
 **Fly.io** example `fly.toml` snippet:
 ```toml

@@ -32,6 +32,26 @@ team of specialized agents, and runs automations while you're away.
   password hashing, role-based authorization, rate limiting, audit logging,
   and a path-confined execution sandbox.
 
+## Deploy to the cloud (get a public URL, nothing to install)
+
+**Render (recommended — includes a managed Postgres):**
+
+1. Click **[Deploy to Render](https://render.com/deploy?repo=https://github.com/buhazah/Claude)**.
+2. Render reads [`render.yaml`](render.yaml), builds `jarvis/`, and provisions a
+   free Postgres. Signing key is auto-generated.
+3. When prompted, paste your `ANTHROPIC_API_KEY` (and optionally the ElevenLabs
+   voice vars). Deploy.
+4. Open the service URL, create the first account (becomes owner), and set
+   `JARVIS_ALLOW_REGISTRATION=false` to lock signups.
+
+**Railway:** New Project → Deploy from GitHub → select this repo → set the
+service **Root Directory** to `jarvis/` (it picks up [`railway.json`](jarvis/railway.json)).
+Add a Postgres plugin and an `ANTHROPIC_API_KEY` variable.
+
+Both honor the platform's `$PORT` and normalize the provided Postgres URL
+automatically. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for details, other
+platforms, and scaling.
+
 ## Quick start (Docker)
 
 ```bash
