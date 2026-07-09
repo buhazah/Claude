@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/design_system/design_system.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../domain/entities/booking.dart';
 
 /// Booking summary card shared by the customer history and owner lists.
-/// [trailing] hosts context-specific actions (cancel / accept / reject).
+/// [trailing] hosts context-specific actions (cancel / accept / reject);
+/// [onTap] (optional) opens a detail view.
 class BookingCard extends StatelessWidget {
   const BookingCard({
     super.key,
     required this.booking,
     this.showCustomer = false,
     this.trailing,
+    this.onTap,
   });
 
   final Booking booking;
@@ -19,76 +21,69 @@ class BookingCard extends StatelessWidget {
   /// Owner views show who booked; customer views show the business instead.
   final bool showCustomer;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    booking.serviceName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
-                ),
-                _StatusChip(status: booking.status),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              showCustomer
-                  ? booking.customerName.isEmpty
-                      ? 'Customer'
-                      : booking.customerName
-                  : booking.businessName,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.schedule_rounded,
-                    size: 16, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Text(
+    final content = Padding(
+      padding: AppSpacing.cardPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(booking.serviceName, style: AppTypography.subtitle),
+              ),
+              _StatusChip(status: booking.status),
+            ],
+          ),
+          AppSpacing.gapXs,
+          Text(
+            showCustomer
+                ? booking.customerName.isEmpty
+                    ? 'Customer'
+                    : booking.customerName
+                : booking.businessName,
+            style: AppTypography.bodyMuted,
+          ),
+          AppSpacing.gapSm,
+          Row(
+            children: [
+              const Icon(Icons.schedule_rounded,
+                  size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
                   '${Formatters.dayTime(booking.start)} · '
                   '${Formatters.duration(booking.durationMinutes)}',
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13),
+                  style: AppTypography.caption.copyWith(fontSize: 13),
                 ),
-                const Spacer(),
-                if (booking.hasDiscount) ...[
-                  Text(
-                    Formatters.price(booking.originalPrice),
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      decoration: TextDecoration.lineThrough,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
+              ),
+              if (booking.hasDiscount) ...[
                 Text(
-                  Formatters.price(booking.price),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  Formatters.price(booking.originalPrice),
+                  style: AppTypography.priceStruck,
                 ),
+                const SizedBox(width: AppSpacing.sm - 2),
               ],
-            ),
-            if (trailing != null) ...[
-              const SizedBox(height: 12),
-              trailing!,
+              Text(Formatters.price(booking.price),
+                  style: AppTypography.priceSmall),
             ],
+          ),
+          if (trailing != null) ...[
+            AppSpacing.gapMd,
+            trailing!,
           ],
-        ),
+        ],
       ),
+    );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: onTap == null
+          ? content
+          : InkWell(onTap: onTap, child: content),
     );
   }
 }
@@ -108,16 +103,18 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm + 2,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: _color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.badgeAll,
       ),
       child: Text(
         status.label,
-        style: TextStyle(
+        style: AppTypography.caption.copyWith(
           color: _color,
-          fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
       ),

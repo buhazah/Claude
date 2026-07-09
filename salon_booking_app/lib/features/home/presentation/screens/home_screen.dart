@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/design_system/design_system.dart';
 import '../../../../core/errors/error_text.dart';
 import '../../../../core/router/route_names.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../businesses/presentation/providers/business_providers.dart';
@@ -36,8 +35,7 @@ class HomeScreen extends ConsumerWidget {
           children: [
             Text(
               'Hi${user != null && user.name.isNotEmpty ? ', ${user.name.split(' ').first}' : ''} 👋',
-              style: const TextStyle(
-                  fontSize: 14, color: AppColors.textSecondary),
+              style: AppTypography.bodyMuted,
             ),
             const Text('Find your salon'),
           ],
@@ -90,10 +88,10 @@ class HomeScreen extends ConsumerWidget {
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 20),
+                                    horizontal: AppSpacing.xl),
                                 itemCount: deals.length,
                                 separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 12),
+                                    AppSpacing.gapMd,
                                 itemBuilder: (context, index) => OfferCard(
                                   offer: deals[index],
                                   onTap: () => context.push(
@@ -115,20 +113,18 @@ class HomeScreen extends ConsumerWidget {
               ),
               ...businesses.when(
                 loading: () => [
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(child: CircularProgressIndicator()),
+                  const SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                        AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.xxl),
+                    sliver: SliverToBoxAdapter(child: AppSkeletonList()),
                   ),
                 ],
                 error: (error, _) => [
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: EmptyState(
-                      icon: Icons.wifi_off_rounded,
-                      title: 'Something went wrong',
+                    child: AppErrorState(
                       message: errorText(error),
-                      actionLabel: 'Retry',
-                      onAction: () =>
+                      onRetry: () =>
                           ref.invalidate(nearbyBusinessesProvider),
                     ),
                   ),
@@ -137,7 +133,7 @@ class HomeScreen extends ConsumerWidget {
                     ? [
                         const SliverFillRemaining(
                           hasScrollBody: false,
-                          child: EmptyState(
+                          child: AppEmptyState(
                             icon: Icons.search_off_rounded,
                             title: 'No salons match your filters',
                             message:
@@ -147,11 +143,12 @@ class HomeScreen extends ConsumerWidget {
                       ]
                     : [
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.xxl),
                           sliver: SliverList.separated(
                             itemCount: items.length,
                             separatorBuilder: (_, __) =>
-                                const SizedBox(height: 14),
+                                const SizedBox(height: AppSpacing.lg - 2),
                             itemBuilder: (context, index) => BusinessCard(
                               business: items[index].business,
                               distanceKm: items[index].distanceKm,

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/design_system/design_system.dart';
 import '../../../../core/widgets/async_value_view.dart';
-import '../../../../core/widgets/empty_state.dart';
 import '../controllers/booking_flow_controller.dart';
 import '../providers/booking_providers.dart';
 import '../widgets/booking_card.dart';
+import '../widgets/booking_timeline_sheet.dart';
 
-/// Customer booking history (upcoming + past) with cancellation.
+/// Customer booking history (upcoming + past). Tap a booking to see its
+/// lifecycle timeline; cancel from the card while it is still cancellable.
 class MyBookingsScreen extends ConsumerWidget {
   const MyBookingsScreen({super.key});
 
@@ -48,31 +50,30 @@ class MyBookingsScreen extends ConsumerWidget {
         value: bookings,
         onRetry: () => ref.invalidate(myBookingsProvider),
         data: (items) => items.isEmpty
-            ? const EmptyState(
+            ? const AppEmptyState(
                 icon: Icons.event_note_outlined,
                 title: 'No bookings yet',
                 message: 'Book your first appointment from the Discover tab.',
               )
             : ListView.separated(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(AppSpacing.xl),
                 itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, __) => AppSpacing.gapMd,
                 itemBuilder: (context, index) {
                   final booking = items[index];
                   return BookingCard(
                     booking: booking,
+                    onTap: () => showBookingTimelineSheet(context, booking),
                     trailing: booking.isCancellableByCustomer
                         ? Align(
                             alignment: Alignment.centerRight,
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size(0, 40),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16),
-                              ),
+                            child: AppButton(
+                              label: 'Cancel',
+                              variant: AppButtonVariant.danger,
+                              size: AppButtonSize.small,
+                              expand: false,
                               onPressed: () =>
                                   _confirmCancel(context, ref, booking.id),
-                              child: const Text('Cancel'),
                             ),
                           )
                         : null,

@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/design_system/design_system.dart';
 import '../../../../core/errors/error_text.dart';
 import '../../../../core/router/route_names.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/async_value_view.dart';
-import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/rating_badge.dart';
 import '../../../offers/domain/services/offer_pricing.dart';
 import '../../../offers/presentation/providers/offer_providers.dart';
 import '../../domain/entities/business.dart';
@@ -33,7 +31,7 @@ class BusinessDetailScreen extends ConsumerWidget {
         onRetry: () => ref.invalidate(businessProvider(businessId)),
         data: (business) {
           if (business == null) {
-            return const EmptyState(
+            return const AppEmptyState(
               icon: Icons.storefront_outlined,
               title: 'Salon not found',
             );
@@ -94,7 +92,7 @@ class _BusinessDetailBody extends ConsumerWidget {
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    RatingBadge(
+                    AppRatingBadge(
                         rating: business.rating,
                         count: business.ratingCount),
                   ],
@@ -166,15 +164,14 @@ class _BusinessDetailBody extends ConsumerWidget {
             ),
           ),
           error: (error, _) => SliverToBoxAdapter(
-            child: EmptyState(
-              icon: Icons.wifi_off_rounded,
+            child: AppErrorState(
               title: 'Could not load services',
               message: errorText(error),
             ),
           ),
           data: (items) => items.isEmpty
               ? const SliverToBoxAdapter(
-                  child: EmptyState(
+                  child: AppEmptyState(
                     icon: Icons.design_services_outlined,
                     title: 'No services listed yet',
                   ),
@@ -215,63 +212,16 @@ class _ServiceTile extends ConsumerWidget {
         ? service.price.discountedBy(discountPercent!)
         : service.price;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(service.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        Formatters.price(discounted),
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (hasDiscount) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          Formatters.price(service.price),
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            decoration: TextDecoration.lineThrough,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(width: 8),
-                      Text(
-                        '· ${Formatters.duration(service.durationMinutes)}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(88, 40),
-              ),
-              // Tap 1 of the 3-tap booking flow.
-              onPressed: () => context
-                  .push(RouteNames.bookService(business.id, service.id)),
-              child: const Text('Book'),
-            ),
-          ],
-        ),
-      ),
+    return AppServiceCard(
+      name: service.name,
+      priceLabel: Formatters.price(discounted),
+      originalPriceLabel:
+          hasDiscount ? Formatters.price(service.price) : null,
+      durationLabel: Formatters.duration(service.durationMinutes),
+      actionLabel: 'Book',
+      // Tap 1 of the 3-tap booking flow.
+      onAction: () =>
+          context.push(RouteNames.bookService(business.id, service.id)),
     );
   }
 }

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/widgets/app_sheet.dart';
-import '../../../../core/widgets/primary_button.dart';
+import '../../../../core/design_system/design_system.dart';
 import '../../../businesses/domain/entities/business.dart';
 import '../../../businesses/domain/entities/discovery_filters.dart';
 import '../../../businesses/presentation/providers/business_providers.dart';
@@ -12,7 +11,7 @@ import '../../../businesses/presentation/providers/business_providers.dart';
 class FilterSheet extends ConsumerStatefulWidget {
   const FilterSheet({super.key});
 
-  static Future<void> show(BuildContext context) => showAppSheet(
+  static Future<void> show(BuildContext context) => showAppBottomSheet(
         context: context,
         title: 'Filters',
         builder: (context) => const FilterSheet(),
@@ -44,49 +43,50 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Category', style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
+        Text('Category', style: AppTypography.subtitle),
+        AppSpacing.gapSm,
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            ChoiceChip(
-              label: const Text('All'),
+            AppFilterChip(
+              label: 'All',
               selected: _category == null,
               onSelected: (_) => setState(() => _category = null),
             ),
             for (final category in BusinessCategory.values)
-              ChoiceChip(
-                label: Text(category.label),
+              AppFilterChip(
+                label: category.label,
                 selected: _category == category,
                 onSelected: (_) => setState(() => _category = category),
               ),
           ],
         ),
-        const SizedBox(height: 20),
-        const Text('For', style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
+        AppSpacing.gapXl,
+        Text('For', style: AppTypography.subtitle),
+        AppSpacing.gapSm,
         Wrap(
-          spacing: 8,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            ChoiceChip(
-              label: const Text('Any'),
+            AppFilterChip(
+              label: 'Any',
               selected: _audience == null,
               onSelected: (_) => setState(() => _audience = null),
             ),
             for (final audience in Audience.values)
-              ChoiceChip(
-                label: Text(audience.label),
+              AppFilterChip(
+                label: audience.label,
                 selected: _audience == audience,
                 onSelected: (_) => setState(() => _audience = audience),
               ),
           ],
         ),
-        const SizedBox(height: 20),
+        AppSpacing.gapXl,
         Text(
           'Price range (${AppConstants.currencySymbol} '
           '${_priceRange.start.round()} – ${_priceRange.end.round()})',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: AppTypography.subtitle,
         ),
         RangeSlider(
           values: _priceRange,
@@ -95,10 +95,10 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
           divisions: 20,
           onChanged: (values) => setState(() => _priceRange = values),
         ),
-        const SizedBox(height: 8),
+        AppSpacing.gapSm,
         Text(
           'Minimum rating (${_minRating.toStringAsFixed(1)}+)',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: AppTypography.subtitle,
         ),
         Slider(
           value: _minRating,
@@ -107,22 +107,23 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
           divisions: 10,
           onChanged: (value) => setState(() => _minRating = value),
         ),
-        const SizedBox(height: 16),
+        AppSpacing.gapLg,
         Row(
           children: [
             Expanded(
-              child: OutlinedButton(
+              child: AppButton(
+                label: 'Reset',
+                variant: AppButtonVariant.secondary,
                 onPressed: () {
                   ref.read(discoveryFiltersProvider.notifier).reset();
                   Navigator.of(context).pop();
                 },
-                child: const Text('Reset'),
               ),
             ),
-            const SizedBox(width: 12),
+            AppSpacing.gapMd,
             Expanded(
               flex: 2,
-              child: PrimaryButton(
+              child: AppButton(
                 label: 'Apply',
                 onPressed: () {
                   ref.read(discoveryFiltersProvider.notifier).apply(
