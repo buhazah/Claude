@@ -16,6 +16,7 @@ from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..db import User
 from ..llm.base import LLMError
 from ..llm.router import RouteProfile, router
 from ..memory.manager import memory_manager
@@ -118,6 +119,18 @@ class Orchestrator:
     ) -> AsyncIterator[Event]:
         history = history or []
         memory_context = await memory_manager.context_block(session, user_id, request)
+
+        # Honor the user's preferred response language (e.g. Arabic), so the
+        # answer — and therefore the spoken voice — is in that language.
+        user = await session.get(User, user_id)
+        lang = ((user.preferences or {}).get("response_language") if user else "") or ""
+        if lang and lang.strip().lower() != "english":
+            directive = (
+                f"CRITICAL: Write your entire response to the user in {lang}, "
+                "regardless of the language they use. Keep any code or proper "
+                "nouns as-is."
+            )
+            memory_context = directive + ("\n\n" + memory_context if memory_context else "")
 
         if forced_agent and forced_agent in AGENTS:
             plan = {"mode": "simple", "agent": forced_agent, "reason": "user-selected agent", "tasks": []}

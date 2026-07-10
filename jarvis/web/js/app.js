@@ -586,6 +586,8 @@
         <div class="field"><label>Name</label><input id="set-name" value="${esc(state.user.name)}"/></div>
         <div class="field"><label>Email</label><input value="${esc(state.user.email)}" disabled/></div>
         <div class="field"><label>Role</label><input value="${esc(state.user.role)}" disabled/></div>
+        <div class="field"><label>Response language — JARVIS always replies (and speaks) in this</label>
+          <select id="set-lang">${LANGUAGES.map((l) => `<option ${((state.user.preferences || {}).response_language || "English") === l ? "selected" : ""}>${l}</option>`).join("")}</select></div>
         <button class="btn solid" id="save-account">Save</button></div>
       <div class="panel"><div class="section-title">System status</div>
         <table><tbody>
@@ -603,8 +605,12 @@
       <div id="conn-list"><div class="muted">Loading…</div></div>
     </div>`;
     document.getElementById("save-account").onclick = async () => {
-      await API.savePrefs({ display_name: document.getElementById("set-name").value });
-      toast("Saved");
+      const updated = await API.savePrefs({
+        display_name: document.getElementById("set-name").value,
+        response_language: document.getElementById("set-lang").value,
+      });
+      state.user = updated;
+      toast("Saved — JARVIS will reply in " + updated.preferences.response_language + ".");
     };
     renderConnections();
   };
@@ -703,6 +709,11 @@
   }
 
   // ------------------------------------------------------------- utils
+  const LANGUAGES = [
+    "English", "Arabic", "French", "Spanish", "German", "Italian",
+    "Portuguese", "Hindi", "Urdu", "Turkish", "Russian", "Chinese",
+    "Japanese", "Korean", "Dutch",
+  ];
   function orbMarkup() {
     return `<div class="ring-pulse"></div><div class="ring-a"></div><div class="ring-b"></div>` +
       `<div class="core"><div class="wave"><i></i><i></i><i></i><i></i><i></i></div></div>`;
