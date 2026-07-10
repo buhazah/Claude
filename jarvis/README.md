@@ -52,6 +52,20 @@ Both honor the platform's `$PORT` and normalize the provided Postgres URL
 automatically. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for details, other
 platforms, and scaling.
 
+## Run locally — one command
+
+If you have **Python 3.11+** and **git**, paste this into a terminal (macOS/Linux):
+
+```bash
+git clone -b claude/ai-os-jarvis-system-o2cdv5 https://github.com/buhazah/Claude.git && cd Claude/jarvis && bash scripts/quickstart.sh
+```
+
+The script does everything — creates an isolated virtualenv, installs
+dependencies, asks for your `ANTHROPIC_API_KEY` (paste it when prompted), seeds
+demo data, launches the server, and opens <http://localhost:8700>. Log in with
+`demo@jarvis.app` / `demopassword123` or create your own account. Press `Ctrl+C`
+to stop; re-run the same command to start again.
+
 ## Quick start (Docker)
 
 ```bash
