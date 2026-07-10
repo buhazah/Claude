@@ -49,6 +49,10 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* The hidden attribute must always win over author `display` rules below
+   (otherwise toggled panels like the auth screen and command palette can't
+   be hidden). */
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
   font-family: var(--sans);
