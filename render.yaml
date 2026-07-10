@@ -30,6 +30,16 @@ services:
       # Lock down signups after you create the first (owner) account.
       - key: JARVIS_ALLOW_REGISTRATION
         value: "true"
+      # OPTIONAL account integrations (Calendar/Gmail/Spotify). Leave blank
+      # until you follow docs/INTEGRATIONS.md; weather + news work without them.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
 
 databases:
   - name: jarvis-db

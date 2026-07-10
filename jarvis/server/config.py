@@ -94,6 +94,17 @@ class Settings:
     search_provider: str = os.environ.get("JARVIS_SEARCH_PROVIDER", "duckduckgo")
     brave_api_key: str = os.environ.get("BRAVE_API_KEY", "")
 
+    # Public base URL, used to build OAuth redirect URIs. If unset it is
+    # derived from the incoming request (works behind Render/Railway proxies).
+    public_url: str = os.environ.get("JARVIS_PUBLIC_URL", "").rstrip("/")
+
+    # Account integrations (OAuth). A provider is connectable only when its
+    # client id/secret are configured. See docs/INTEGRATIONS.md for setup.
+    google_client_id: str = os.environ.get("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    spotify_client_id: str = os.environ.get("SPOTIFY_CLIENT_ID", "")
+    spotify_client_secret: str = os.environ.get("SPOTIFY_CLIENT_SECRET", "")
+
     # Memory tuning
     memory_decay_half_life_days: float = float(os.environ.get("JARVIS_MEMORY_HALF_LIFE_DAYS", "30"))
     memory_consolidation_threshold: int = int(os.environ.get("JARVIS_MEMORY_CONSOLIDATION_THRESHOLD", "50"))

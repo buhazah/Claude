@@ -91,6 +91,10 @@ const API = (() => {
     // voice
     voiceConfig: () => json("/api/voice/config"),
     tts: (b) => raw("/api/voice/tts", { method: "POST", body: b }),
+    // connections
+    connections: () => json("/api/connections"),
+    connectAuthorize: (provider) => json(`/api/connections/${provider}/authorize`),
+    disconnect: (provider) => json(`/api/connections/${provider}`, { method: "DELETE" }),
     // analytics
     overview: () => json("/api/analytics/overview"),
     agentActivity: () => json("/api/analytics/agent-activity"),

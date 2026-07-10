@@ -596,12 +596,60 @@
           <tr><td>Shell/code tools</td><td>${s.shell_enabled ? "enabled" : "disabled"}</td></tr>
         </tbody></table>
         <p class="muted" style="margin-top:12px">Configure provider keys via environment variables. See docs/ENVIRONMENT.md.</p></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="section-title">Connections — your accounts</div>
+      <div class="muted" style="margin-bottom:14px">Link accounts so JARVIS can act on them. Weather &amp; news work with no setup.</div>
+      <div id="conn-list"><div class="muted">Loading…</div></div>
     </div>`;
     document.getElementById("save-account").onclick = async () => {
       await API.savePrefs({ display_name: document.getElementById("set-name").value });
       toast("Saved");
     };
+    renderConnections();
   };
+
+  async function renderConnections() {
+    const box = document.getElementById("conn-list");
+    if (!box) return;
+    try {
+      const { connections } = await API.connections();
+      box.innerHTML = connections.map((c) => `
+        <div class="row" style="padding:12px 0;border-bottom:1px solid var(--border-soft)">
+          <div style="flex:1">
+            <div style="font-size:15px">${esc(c.name)}
+              ${c.connected ? `<span class="tag" style="margin-left:8px">connected${c.account ? " · " + esc(c.account) : ""}</span>` : ""}</div>
+            ${!c.configured ? `<div class="muted" style="font-size:12px;margin-top:3px">Needs one-time server setup — see the Integrations guide.</div>` : ""}
+          </div>
+          ${c.connected
+            ? `<button class="btn danger" data-disc="${c.provider}">Disconnect</button>`
+            : `<button class="btn ${c.configured ? "solid" : ""}" data-conn="${c.provider}" ${c.configured ? "" : "disabled"}>Connect</button>`}
+        </div>`).join("");
+      box.querySelectorAll("[data-conn]").forEach((b) => (b.onclick = () => connectAccount(b.dataset.conn)));
+      box.querySelectorAll("[data-disc]").forEach((b) => (b.onclick = async () => {
+        await API.disconnect(b.dataset.disc); toast("Disconnected"); renderConnections();
+      }));
+    } catch (e) { box.innerHTML = `<div class="muted">${esc(e.message)}</div>`; }
+  }
+
+  async function connectAccount(provider) {
+    try {
+      const { url, error } = await API.connectAuthorize(provider);
+      if (error) { toast(error, 5000); return; }
+      // Open the provider's consent screen; user returns and we refresh.
+      window.open(url, "jarvis_oauth", "width=520,height=680");
+      toast("Approve access in the popup, then come back.", 5000);
+      // Poll for connection completion for a short while.
+      let tries = 0;
+      const iv = setInterval(async () => {
+        tries++;
+        const { connections } = await API.connections();
+        if (connections.find((c) => c.provider === provider && c.connected) || tries > 40) {
+          clearInterval(iv); renderConnections();
+        }
+      }, 3000);
+    } catch (e) { toast(e.message); }
+  }
 
   // ------------------------------------------------------------- command palette
   const COMMANDS = [

@@ -18,6 +18,8 @@ from .automation.scheduler import engine
 from .config import settings
 from .db import init_db
 from .tools import core_tools  # noqa: F401 — registers built-in tools on import
+from .tools import live_tools  # noqa: F401 — weather + news
+from .tools import connected_tools  # noqa: F401 — calendar/spotify/gmail
 
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
@@ -49,13 +51,14 @@ app.add_middleware(
 
 # Routers
 from .api import (  # noqa: E402
-    agent_routes, analytics_routes, auth_routes, chat_routes,
+    agent_routes, analytics_routes, auth_routes, chat_routes, connection_routes,
     memory_routes, project_routes, voice_routes, workflow_routes,
 )
 
 for module in (
     auth_routes, chat_routes, agent_routes, memory_routes,
     project_routes, workflow_routes, voice_routes, analytics_routes,
+    connection_routes,
 ):
     app.include_router(module.router)
 

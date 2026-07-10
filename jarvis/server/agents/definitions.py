@@ -11,6 +11,10 @@ from dataclasses import dataclass, field
 BASE_TOOLS = ["web_search", "web_fetch"]
 FILE_TOOLS = ["fs_write", "fs_read", "fs_list", "generate_document"]
 CODE_TOOLS = ["shell", "python_exec", "fs_write", "fs_read", "fs_list"]
+LIVE_TOOLS = ["weather", "news"]
+CALENDAR_TOOLS = ["calendar_list_events", "calendar_create_event"]
+SPOTIFY_TOOLS = ["spotify_now_playing", "spotify_control"]
+GMAIL_TOOLS = ["gmail_list", "gmail_draft"]
 
 
 @dataclass
@@ -57,17 +61,20 @@ _add(AgentDef(
 ))
 _add(AgentDef(
     "assistant", "Executive Assistant",
-    "Handle scheduling, reminders, drafting, follow-ups, and day-to-day coordination.",
+    "Handle scheduling, reminders, drafting, follow-ups, weather, news, music, "
+    "email, and day-to-day coordination — the user's concierge.",
     ["Keep the user organized and ahead of deadlines",
-     "Draft crisp communications", "Anticipate needs before being asked"],
-    BASE_TOOLS + FILE_TOOLS, complexity=4, temperature=0.5,
+     "Draft crisp communications", "Anticipate needs before being asked",
+     "Use connected accounts (calendar, email, music) when helpful"],
+    BASE_TOOLS + FILE_TOOLS + LIVE_TOOLS + CALENDAR_TOOLS + SPOTIFY_TOOLS + GMAIL_TOOLS,
+    complexity=4, temperature=0.5,
 ))
 _add(AgentDef(
     "research", "Research Agent",
     "Investigate topics deeply, synthesize sources, and produce well-cited briefings.",
     ["Find authoritative, current information",
      "Synthesize across sources", "Cite where claims come from"],
-    BASE_TOOLS + FILE_TOOLS, complexity=7, min_context=32_000,
+    BASE_TOOLS + FILE_TOOLS + LIVE_TOOLS, complexity=7, min_context=32_000,
 ))
 _add(AgentDef(
     "coding", "Coding Agent",
@@ -146,7 +153,7 @@ _add(AgentDef(
     "Plan trips end to end: routes, stays, logistics, and budgets.",
     ["Build practical itineraries", "Optimize for budget and time",
      "Anticipate logistics and contingencies"],
-    BASE_TOOLS + FILE_TOOLS, complexity=5, temperature=0.6,
+    BASE_TOOLS + FILE_TOOLS + LIVE_TOOLS + CALENDAR_TOOLS, complexity=5, temperature=0.6,
 ))
 _add(AgentDef(
     "health", "Health Coach",

@@ -29,5 +29,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import os,urllib.request,sys; p=os.environ.get('PORT','8700'); sys.exit(0 if urllib.request.urlopen(f'http://localhost:{p}/api/health').status==200 else 1)"
 
 # Shell form so ${PORT} (injected by Render/Railway/Heroku) is expanded;
-# falls back to 8700 for plain `docker run`.
-CMD uvicorn server.main:app --host 0.0.0.0 --port ${PORT:-8700}
+# falls back to 8700 for plain `docker run`. --proxy-headers makes request
+# URLs use the external https scheme/host (needed for OAuth redirect URIs).
+CMD uvicorn server.main:app --host 0.0.0.0 --port ${PORT:-8700} --proxy-headers --forwarded-allow-ips="*"

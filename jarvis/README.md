@@ -132,6 +132,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design.
 | [Deployment](docs/DEPLOYMENT.md) | Docker, Postgres, cloud platforms, scaling, backups |
 | [Developer guide](docs/DEVELOPER.md) | Add an agent, a tool, a provider; project layout |
 | [Environment variables](docs/ENVIRONMENT.md) | Every setting and its default |
+| [Integrations](docs/INTEGRATIONS.md) | Weather, news, and connecting Calendar / Gmail / Spotify |
 | [Database schema](docs/DATABASE.md) | Tables, columns, relationships |
 | [Security](docs/SECURITY.md) | Auth, sandboxing, threat model, hardening |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and fixes |

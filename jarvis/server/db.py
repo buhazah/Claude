@@ -241,6 +241,27 @@ class AgentRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class Connection(Base):
+    """A user's OAuth link to an external account (Google, Spotify, …).
+
+    Access/refresh tokens are stored encrypted (see integrations/crypto.py).
+    One connection per (user, provider).
+    """
+    __tablename__ = "connections"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), index=True)  # google|spotify|gmail
+    access_token: Mapped[str] = mapped_column(Text, default="")   # encrypted
+    refresh_token: Mapped[str] = mapped_column(Text, default="")  # encrypted
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    scopes: Mapped[str] = mapped_column(Text, default="")
+    account_label: Mapped[str] = mapped_column(String(255), default="")
+    meta: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 

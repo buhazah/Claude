@@ -16,6 +16,7 @@ from typing import AsyncIterator, Callable
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import AgentRun, utcnow
+from ..integrations.context import reset_current_user, set_current_user
 from ..llm.base import LLMError
 from ..llm.router import RouteProfile, router
 from ..tools.base import registry
@@ -121,6 +122,9 @@ class Agent:
         final = ""
         error = ""
 
+        # Bind the user so account-connected tools (calendar/spotify/gmail)
+        # act on this user's linked accounts.
+        ctx_token = set_current_user(user_id)
         try:
             for _ in range(MAX_STEPS):
                 resp = await router.complete(
@@ -172,6 +176,8 @@ class Agent:
         except LLMError as exc:
             error = str(exc)
             final = f"The {self.defn.name} could not complete the task: {exc}"
+        finally:
+            reset_current_user(ctx_token)
 
         run.status = "failed" if error else "success"
         run.plan = [s.thought for s in steps if s.thought]
