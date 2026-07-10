@@ -64,6 +64,24 @@ function timeAgo(iso) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+// Strip markdown symbols, emojis, and URLs so text-to-speech reads the words
+// only — not "asterisk asterisk" or emoji/pictograph characters.
+function cleanForSpeech(text) {
+  let t = String(text == null ? "" : text);
+  t = t.replace(/```[\s\S]*?```/g, " ");          // code blocks
+  t = t.replace(/`([^`]+)`/g, "$1");               // inline code
+  t = t.replace(/https?:\/\/\S+/g, " ");           // urls
+  t = t.replace(/^\s*#{1,6}\s*/gm, "");            // headings
+  t = t.replace(/^\s*[-*•]\s+/gm, "");             // list bullets
+  t = t.replace(/[*_#>|~`]/g, " ");                // stray markdown symbols
+  // Emoji & pictographs (common unicode blocks) and variation selectors.
+  t = t.replace(
+    /[\u{1F000}-\u{1FAFF}\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu,
+    ""
+  );
+  return t.replace(/\s+/g, " ").trim();
+}
+
 // Minimal, safe markdown: bold, italics, inline code, code blocks, lists.
 function mdToHtml(text) {
   let h = esc(text);

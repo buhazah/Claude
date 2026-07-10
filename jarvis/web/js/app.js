@@ -332,6 +332,7 @@
     let listening = false, recog = null;
 
     orb.onclick = async () => {
+      unlockAudio(); // this tap is a user gesture — bless the audio element now
       if (listening) { recog && recog.stop(); return; }
       if (!SR) { toast("Speech recognition unavailable in this browser."); return; }
       recog = new SR();
@@ -367,26 +368,53 @@
         const parts = buffer.split("\n\n"); buffer = parts.pop();
         for (const c of parts) { const ev = parseSSE(c); if (ev && ev.event === "final") final = ev.data.text; if (ev && ev.event === "open") state.conversation = ev.data.conversation_id; }
       }
-      transcript.textContent = final;
+      transcript.innerHTML = mdToHtml(final);
       status.textContent = "Speaking…";
       await speak(final);
       status.textContent = "Tap the orb and speak";
     } catch (e) { status.textContent = e.message; }
   }
 
+  // --- audio playback (unlocked on a user tap so ElevenLabs can auto-play) ---
+  const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
+  const SPEECH_LANG = {
+    English: "en-US", Arabic: "ar-SA", French: "fr-FR", Spanish: "es-ES",
+    German: "de-DE", Italian: "it-IT", Portuguese: "pt-PT", Hindi: "hi-IN",
+    Urdu: "ur-PK", Turkish: "tr-TR", Russian: "ru-RU", Chinese: "zh-CN",
+    Japanese: "ja-JP", Korean: "ko-KR", Dutch: "nl-NL",
+  };
+  let voiceAudio = null;
+  function unlockAudio() {
+    if (!voiceAudio) voiceAudio = new Audio();
+    try { voiceAudio.src = SILENT_WAV; voiceAudio.play().catch(() => {}); } catch (e) {}
+  }
+
   async function speak(text) {
+    const clean = cleanForSpeech(text);
+    if (!clean) return;
     try {
-      const res = await API.tts({ text });
+      const res = await API.tts({ text: clean });
       if (res.ok) {
         const blob = await res.blob();
-        const audio = new Audio(URL.createObjectURL(blob));
-        await audio.play();
-        return new Promise((r) => (audio.onended = r));
+        if (blob && blob.size > 0) {
+          if (!voiceAudio) voiceAudio = new Audio();
+          voiceAudio.src = URL.createObjectURL(blob);
+          await voiceAudio.play();
+          return new Promise((r) => (voiceAudio.onended = r));
+        }
+      } else {
+        let detail = "";
+        try { detail = (await res.json()).detail || ""; } catch {}
+        toast("Voice: " + (detail || "TTS unavailable (" + res.status + ")") + " — using browser voice.", 5000);
       }
-    } catch {}
-    // Fallback: browser speech synthesis.
+    } catch (e) { /* fall through to browser speech */ }
+    // Fallback: browser speech synthesis, in the user's chosen language.
     if (window.speechSynthesis) {
-      const u = new SpeechSynthesisUtterance(text);
+      const u = new SpeechSynthesisUtterance(clean);
+      const langName = (state.user.preferences || {}).response_language || "English";
+      u.lang = SPEECH_LANG[langName] || "en-US";
+      const match = window.speechSynthesis.getVoices().find((v) => v.lang && v.lang.startsWith(u.lang.split("-")[0]));
+      if (match) u.voice = match;
       window.speechSynthesis.speak(u);
       return new Promise((r) => (u.onend = r));
     }

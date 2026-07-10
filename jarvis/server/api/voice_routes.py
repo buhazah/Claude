@@ -1,14 +1,15 @@
-"""Voice routes: text-to-speech (streaming MP3) and server-side transcription."""
+"""Voice routes: text-to-speech and server-side transcription."""
 from __future__ import annotations
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 
 from ..config import settings
 from ..db import User
 from ..schemas import VoiceIn
 from ..security import get_current_user
-from ..voice.tts import VoiceNotConfigured, stream_synthesize, transcribe
+from ..voice.tts import VoiceNotConfigured, synthesize, transcribe
 
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 
@@ -24,14 +25,19 @@ async def voice_config(_: User = Depends(get_current_user)):
 
 @router.post("/tts")
 async def text_to_speech(body: VoiceIn, _: User = Depends(get_current_user)):
+    # Non-streaming so provider errors (bad key, unknown voice, quota) surface
+    # as real HTTP errors the client can show, instead of a truncated stream.
     try:
-        async def audio():
-            async for chunk in stream_synthesize(body.text, body.voice_id):
-                yield chunk
-
-        return StreamingResponse(audio(), media_type="audio/mpeg")
+        audio = await synthesize(body.text, body.voice_id)
+        return Response(content=audio, media_type="audio/mpeg")
     except VoiceNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:200] if exc.response is not None else str(exc)
+        code = exc.response.status_code if exc.response is not None else "?"
+        raise HTTPException(status_code=502, detail=f"ElevenLabs returned {code}: {detail}")
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Could not reach ElevenLabs: {exc}")
 
 
 @router.post("/transcribe")
