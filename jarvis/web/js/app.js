@@ -116,11 +116,32 @@
 
   RENDER.dashboard = async () => {
     const v = document.getElementById("view-dashboard");
-    v.innerHTML = `<div class="grid cols-4" id="stat-row"></div>
+    const hour = new Date().getHours();
+    const greetWord = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    const first = (state.user.name || "").split(" ")[0];
+    v.innerHTML = `
+      <div class="hero">
+        <div class="orb" id="hero-orb">${orbMarkup()}</div>
+        <div class="sub">At your service</div>
+        <div class="greeting">“${greetWord}${first ? ", " + esc(first) : ""}. How may I help?”</div>
+        <div class="chips" id="hero-chips"></div>
+      </div>
+      <div class="grid cols-4" id="stat-row"></div>
       <div class="grid cols-2" style="margin-top:16px">
         <div class="panel"><div class="section-title">Recent agent activity</div><div id="dash-runs"><div class="empty">Loading…</div></div></div>
         <div class="panel"><div class="section-title">Quick actions</div><div id="dash-actions"></div></div>
       </div>`;
+    const chips = document.getElementById("hero-chips");
+    [
+      ["Brief me on today", "Give me a short briefing on my day: open tasks and top priorities."],
+      ["Draft something", "Help me draft a message — ask me what it's for."],
+      ["Do some research", "What would you like me to research?"],
+      ["Plan a project", "Help me break a project into tasks."],
+    ].forEach(([label, prompt]) => {
+      const c = el(`<button class="chip-btn">${label}</button>`);
+      c.onclick = () => { navigate("chat"); setTimeout(() => { const i = document.getElementById("composer-input"); if (i) { i.value = prompt; i.focus(); } }, 150); };
+      chips.appendChild(c);
+    });
     const actions = document.getElementById("dash-actions");
     [["chat", "Start a conversation"], ["voice", "Talk to JARVIS"], ["tasks", "Plan a project"], ["workflows", "Create an automation"]].forEach(([view, label]) => {
       const b = el(`<button class="btn" style="width:100%;justify-content:flex-start;margin-bottom:8px">${label}</button>`);
@@ -295,9 +316,9 @@
   RENDER.voice = async () => {
     const v = document.getElementById("view-voice");
     v.innerHTML = `<div class="voice-view">
-      <div class="voice-orb" id="voice-orb"><div class="core"></div></div>
+      <div class="orb" id="voice-orb">${orbMarkup()}</div>
       <div class="voice-status" id="voice-status">Tap the orb and speak</div>
-      <div class="voice-transcript" id="voice-transcript"></div>
+      <div class="voice-transcript" id="voice-transcript">“Good evening. How may I help?”</div>
     </div>`;
     setupVoice();
   };
@@ -634,6 +655,10 @@
   }
 
   // ------------------------------------------------------------- utils
+  function orbMarkup() {
+    return `<div class="ring-pulse"></div><div class="ring-a"></div><div class="ring-b"></div>` +
+      `<div class="core"><div class="wave"><i></i><i></i><i></i><i></i><i></i></div></div>`;
+  }
   function agentName(key) { const a = state.agents.find((x) => x.key === key); return a ? a.name : (key === "orchestrator" ? "JARVIS" : key); }
   function agentInitial(key) { return agentName(key).replace(/Agent|Assistant/g, "").trim()[0] || "J"; }
   function fmt(n) { return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n); }
