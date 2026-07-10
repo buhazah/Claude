@@ -73,6 +73,7 @@ function mdToHtml(text) {
   h = h.replace(/(^|\s)\*([^*\n]+)\*/g, "$1<em>$2</em>");
   h = h.replace(/^### (.+)$/gm, '<h4 style="margin:10px 0 4px">$1</h4>');
   h = h.replace(/^## (.+)$/gm, '<h3 style="margin:12px 0 6px">$1</h3>');
+  h = h.replace(/^# (.+)$/gm, '<h3 style="margin:12px 0 6px;font-family:var(--serif);font-size:22px">$1</h3>');
   h = h.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
   h = h.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul style="margin:6px 0 6px 18px">$1</ul>');
   return h;
