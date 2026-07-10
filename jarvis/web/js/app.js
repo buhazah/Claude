@@ -103,6 +103,7 @@
   };
 
   function navigate(view) {
+    if (state.view === "voice" && view !== "voice") stopVoiceEngine();
     state.view = view;
     document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
     document.querySelectorAll(".view").forEach((v) => (v.hidden = v.id !== `view-${view}`));
@@ -313,66 +314,177 @@
   }
 
   // ---- Voice ----
+  // Wake words JARVIS listens for in hands-free mode (English + Arabic + common
+  // mis-hearings). Matched case-insensitively as whole/near words.
+  const WAKE_WORDS = [
+    "jarvis", "hey jarvis", "ok jarvis", "hi jarvis", "jervis", "jarvous",
+    "travis", "جارفيس", "جارفس", "يا جارفيس", "هاي جارفيس",
+  ];
+
   RENDER.voice = async () => {
     const v = document.getElementById("view-voice");
     v.innerHTML = `<div class="voice-view">
       <div class="orb" id="voice-orb">${orbMarkup()}</div>
-      <div class="voice-status" id="voice-status">Tap the orb and speak</div>
+      <div class="voice-status" id="voice-status">Tap the orb to talk — or turn on hands-free</div>
       <div class="voice-transcript" id="voice-transcript">“Good evening. How may I help?”</div>
+      <button class="btn" id="handsfree-toggle" style="margin-top:6px"><i data-i="mic"></i><span>Enable hands-free — say “Jarvis”</span></button>
     </div>`;
+    injectIcons(v);
     setupVoice();
   };
+
+  // Stops any active microphone when leaving the Voice view. Set by setupVoice.
+  let stopVoiceEngine = () => {};
 
   function setupVoice() {
     const orb = document.getElementById("voice-orb");
     const status = document.getElementById("voice-status");
     const transcript = document.getElementById("voice-transcript");
+    const toggle = document.getElementById("handsfree-toggle");
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { status.textContent = "Your browser doesn't support speech recognition. Try Chrome/Edge."; }
-    let listening = false, recog = null;
+    if (!SR) {
+      status.textContent = "Your browser doesn't support voice. Try Chrome or Edge.";
+      if (toggle) toggle.style.display = "none";
+      return;
+    }
 
-    orb.onclick = async () => {
-      unlockAudio(); // this tap is a user gesture — bless the audio element now
-      if (listening) { recog && recog.stop(); return; }
-      if (!SR) { toast("Speech recognition unavailable in this browser."); return; }
-      recog = new SR();
-      recog.lang = "en-US"; recog.interimResults = true; recog.continuous = false;
-      listening = true; orb.classList.add("listening"); status.textContent = "Listening…"; transcript.textContent = "";
-      recog.onresult = (e) => {
-        let text = "";
-        for (const r of e.results) text += r[0].transcript;
-        transcript.textContent = text;
+    const langName = (state.user.preferences || {}).response_language || "English";
+    const recLang = SPEECH_LANG[langName] || "en-US";
+    const idleText = "Tap the orb to talk — or turn on hands-free";
+    const waitText = "Listening… say “Jarvis”";
+
+    const eng = { mode: "off", handsFree: false, speaking: false, recog: null, restart: null };
+    stopVoiceEngine = () => {
+      eng.handsFree = false; eng.mode = "off"; eng.speaking = false;
+      clearTimeout(eng.restart);
+      try { eng.recog && eng.recog.abort(); } catch (e) {}
+      orb.classList.remove("listening");
+    };
+
+    const setStatus = (t) => (status.textContent = t);
+
+    function wakeIndex(text) {
+      const t = " " + text.toLowerCase().replace(/[.,!؟?،]/g, " ").replace(/\s+/g, " ") + " ";
+      for (const w of WAKE_WORDS) {
+        const i = t.indexOf(" " + w + " ");
+        if (i >= 0) return i + 1 + w.length;
+      }
+      for (const w of WAKE_WORDS) {
+        const i = t.indexOf(w);
+        if (i >= 0) return i + w.length;
+      }
+      return -1;
+    }
+
+    function newRecog(continuous) {
+      const r = new SR();
+      r.lang = recLang; r.interimResults = true; r.continuous = continuous;
+      return r;
+    }
+
+    function startWaiting() {
+      if (eng.recog) { try { eng.recog.abort(); } catch (e) {} }
+      const r = newRecog(true);
+      eng.recog = r;
+      r.onresult = (ev) => {
+        if (eng.mode !== "waiting" && eng.mode !== "capturing") return;
+        let finalText = "", interim = "";
+        for (const res of ev.results) (res.isFinal ? (finalText += res[0].transcript) : (interim += res[0].transcript));
+        const combined = (finalText + " " + interim).trim();
+        if (eng.mode === "waiting") {
+          const idx = wakeIndex(combined);
+          if (idx >= 0) {
+            const after = combined.slice(idx).trim();
+            orb.classList.add("listening");
+            if (after.replace(/[^\p{L}\p{N}]/gu, "").length >= 2) { handle(after); }
+            else { eng.mode = "capturing"; setStatus("نعم؟ · Yes? I’m listening…"); }
+          }
+        } else if (eng.mode === "capturing" && finalText.trim().replace(/[^\p{L}\p{N}]/gu, "").length >= 2) {
+          handle(finalText.trim());
+        }
       };
-      recog.onerror = () => { status.textContent = "Didn't catch that. Tap to retry."; };
-      recog.onend = async () => {
-        listening = false; orb.classList.remove("listening");
-        const text = transcript.textContent.trim();
-        if (!text) { status.textContent = "Tap the orb and speak"; return; }
-        status.textContent = "Thinking…";
-        await voiceRespond(text, status, transcript);
+      r.onerror = () => {};
+      r.onend = () => {
+        if ((eng.mode === "waiting" || eng.mode === "capturing") && !eng.speaking) {
+          clearTimeout(eng.restart);
+          eng.restart = setTimeout(startWaiting, 350); // Chrome ends continuous sessions periodically
+        }
       };
-      recog.start();
+      try { r.start(); } catch (e) {}
+    }
+
+    async function handle(command) {
+      eng.mode = "busy";
+      try { eng.recog && eng.recog.stop(); } catch (e) {}
+      orb.classList.add("listening");
+      transcript.textContent = command;
+      setStatus("Thinking…");
+      try {
+        const final = await streamChat(command);
+        transcript.innerHTML = mdToHtml(final);
+        setStatus("Speaking…");
+        eng.speaking = true;
+        await speak(final);
+      } catch (e) { setStatus(e.message || "Something went wrong."); }
+      eng.speaking = false;
+      orb.classList.remove("listening");
+      if (eng.handsFree) { eng.mode = "waiting"; setStatus(waitText); startWaiting(); }
+      else { eng.mode = "off"; setStatus(idleText); }
+    }
+
+    // Tap-to-talk (single utterance) — always available.
+    orb.onclick = () => {
+      unlockAudio();
+      if (eng.handsFree || eng.mode === "busy") return;
+      eng.mode = "capturing-tap"; orb.classList.add("listening"); setStatus("Listening…"); transcript.textContent = "";
+      const r = newRecog(false);
+      let text = "";
+      r.onresult = (e) => { text = ""; for (const res of e.results) text += res[0].transcript; transcript.textContent = text; };
+      r.onerror = () => {};
+      r.onend = () => {
+        orb.classList.remove("listening");
+        const t = text.trim();
+        if (!t) { eng.mode = "off"; setStatus(idleText); return; }
+        handle(t);
+      };
+      try { r.start(); } catch (e) {}
+    };
+
+    // Hands-free toggle.
+    toggle.onclick = () => {
+      unlockAudio(); // gesture unlocks audio so replies can auto-play
+      eng.handsFree = !eng.handsFree;
+      const label = toggle.querySelector("span");
+      if (eng.handsFree) {
+        eng.mode = "waiting"; toggle.classList.add("solid");
+        label.textContent = "Hands-free is ON — say “Jarvis”";
+        setStatus(waitText); startWaiting();
+      } else {
+        stopVoiceEngine();
+        toggle.classList.remove("solid");
+        label.textContent = "Enable hands-free — say “Jarvis”";
+        setStatus(idleText);
+      }
     };
   }
 
-  async function voiceRespond(text, status, transcript) {
-    try {
-      const res = await API.chatStream({ message: text, conversation_id: state.conversation, agent: null });
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "", final = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n"); buffer = parts.pop();
-        for (const c of parts) { const ev = parseSSE(c); if (ev && ev.event === "final") final = ev.data.text; if (ev && ev.event === "open") state.conversation = ev.data.conversation_id; }
+  async function streamChat(message) {
+    const res = await API.chatStream({ message, conversation_id: state.conversation, agent: null });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "", final = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n"); buffer = parts.pop();
+      for (const c of parts) {
+        const ev = parseSSE(c);
+        if (ev && ev.event === "final") final = ev.data.text;
+        if (ev && ev.event === "open") state.conversation = ev.data.conversation_id;
       }
-      transcript.innerHTML = mdToHtml(final);
-      status.textContent = "Speaking…";
-      await speak(final);
-      status.textContent = "Tap the orb and speak";
-    } catch (e) { status.textContent = e.message; }
+    }
+    return final;
   }
 
   // --- audio playback (unlocked on a user tap so ElevenLabs can auto-play) ---
