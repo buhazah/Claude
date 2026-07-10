@@ -54,17 +54,26 @@ platforms, and scaling.
 
 ## Run locally — one command
 
-If you have **Python 3.11+** and **git**, paste this into a terminal (macOS/Linux):
+Requires **Python 3.11+** and **git**. The script does everything — creates an
+isolated virtualenv, installs dependencies, asks for your `ANTHROPIC_API_KEY`
+(paste it when prompted), seeds demo data, launches the server, and opens
+<http://localhost:8700>. Log in with `demo@jarvis.app` / `demopassword123` or
+create your own account. Press `Ctrl+C` to stop; re-run to start again.
+
+**macOS / Linux** — paste into a terminal:
 
 ```bash
 git clone -b claude/ai-os-jarvis-system-o2cdv5 https://github.com/buhazah/Claude.git && cd Claude/jarvis && bash scripts/quickstart.sh
 ```
 
-The script does everything — creates an isolated virtualenv, installs
-dependencies, asks for your `ANTHROPIC_API_KEY` (paste it when prompted), seeds
-demo data, launches the server, and opens <http://localhost:8700>. Log in with
-`demo@jarvis.app` / `demopassword123` or create your own account. Press `Ctrl+C`
-to stop; re-run the same command to start again.
+**Windows** — paste into PowerShell:
+
+```powershell
+git clone -b claude/ai-os-jarvis-system-o2cdv5 https://github.com/buhazah/Claude.git; cd Claude\jarvis; powershell -ExecutionPolicy Bypass -File scripts\quickstart.ps1
+```
+
+Or, after cloning, just double-click **`jarvis\scripts\quickstart.bat`** in File
+Explorer. (When installing Python, tick **"Add python.exe to PATH"**.)
 
 ## Quick start (Docker)
 
