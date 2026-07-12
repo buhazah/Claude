@@ -403,11 +403,24 @@
           handle(finalText.trim());
         }
       };
-      r.onerror = () => {};
+      r.onerror = (ev) => {
+        // Mic permission blocked — stop hands-free entirely, don't loop.
+        if (ev && (ev.error === "not-allowed" || ev.error === "service-not-allowed")) {
+          stopVoiceEngine();
+          toggle.classList.remove("solid");
+          toggle.querySelector("span").textContent = "Enable hands-free — say “Jarvis”";
+          setStatus("Microphone blocked. Allow mic access, then try again.");
+          return;
+        }
+        // Transient errors (no-speech, network, aborted): back off, then retry.
+        eng.backoff = Math.min((eng.backoff || 300) * 2, 5000);
+      };
       r.onend = () => {
         if ((eng.mode === "waiting" || eng.mode === "capturing") && !eng.speaking) {
           clearTimeout(eng.restart);
-          eng.restart = setTimeout(startWaiting, 350); // Chrome ends continuous sessions periodically
+          // Chrome ends continuous sessions periodically; restart with backoff.
+          const delay = eng.backoff || 350;
+          eng.restart = setTimeout(() => { eng.backoff = 300; startWaiting(); }, delay);
         }
       };
       try { r.start(); } catch (e) {}

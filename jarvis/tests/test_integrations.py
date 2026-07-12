@@ -71,3 +71,29 @@ def test_live_and_connected_tools_registered():
 
     for name in ["weather", "news", "calendar_list_events", "spotify_now_playing", "gmail_draft"]:
         assert registry.get(name) is not None
+
+
+async def test_connected_tool_without_link_returns_friendly_message():
+    """A connected tool with no linked account should return a helpful message
+    (telling the user to connect it), not raise or make a network call."""
+    from server.integrations.context import reset_current_user, set_current_user
+    from server.tools import connected_tools  # noqa: F401
+    from server.tools.base import registry
+
+    token = set_current_user("user-with-no-connections")
+    try:
+        result = await registry.execute("calendar_list_events", {"days": 7})
+    finally:
+        reset_current_user(token)
+    assert result.ok  # returns a string, does not error
+    assert "connect" in result.output.lower()
+
+
+async def test_connected_tool_without_user_context():
+    from server.tools import connected_tools  # noqa: F401
+    from server.tools.base import registry
+
+    # No user bound in the contextvar → clear message, no crash.
+    result = await registry.execute("spotify_now_playing", {})
+    assert result.ok
+    assert "no user" in result.output.lower() or "connect" in result.output.lower()

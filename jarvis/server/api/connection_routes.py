@@ -1,6 +1,8 @@
 """Account-connection routes: OAuth authorize, callback, list, disconnect."""
 from __future__ import annotations
 
+import html
+
 import httpx
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -90,16 +92,20 @@ async def _fetch_label(provider: str, access_token: str) -> str:
 
 
 def _result_page(title: str, message: str) -> HTMLResponse:
-    html = f"""<!doctype html><html><head><meta charset="utf-8"><title>{title}</title>
+    # title/message may contain provider- or attacker-supplied text (e.g. the
+    # OAuth `error` query param), so escape before interpolating into HTML.
+    safe_title = html.escape(title)
+    safe_message = html.escape(message)
+    page = f"""<!doctype html><html><head><meta charset="utf-8"><title>{safe_title}</title>
 <style>body{{font-family:system-ui,sans-serif;background:#17130d;color:#eee4d2;
 display:grid;place-items:center;height:100vh;margin:0;text-align:center}}
 .card{{max-width:420px;padding:40px}}h1{{color:#d6af69;font-weight:500}}
 a{{color:#d6af69}}</style></head><body><div class="card">
-<h1>{title}</h1><p>{message}</p>
+<h1>{safe_title}</h1><p>{safe_message}</p>
 <p><a href="/">Return to JARVIS →</a></p>
 <script>setTimeout(function(){{try{{window.close()}}catch(e){{}}}}, 2500)</script>
 </div></body></html>"""
-    return HTMLResponse(html)
+    return HTMLResponse(page)
 
 
 @router.get("/{provider}/callback")
