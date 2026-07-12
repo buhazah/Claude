@@ -18,6 +18,9 @@ const ICONS = {
   trash: "M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
   play: "M5 3l14 9-14 9z",
   search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35",
+  speaker: "M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14",
+  speakermute: "M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6",
+  micmute: "M1 1l22 22M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-6-.34M17 16.95A7 7 0 0 1 5 12v-1M12 19v3",
 };
 
 function icon(name, size = 20) {

@@ -7,17 +7,31 @@ turns into a 503 so the UI can fall back to browser SpeechSynthesis.
 """
 from __future__ import annotations
 
+import re
+
 import httpx
 
 from ..config import settings
+
+# Playback tuning (matches the desired natural, measured delivery).
+TTS_SPEED = 0.82          # ElevenLabs voice_settings.speed (0.7–1.2)
+SENTENCE_PAUSE = "0.25s"  # inserted between sentences as an ElevenLabs break
 
 
 class VoiceNotConfigured(RuntimeError):
     pass
 
 
+def _with_sentence_pauses(text: str) -> str:
+    """Insert a 250ms break between sentences for a calmer cadence."""
+    parts = re.split(r"(?<=[.!?؟。])\s+", text.strip())
+    parts = [p for p in parts if p]
+    return f' <break time="{SENTENCE_PAUSE}" /> '.join(parts) if len(parts) > 1 else text
+
+
 async def synthesize(text: str, voice_id: str | None = None) -> bytes:
-    """Return MP3 audio bytes for `text` using ElevenLabs."""
+    """Return MP3 audio bytes for `text` using ElevenLabs, at the tuned
+    speed with short pauses between sentences."""
     if not settings.elevenlabs_api_key:
         raise VoiceNotConfigured("ELEVENLABS_API_KEY is not set")
     voice = voice_id or settings.elevenlabs_voice_id
@@ -33,9 +47,12 @@ async def synthesize(text: str, voice_id: str | None = None) -> bytes:
                 "accept": "audio/mpeg",
             },
             json={
-                "text": text[:5000],
+                "text": _with_sentence_pauses(text[:5000]),
                 "model_id": settings.elevenlabs_model,
-                "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.2},
+                "voice_settings": {
+                    "stability": 0.5, "similarity_boost": 0.8,
+                    "style": 0.2, "speed": TTS_SPEED,
+                },
             },
         )
         resp.raise_for_status()

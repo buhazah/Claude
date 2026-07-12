@@ -74,6 +74,7 @@
     checkSystem();
     setupScreenVision();
     setupComputerControl();
+    setupVoiceToggles();
     navigate("dashboard");
   }
 
@@ -470,15 +471,17 @@
   }
 
   let sending = false;
-  async function sendMessage() {
+  async function sendMessage(overrideText) {
     if (sending) return;
     const input = document.getElementById("composer-input");
-    const text = input.value.trim();
+    const text = (overrideText != null ? overrideText : (input ? input.value : "")).trim();
     if (!text) return;
-    const agent = document.getElementById("agent-select").value;
-    input.value = ""; input.style.height = "auto";
+    if (voiceOut.on) unlockAudio(); // this send is a user gesture — allow auto-play
+    const agent = document.getElementById("agent-select") ? document.getElementById("agent-select").value : "";
+    if (overrideText == null && input) { input.value = ""; input.style.height = "auto"; }
     sending = true;
-    document.getElementById("send-btn").disabled = true;
+    const sendBtn = document.getElementById("send-btn");
+    if (sendBtn) sendBtn.disabled = true;
     addMessage("user", text);
     const box = document.getElementById("messages");
     const thinking = el(`<div class="msg assistant"><div class="msg-avatar">J</div><div><div class="thinking"><span class="spinner"></span><span id="think-text">Thinking…</span></div><div id="trace-box"></div></div></div>`);
@@ -502,15 +505,27 @@
           handleChatEvent(ev, thinking, (b, a) => { finalBody = b; finalAgent = a; });
         }
       }
-      thinking.remove();
-      const target = addMessage("assistant", finalBody || "(no response)", finalAgent);
+      const body = finalBody || "(no response)";
+      // Voice output: when the speaker is on, hold the text until the audio
+      // starts, so what you see and what you hear stay in sync.
+      if (voiceOut.on && finalBody) {
+        let shown = false;
+        const reveal = () => { if (shown) return; shown = true; thinking.remove(); addMessage("assistant", body, finalAgent); };
+        pauseListeningWhileSpeaking(true);
+        speak(body, reveal).then(() => { reveal(); pauseListeningWhileSpeaking(false); });
+        setTimeout(reveal, 5000); // safety: never leave the reply hidden
+      } else {
+        thinking.remove();
+        addMessage("assistant", body, finalAgent);
+      }
       if (!state.conversation) renderConvos();
     } catch (e) {
       thinking.remove();
       addMessage("assistant", `⚠️ ${e.message}`);
     } finally {
       sending = false;
-      document.getElementById("send-btn").disabled = false;
+      const sb = document.getElementById("send-btn");
+      if (sb) sb.disabled = false;
     }
   }
 
@@ -739,15 +754,22 @@
     Urdu: "ur-PK", Turkish: "tr-TR", Russian: "ru-RU", Chinese: "zh-CN",
     Japanese: "ja-JP", Korean: "ko-KR", Dutch: "nl-NL",
   };
+  // Output tuning (matches the ElevenLabs speed + browser rate/pitch specs).
+  const SPEECH_RATE = 0.82, SPEECH_PITCH = 0.6, SENTENCE_GAP_MS = 250;
   let voiceAudio = null;
   function unlockAudio() {
     if (!voiceAudio) voiceAudio = new Audio();
     try { voiceAudio.src = SILENT_WAV; voiceAudio.play().catch(() => {}); } catch (e) {}
   }
 
-  async function speak(text) {
+  // Speak `text`. Calls onStart() the moment audio begins (so callers can
+  // reveal the text in sync). Resolves when playback finishes. No-op if the
+  // speaker toggle is off.
+  async function speak(text, onStart) {
+    if (!voiceOut.on) { onStart && onStart(); return; }
     const clean = cleanForSpeech(text);
-    if (!clean) return;
+    if (!clean) { onStart && onStart(); return; }
+    // Preferred path: ElevenLabs (speed + sentence pauses applied server-side).
     try {
       const res = await API.tts({ text: clean });
       if (res.ok) {
@@ -755,25 +777,145 @@
         if (blob && blob.size > 0) {
           if (!voiceAudio) voiceAudio = new Audio();
           voiceAudio.src = URL.createObjectURL(blob);
+          voiceAudio.onplaying = () => onStart && onStart();
           await voiceAudio.play();
           return new Promise((r) => (voiceAudio.onended = r));
         }
-      } else {
-        let detail = "";
-        try { detail = (await res.json()).detail || ""; } catch {}
-        toast("Voice: " + (detail || "TTS unavailable (" + res.status + ")") + " — using browser voice.", 5000);
+      } else if (res.status !== 503) {
+        let detail = ""; try { detail = (await res.json()).detail || ""; } catch {}
+        toast("Voice: " + (detail || "TTS error " + res.status) + " — using browser voice.", 5000);
       }
     } catch (e) { /* fall through to browser speech */ }
-    // Fallback: browser speech synthesis, in the user's chosen language.
-    if (window.speechSynthesis) {
-      const u = new SpeechSynthesisUtterance(clean);
-      const langName = (state.user.preferences || {}).response_language || "English";
-      u.lang = SPEECH_LANG[langName] || "en-US";
-      const match = window.speechSynthesis.getVoices().find((v) => v.lang && v.lang.startsWith(u.lang.split("-")[0]));
-      if (match) u.voice = match;
-      window.speechSynthesis.speak(u);
-      return new Promise((r) => (u.onend = r));
-    }
+    return browserSpeak(clean, onStart);
+  }
+
+  // Browser SpeechSynthesis fallback — honors rate, pitch, and a 250ms pause
+  // between sentences (spoken sentence-by-sentence).
+  function browserSpeak(clean, onStart) {
+    if (!window.speechSynthesis) { onStart && onStart(); return; }
+    const langName = (state.user.preferences || {}).response_language || "English";
+    const lang = SPEECH_LANG[langName] || "en-US";
+    const voice = window.speechSynthesis.getVoices().find((v) => v.lang && v.lang.startsWith(lang.split("-")[0]));
+    const sentences = clean.split(/(?<=[.!?؟。])\s+/).filter(Boolean);
+    let started = false;
+    return new Promise((resolve) => {
+      let i = 0;
+      const next = () => {
+        if (i >= sentences.length) return resolve();
+        const u = new SpeechSynthesisUtterance(sentences[i++]);
+        u.lang = lang; u.rate = SPEECH_RATE; u.pitch = SPEECH_PITCH;
+        if (voice) u.voice = voice;
+        u.onstart = () => { if (!started) { started = true; onStart && onStart(); } };
+        u.onend = () => setTimeout(next, SENTENCE_GAP_MS);
+        u.onerror = () => setTimeout(next, SENTENCE_GAP_MS);
+        window.speechSynthesis.speak(u);
+      };
+      next();
+    });
+  }
+
+  // ================= Global voice I/O (top-bar mic + speaker) =================
+  const voiceOut = { on: false };                       // spoken replies
+  const voiceIn = { on: false, rec: null, listening: false, speaking: false, restart: null };
+  const SR_CTOR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function loadVoicePrefs() {
+    const saved = localStorage.getItem("jarvis_speaker");
+    voiceOut.on = saved === null ? true : saved === "1"; // spoken replies on by default
+    updateSpeakerBtn();
+    // Mic is opt-in each session (privacy): default off, not auto-restored.
+    updateMicBtn();
+  }
+
+  function updateSpeakerBtn() {
+    const b = document.getElementById("speaker-toggle");
+    if (!b) return;
+    b.classList.toggle("active", voiceOut.on);
+    b.classList.toggle("muted", !voiceOut.on);
+    b.querySelector("i").style.cssText = icon(voiceOut.on ? "speaker" : "speakermute", 18);
+    b.title = voiceOut.on ? "Spoken replies: ON" : "Spoken replies: OFF";
+  }
+  function updateMicBtn() {
+    const b = document.getElementById("mic-toggle");
+    if (!b) return;
+    b.classList.toggle("active", voiceIn.on);
+    b.classList.toggle("listening", voiceIn.on && voiceIn.listening && !voiceIn.speaking);
+    b.classList.toggle("muted", !voiceIn.on);
+    b.querySelector("i").style.cssText = icon(voiceIn.on ? "mic" : "micmute", 18);
+    b.title = voiceIn.on ? "Always-on voice: ON (tap to mute)" : "Always-on voice: OFF";
+    document.body.classList.toggle("listening-active", voiceIn.on && voiceIn.listening && !voiceIn.speaking);
+  }
+
+  function setupVoiceToggles() {
+    const spk = document.getElementById("speaker-toggle");
+    const mic = document.getElementById("mic-toggle");
+    if (spk) spk.onclick = () => {
+      unlockAudio();
+      voiceOut.on = !voiceOut.on;
+      localStorage.setItem("jarvis_speaker", voiceOut.on ? "1" : "0");
+      updateSpeakerBtn();
+      toast(voiceOut.on ? "Spoken replies on" : "Spoken replies off", 1600);
+    };
+    if (mic) mic.onclick = () => {
+      if (!SR_CTOR) { toast("Voice input needs Chrome or Edge.", 4000); return; }
+      unlockAudio();
+      voiceIn.on ? stopAlwaysOn() : startAlwaysOn();
+    };
+    loadVoicePrefs();
+  }
+
+  function startAlwaysOn() {
+    voiceIn.on = true;
+    if (state.view !== "chat") navigate("chat");
+    startAlwaysOnRecog();
+    updateMicBtn();
+    toast("Listening… just speak. Tap the mic to mute.", 2600);
+  }
+  function stopAlwaysOn() {
+    voiceIn.on = false; voiceIn.listening = false;
+    clearTimeout(voiceIn.restart);
+    try { voiceIn.rec && voiceIn.rec.abort(); } catch (e) {}
+    updateMicBtn();
+  }
+
+  function pauseListeningWhileSpeaking(on) {
+    voiceIn.speaking = on;
+    if (on) { try { voiceIn.rec && voiceIn.rec.stop(); } catch (e) {} }
+    else if (voiceIn.on) { startAlwaysOnRecog(); }
+    updateMicBtn();
+  }
+
+  function startAlwaysOnRecog() {
+    if (!voiceIn.on || voiceIn.speaking) return;
+    try { voiceIn.rec && voiceIn.rec.abort(); } catch (e) {}
+    const langName = (state.user.preferences || {}).response_language || "English";
+    const r = new SR_CTOR();
+    r.lang = SPEECH_LANG[langName] || "en-US";
+    r.continuous = true; r.interimResults = true;
+    voiceIn.rec = r;
+    r.onstart = () => { voiceIn.listening = true; updateMicBtn(); };
+    r.onresult = (ev) => {
+      let finalText = "";
+      for (const res of ev.results) if (res.isFinal) finalText += res[0].transcript;
+      finalText = finalText.trim();
+      if (finalText.replace(/[^\p{L}\p{N}]/gu, "").length >= 2 && !sending && !voiceIn.speaking) {
+        sendMessage(finalText); // auto-send the detected utterance
+      }
+    };
+    r.onerror = (e) => {
+      if (e && (e.error === "not-allowed" || e.error === "service-not-allowed")) {
+        stopAlwaysOn();
+        toast("Microphone blocked. Allow mic access to use always-on voice.", 5000);
+      }
+    };
+    r.onend = () => {
+      voiceIn.listening = false; updateMicBtn();
+      if (voiceIn.on && !voiceIn.speaking) {
+        clearTimeout(voiceIn.restart);
+        voiceIn.restart = setTimeout(startAlwaysOnRecog, 350);
+      }
+    };
+    try { r.start(); } catch (e) {}
   }
 
   // ---- Agents ----
