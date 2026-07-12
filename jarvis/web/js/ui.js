@@ -64,10 +64,21 @@ function timeAgo(iso) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+// Remove any internal tool-call syntax a model may have leaked into its reply
+// (e.g. <function_calls>…</function_calls> or a bare {"tool":…} object).
+function stripToolArtifacts(text) {
+  let t = String(text == null ? "" : text);
+  t = t.replace(/<function_calls>[\s\S]*?<\/function_calls>/gi, " ");
+  t = t.replace(/<\/?(?:function_calls|function_call|function_results|invoke|parameter)\b[^>]*>/gi, " ");
+  t = t.replace(/```(?:json)?\s*\{[\s\S]*?"(?:tool|final)"[\s\S]*?\}\s*```/gi, " ");
+  t = t.replace(/\{[^{}]*?"(?:tool|final)"\s*:[\s\S]*?\}/g, " ");
+  return t;
+}
+
 // Strip markdown symbols, emojis, and URLs so text-to-speech reads the words
 // only — not "asterisk asterisk" or emoji/pictograph characters.
 function cleanForSpeech(text) {
-  let t = String(text == null ? "" : text);
+  let t = stripToolArtifacts(String(text == null ? "" : text));
   t = t.replace(/```[\s\S]*?```/g, " ");          // code blocks
   t = t.replace(/`([^`]+)`/g, "$1");               // inline code
   t = t.replace(/https?:\/\/\S+/g, " ");           // urls
@@ -84,7 +95,7 @@ function cleanForSpeech(text) {
 
 // Minimal, safe markdown: bold, italics, inline code, code blocks, lists.
 function mdToHtml(text) {
-  let h = esc(text);
+  let h = esc(stripToolArtifacts(text));
   h = h.replace(/```([\s\S]*?)```/g, (_, c) => `<pre style="background:var(--input-bg);padding:12px;border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;margin:8px 0">${c.trim()}</pre>`);
   h = h.replace(/`([^`]+)`/g, '<code style="background:var(--input-bg);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:0.9em">$1</code>');
   h = h.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");

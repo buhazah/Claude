@@ -27,6 +27,37 @@ log = logging.getLogger("jarvis.agents")
 MAX_STEPS = 8
 
 _TOOL_CALL_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+# Some models wrap the call in <function_calls>…</function_calls> or emit the
+# raw object instead of a fenced block; catch those too so we don't leak them.
+_FUNC_TAG_RE = re.compile(r"<function_calls>\s*(\[.*?\]|\{.*?\})\s*</function_calls>", re.DOTALL | re.IGNORECASE)
+_BARE_OBJ_RE = re.compile(r'\{[^{}]*?"(?:tool|final)"\s*:.*?\}', re.DOTALL)
+# Tags/markup that must never appear in a user-facing answer.
+_ARTIFACT_RE = re.compile(
+    r"</?function_calls>|</?function_call>|</?function_results>|"
+    r"<invoke\b[^>]*>|</invoke>|<parameter\b[^>]*>|</parameter>",
+    re.IGNORECASE,
+)
+
+
+def _try_action(raw: str) -> dict | None:
+    try:
+        obj = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(obj, list) and obj and isinstance(obj[0], dict):
+        obj = obj[0]
+    if isinstance(obj, dict) and ("tool" in obj or "final" in obj):
+        return obj
+    return None
+
+
+def _clean_final(text: str) -> str:
+    """Strip any leaked tool-call syntax from a user-facing answer."""
+    text = _TOOL_CALL_RE.sub("", text)
+    text = _FUNC_TAG_RE.sub("", text)
+    text = _ARTIFACT_RE.sub("", text)
+    text = _BARE_OBJ_RE.sub("", text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 @dataclass
@@ -55,13 +86,22 @@ def _tool_instructions(tool_names: list[str]) -> str:
 
 
 def _extract_action(text: str) -> dict | None:
+    # 1. Fenced ```json { ... } ``` block (the instructed format).
     for match in _TOOL_CALL_RE.finditer(text):
-        try:
-            obj = json.loads(match.group(1))
-            if isinstance(obj, dict) and ("tool" in obj or "final" in obj):
-                return obj
-        except json.JSONDecodeError:
-            continue
+        obj = _try_action(match.group(1))
+        if obj:
+            return obj
+    # 2. <function_calls> … </function_calls> wrapper (list or object).
+    m = _FUNC_TAG_RE.search(text)
+    if m:
+        obj = _try_action(m.group(1))
+        if obj:
+            return obj
+    # 3. A bare {"tool": …} / {"final": …} object anywhere in the text.
+    for m in _BARE_OBJ_RE.finditer(text):
+        obj = _try_action(m.group(0))
+        if obj:
+            return obj
     return None
 
 
@@ -178,6 +218,8 @@ class Agent:
             final = f"The {self.defn.name} could not complete the task: {exc}"
         finally:
             reset_current_user(ctx_token)
+
+        final = _clean_final(final)  # never surface tool-call syntax to the user
 
         run.status = "failed" if error else "success"
         run.plan = [s.thought for s in steps if s.thought]

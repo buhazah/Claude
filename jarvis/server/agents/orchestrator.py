@@ -120,17 +120,16 @@ class Orchestrator:
         history = history or []
         memory_context = await memory_manager.context_block(session, user_id, request)
 
-        # Honor the user's preferred response language (e.g. Arabic), so the
-        # answer — and therefore the spoken voice — is in that language.
+        # Always answer in the user's chosen response language (default English),
+        # regardless of the language they typed/spoke in — so the reply and the
+        # spoken voice are consistently in that language.
         user = await session.get(User, user_id)
-        lang = ((user.preferences or {}).get("response_language") if user else "") or ""
-        if lang and lang.strip().lower() != "english":
-            directive = (
-                f"CRITICAL: Write your entire response to the user in {lang}, "
-                "regardless of the language they use. Keep any code or proper "
-                "nouns as-is."
-            )
-            memory_context = directive + ("\n\n" + memory_context if memory_context else "")
+        lang = ((user.preferences or {}).get("response_language") if user else "") or "English"
+        directive = (
+            f"CRITICAL: Write your entire response to the user in {lang}, "
+            "regardless of the language they use. Keep code and proper nouns as-is."
+        )
+        memory_context = directive + ("\n\n" + memory_context if memory_context else "")
 
         if forced_agent and forced_agent in AGENTS:
             plan = {"mode": "simple", "agent": forced_agent, "reason": "user-selected agent", "tasks": []}
