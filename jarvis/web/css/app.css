@@ -402,6 +402,29 @@ td .badge { font-size: 11px; padding: 2px 9px; border-radius: 100px; }
 .cmd-result:hover, .cmd-result.sel { background: var(--hover); color: var(--text); }
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--panel-solid); border: 1px solid var(--gold); color: var(--text); padding: 13px 22px; border-radius: 100px; font-size: 14px; z-index: 200; box-shadow: 0 14px 44px rgba(0, 0, 0, 0.4); animation: fadeUp 0.2s; max-width: 90%; }
 
+/* ------------------------------------------------- screen-vision eye + modal */
+#screen-eye {
+  position: fixed; right: 22px; bottom: 22px; z-index: 150;
+  width: 54px; height: 54px; border-radius: 50%; font-size: 22px;
+  background: radial-gradient(circle at 40% 30%, var(--gold), var(--gold-deep));
+  color: var(--on-accent); box-shadow: 0 8px 26px rgba(214, 175, 105, 0.4);
+  display: grid; place-items: center; transition: transform 0.15s;
+}
+#screen-eye:hover { transform: scale(1.06); }
+#screen-eye.busy { animation: orbBreathe 1.2s ease-in-out infinite; cursor: wait; }
+#screen-modal {
+  position: fixed; inset: 0; z-index: 160; background: rgba(8, 6, 4, 0.6);
+  display: grid; place-items: center; padding: 20px; animation: fadeUp 0.15s;
+}
+.sm-card {
+  width: min(560px, 94%); background: var(--panel-solid); border: 1px solid var(--gold);
+  border-radius: var(--radius); overflow: hidden; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+}
+.sm-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); color: var(--gold-soft); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+.sm-head button { color: var(--text-dim); font-size: 16px; }
+.sm-head button:hover { color: var(--text); }
+.sm-body { padding: 20px; font-size: 15px; line-height: 1.6; color: var(--text); max-height: 60vh; overflow-y: auto; }
+
 /* --------------------------------------------------------------- icons */
 i[data-i] { background: currentColor; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
 

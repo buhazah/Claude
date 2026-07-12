@@ -1,0 +1,28 @@
+{
+  "name": "jarvis-desktop",
+  "version": "1.0.0",
+  "description": "JARVIS desktop companion — a floating, always-on-top window that can see your screen.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "author": "JARVIS",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "ai.jarvis.desktop",
+    "productName": "JARVIS",
+    "files": ["main.js", "preload.js", "package.json"],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  }
+}

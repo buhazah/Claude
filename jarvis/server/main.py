@@ -52,13 +52,13 @@ app.add_middleware(
 # Routers
 from .api import (  # noqa: E402
     agent_routes, analytics_routes, auth_routes, chat_routes, connection_routes,
-    memory_routes, project_routes, voice_routes, workflow_routes,
+    memory_routes, project_routes, vision_routes, voice_routes, workflow_routes,
 )
 
 for module in (
     auth_routes, chat_routes, agent_routes, memory_routes,
     project_routes, workflow_routes, voice_routes, analytics_routes,
-    connection_routes,
+    connection_routes, vision_routes,
 ):
     app.include_router(module.router)
 

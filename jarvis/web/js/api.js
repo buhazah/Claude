@@ -91,6 +91,8 @@ const API = (() => {
     // voice
     voiceConfig: () => json("/api/voice/config"),
     tts: (b) => raw("/api/voice/tts", { method: "POST", body: b }),
+    // vision (desktop screen analysis)
+    analyzeScreen: (image, prompt) => json("/api/vision/analyze", { method: "POST", body: { image, prompt } }),
     // connections
     connections: () => json("/api/connections"),
     connectAuthorize: (provider) => json(`/api/connections/${provider}/authorize`),

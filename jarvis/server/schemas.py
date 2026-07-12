@@ -181,4 +181,9 @@ class VoiceIn(BaseModel):
     voice_id: str | None = None
 
 
+class VisionIn(BaseModel):
+    image: str = Field(description="Data URL or base64 image (e.g. a screenshot)")
+    prompt: str = Field(default="", max_length=2000)
+
+
 TokenOut.model_rebuild()

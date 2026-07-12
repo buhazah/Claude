@@ -72,7 +72,76 @@
     document.getElementById("user-name").textContent = state.user.name || state.user.email.split("@")[0];
     try { state.agents = (await API.agents()).agents; } catch { state.agents = []; }
     checkSystem();
+    setupScreenVision();
     navigate("dashboard");
+  }
+
+  // ---- Screen vision: "let JARVIS look at my screen" ----------------------
+  function screenCaptureAvailable() {
+    return !!(window.jarvisDesktop && window.jarvisDesktop.isDesktop) ||
+      !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  }
+
+  function setupScreenVision() {
+    if (!screenCaptureAvailable()) return;
+    if (window.jarvisDesktop && window.jarvisDesktop.isDesktop) document.body.classList.add("is-desktop");
+    if (document.getElementById("screen-eye")) return;
+    const btn = el(`<button id="screen-eye" title="Let JARVIS look at your screen">👁</button>`);
+    document.body.appendChild(btn);
+    btn.onclick = lookAtScreen;
+  }
+
+  async function captureScreen() {
+    if (window.jarvisDesktop && window.jarvisDesktop.isDesktop) {
+      return window.jarvisDesktop.captureScreen(); // instant, silent
+    }
+    // Browser fallback: the user picks a screen/window to share.
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    await video.play();
+    await new Promise((r) => setTimeout(r, 200));
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    stream.getTracks().forEach((t) => t.stop());
+    return canvas.toDataURL("image/png");
+  }
+
+  let looking = false;
+  async function lookAtScreen() {
+    if (looking) return;
+    looking = true;
+    const btn = document.getElementById("screen-eye");
+    if (btn) btn.classList.add("busy");
+    try {
+      unlockAudio();
+      toast("Looking at your screen…", 2000);
+      const img = await captureScreen();
+      if (!img) { toast("Couldn't capture the screen."); return; }
+      const { text } = await API.analyzeScreen(img, "");
+      showScreenResult(text);
+      try { await speak(text); } catch (e) {}
+    } catch (e) {
+      toast(e && e.message ? e.message : "Screen analysis failed.", 4000);
+    } finally {
+      looking = false;
+      const b = document.getElementById("screen-eye");
+      if (b) b.classList.remove("busy");
+    }
+  }
+
+  function showScreenResult(text) {
+    const old = document.getElementById("screen-modal");
+    if (old) old.remove();
+    const m = el(
+      `<div id="screen-modal"><div class="sm-card">` +
+      `<div class="sm-head"><span>👁 What JARVIS sees</span><button id="sm-close">✕</button></div>` +
+      `<div class="sm-body">${mdToHtml(text)}</div></div></div>`
+    );
+    document.body.appendChild(m);
+    document.getElementById("sm-close").onclick = () => m.remove();
+    m.onclick = (e) => { if (e.target === m) m.remove(); };
   }
 
   async function checkSystem() {
