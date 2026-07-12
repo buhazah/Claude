@@ -13,6 +13,9 @@
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3"
   },
+  "optionalDependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.0"
+  },
   "build": {
     "appId": "ai.jarvis.desktop",
     "productName": "JARVIS",

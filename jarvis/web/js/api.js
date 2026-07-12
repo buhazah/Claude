@@ -93,6 +93,9 @@ const API = (() => {
     tts: (b) => raw("/api/voice/tts", { method: "POST", body: b }),
     // vision (desktop screen analysis)
     analyzeScreen: (image, prompt) => json("/api/vision/analyze", { method: "POST", body: { image, prompt } }),
+    // computer control
+    computerConfig: () => json("/api/computer/config"),
+    computerStep: (messages, width, height) => json("/api/computer/step", { method: "POST", body: { messages, width, height } }),
     // connections
     connections: () => json("/api/connections"),
     connectAuthorize: (provider) => json(`/api/connections/${provider}/authorize`),

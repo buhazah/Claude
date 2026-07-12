@@ -9,6 +9,11 @@ contextBridge.exposeInMainWorld("jarvisDesktop", {
   hide: () => ipcRenderer.invoke("win-hide"),
   close: () => ipcRenderer.invoke("win-close"),
   setPinned: (on) => ipcRenderer.invoke("win-pin", on),
+  // Computer control (only functional if @nut-tree-fork/nut-js is installed).
+  controlAvailable: () => ipcRenderer.invoke("control-available"),
+  captureDisplay: () => ipcRenderer.invoke("capture-display"),
+  execAction: (action) => ipcRenderer.invoke("exec-action", action),
+  onStop: (cb) => ipcRenderer.on("jarvis-stop", () => cb()),
 });
 
 // Inject a draggable top strip + window buttons into whatever page loads.

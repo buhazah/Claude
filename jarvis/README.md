@@ -134,6 +134,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design.
 | [Environment variables](docs/ENVIRONMENT.md) | Every setting and its default |
 | [Integrations](docs/INTEGRATIONS.md) | Weather, news, and connecting Calendar / Gmail / Spotify |
 | [Desktop app](docs/DESKTOP.md) | Floating always-on-top companion + screen vision (Electron) |
+| [Computer control](docs/COMPUTER_USE.md) | Let JARVIS drive the mouse/keyboard (opt-in, supervised) |
 | [Database schema](docs/DATABASE.md) | Tables, columns, relationships |
 | [Security](docs/SECURITY.md) | Auth, sandboxing, threat model, hardening |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and fixes |

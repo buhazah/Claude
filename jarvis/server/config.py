@@ -72,6 +72,14 @@ class Settings:
     shell_timeout_seconds: int = int(os.environ.get("JARVIS_SHELL_TIMEOUT", "30"))
     enable_shell_tool: bool = _bool("JARVIS_ENABLE_SHELL_TOOL", True)
 
+    # Computer use (desktop mouse/keyboard control) — OFF by default; it lets an
+    # agent act across the user's whole machine, so it is strictly opt-in.
+    enable_computer_use: bool = _bool("JARVIS_ENABLE_COMPUTER_USE", False)
+    computer_use_model: str = os.environ.get("JARVIS_COMPUTER_MODEL", "claude-haiku-4-5-20251001")
+    computer_use_beta: str = os.environ.get("JARVIS_COMPUTER_BETA", "computer-use-2025-01-24")
+    computer_use_tool: str = os.environ.get("JARVIS_COMPUTER_TOOL", "computer_20250124")
+    computer_use_max_steps: int = int(os.environ.get("JARVIS_COMPUTER_MAX_STEPS", "30"))
+
     # LLM providers — a provider is active when its key is present
     anthropic_api_key: str = os.environ.get("ANTHROPIC_API_KEY", "")
     openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")

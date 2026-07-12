@@ -73,7 +73,169 @@
     try { state.agents = (await API.agents()).agents; } catch { state.agents = []; }
     checkSystem();
     setupScreenVision();
+    setupComputerControl();
     navigate("dashboard");
+  }
+
+  // ---- Computer control: JARVIS drives the mouse/keyboard (desktop only) ---
+  // Loop: capture screen -> ask backend for next action -> execute natively ->
+  // repeat. Default supervised (confirm each action); big STOP; step cap.
+  const computer = { running: false, stop: false, supervised: true };
+
+  async function setupComputerControl() {
+    const desk = window.jarvisDesktop;
+    if (!(desk && desk.isDesktop)) return;              // desktop app only
+    let available = false, enabled = false;
+    try { available = await desk.controlAvailable(); } catch (e) {}
+    try { enabled = (await API.computerConfig()).enabled; } catch (e) {}
+    // Wire the emergency global-hotkey stop regardless.
+    try { desk.onStop(() => { computer.stop = true; }); } catch (e) {}
+    if (!available || !enabled || state.user.role !== "owner") {
+      // Show a disabled hint button explaining what's needed.
+      addControlButton(false, available, enabled);
+      return;
+    }
+    addControlButton(true);
+  }
+
+  function addControlButton(ready, available, enabled) {
+    if (document.getElementById("control-btn")) return;
+    const btn = el(`<button id="control-btn" title="Let JARVIS control your computer">🖱️</button>`);
+    document.body.appendChild(btn);
+    btn.onclick = () => {
+      if (!ready) {
+        const why = !available
+          ? "Install control support: in jarvis/desktop run `npm install` (it adds the input module)."
+          : !enabled
+          ? "Enable it on the server: set JARVIS_ENABLE_COMPUTER_USE=true in Render, then redeploy."
+          : "Computer control needs the owner account.";
+        toast(why, 6000);
+        return;
+      }
+      openControlPanel();
+    };
+  }
+
+  function openControlPanel() {
+    if (document.getElementById("control-panel")) return;
+    const p = el(`<div id="control-panel"><div class="cp-card">
+      <div class="cp-head"><span>🖱️ JARVIS computer control</span><button id="cp-x">✕</button></div>
+      <div class="cp-warn">JARVIS will move your mouse and type for you. Watch it, and stop anytime.
+        Emergency stop: <b>Ctrl+Shift+Esc</b>.</div>
+      <textarea id="cp-goal" rows="2" placeholder="What should JARVIS do? e.g. 'open Notepad and type my address'"></textarea>
+      <label class="cp-sup"><input type="checkbox" id="cp-supervised" checked> Ask me before each action (recommended)</label>
+      <div class="cp-row">
+        <button class="btn solid" id="cp-run">Start</button>
+        <button class="btn danger" id="cp-stop" disabled>■ STOP</button>
+      </div>
+      <div class="cp-log" id="cp-log"></div>
+    </div></div>`);
+    document.body.appendChild(p);
+    document.getElementById("cp-x").onclick = () => { computer.stop = true; p.remove(); };
+    document.getElementById("cp-run").onclick = () => runComputerTask();
+    document.getElementById("cp-stop").onclick = () => { computer.stop = true; cpLog("⏹ Stopping…"); };
+  }
+
+  function cpLog(msg) {
+    const box = document.getElementById("cp-log");
+    if (!box) return;
+    box.appendChild(el(`<div class="cp-line">${esc(msg)}</div>`));
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function stripDataUrl(u) { return u.includes(",") ? u.split(",")[1] : u; }
+  function imgBlock(dataUrl) {
+    return { type: "image", source: { type: "base64", media_type: "image/png", data: stripDataUrl(dataUrl) } };
+  }
+
+  async function runComputerTask() {
+    if (computer.running) return;
+    const goal = document.getElementById("cp-goal").value.trim();
+    if (!goal) { toast("Type what JARVIS should do first."); return; }
+    computer.running = true; computer.stop = false;
+    computer.supervised = document.getElementById("cp-supervised").checked;
+    document.getElementById("cp-run").disabled = true;
+    document.getElementById("cp-stop").disabled = false;
+    cpLog("▶ " + goal);
+    try {
+      const cap = await window.jarvisDesktop.captureDisplay();
+      if (!cap) { cpLog("Couldn't capture the screen."); return; }
+      const W = cap.width, H = cap.height;
+      let messages = [{ role: "user", content: [{ type: "text", text: goal }, imgBlock(cap.dataUrl)] }];
+      let cfg = {}; try { cfg = await API.computerConfig(); } catch (e) {}
+      const maxSteps = cfg.max_steps || 30;
+
+      for (let step = 0; step < maxSteps; step++) {
+        if (computer.stop) { cpLog("⏹ Stopped."); break; }
+        let res;
+        try { res = await API.computerStep(messages, W, H); }
+        catch (e) { cpLog("Error: " + e.message); break; }
+        messages.push({ role: "assistant", content: res.content });
+
+        const actions = (res.content || []).filter((b) => b.type === "tool_use");
+        const says = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ").trim();
+        if (says) cpLog("💬 " + says.slice(0, 200));
+
+        if (res.stop_reason !== "tool_use" || !actions.length) {
+          cpLog("✓ Done."); if (says) { try { await speak(says); } catch (e) {} } break;
+        }
+
+        const toolResults = [];
+        for (const act of actions) {
+          const a = act.input || {};
+          if (a.action !== "screenshot") cpLog("• " + describeAction(a));
+          if (computer.stop) { cpLog("⏹ Stopped."); break; }
+          if (computer.supervised && a.action !== "screenshot") {
+            const ok = await confirmAction(a);
+            if (!ok) { computer.stop = true; cpLog("⏹ You cancelled."); break; }
+          }
+          let shot;
+          if (a.action === "screenshot") {
+            shot = await window.jarvisDesktop.captureDisplay();
+          } else {
+            const r = await window.jarvisDesktop.execAction(a);
+            if (!r || !r.ok) cpLog("  ⚠ " + (r && r.error ? r.error : "action failed"));
+            await new Promise((s) => setTimeout(s, 700));
+            shot = await window.jarvisDesktop.captureDisplay();
+          }
+          toolResults.push({ type: "tool_result", tool_use_id: act.id, content: [imgBlock(shot.dataUrl)] });
+        }
+        if (computer.stop) break;
+        messages.push({ role: "user", content: toolResults });
+      }
+    } catch (e) {
+      cpLog("Error: " + (e.message || e));
+    } finally {
+      computer.running = false;
+      const run = document.getElementById("cp-run"), stop = document.getElementById("cp-stop");
+      if (run) run.disabled = false;
+      if (stop) stop.disabled = true;
+    }
+  }
+
+  function describeAction(a) {
+    switch (a.action) {
+      case "left_click": case "right_click": case "double_click": case "middle_click":
+        return a.action.replace("_", " ") + (a.coordinate ? ` at ${a.coordinate[0]},${a.coordinate[1]}` : "");
+      case "type": return `type "${(a.text || "").slice(0, 60)}"`;
+      case "key": return `press ${a.text}`;
+      case "scroll": return `scroll ${a.scroll_direction}`;
+      case "mouse_move": return `move to ${a.coordinate ? a.coordinate.join(",") : ""}`;
+      case "left_click_drag": return `drag to ${a.coordinate ? a.coordinate.join(",") : ""}`;
+      case "wait": return "wait";
+      default: return a.action;
+    }
+  }
+
+  function confirmAction(a) {
+    return new Promise((resolve) => {
+      const box = document.getElementById("cp-log");
+      const row = el(`<div class="cp-confirm">Do: <b>${esc(describeAction(a))}</b>?
+        <button class="btn solid cp-yes">Do it</button><button class="btn cp-no">Skip/Stop</button></div>`);
+      box.appendChild(row); box.scrollTop = box.scrollHeight;
+      row.querySelector(".cp-yes").onclick = () => { row.remove(); resolve(true); };
+      row.querySelector(".cp-no").onclick = () => { row.remove(); resolve(false); };
+    });
   }
 
   // ---- Screen vision: "let JARVIS look at my screen" ----------------------
