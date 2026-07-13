@@ -84,6 +84,24 @@ if WEB_DIR.exists():
     async def index():
         return FileResponse(str(WEB_DIR / "index.html"))
 
+    # PWA files must be served from the site root: a service worker only
+    # controls pages within its own path scope, and the manifest is referenced
+    # relative to root. (Everything else lives under /static.)
+    @app.get("/sw.js")
+    async def service_worker():
+        return FileResponse(
+            str(WEB_DIR / "sw.js"),
+            media_type="application/javascript",
+            headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
+        )
+
+    @app.get("/manifest.webmanifest")
+    async def manifest():
+        return FileResponse(
+            str(WEB_DIR / "manifest.webmanifest"),
+            media_type="application/manifest+json",
+        )
+
 
 def run() -> None:
     import uvicorn

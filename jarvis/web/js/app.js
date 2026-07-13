@@ -8,10 +8,47 @@
     setupTheme();
     setupAuth();
     setupShell();
+    registerServiceWorker();
     if (API.isAuthed()) {
       try { await enterApp(); } catch { showAuth(); }
     } else showAuth();
   });
+
+  // Install the service worker so JARVIS is installable ("Add to Home Screen")
+  // and opens offline. Best-effort — never block the app if it fails.
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+  }
+
+  // Capture the browser's install prompt so we can offer an in-app install
+  // button (Chrome/Edge/Android). iOS has no prompt — we show a hint instead.
+  let deferredInstall = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstall = e;
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstall = null;
+    toast("JARVIS installed. Look for it on your home screen.", 4000);
+  });
+
+  function isStandalone() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  }
+
+  async function promptInstall() {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    try { await deferredInstall.userChoice; } catch (e) {}
+    deferredInstall = null;
+    RENDER.settings && navigate("settings");
+  }
 
   // ------------------------------------------------------------- theme
   function setupTheme() {
@@ -1317,11 +1354,16 @@
         </tbody></table>
         <p class="muted" style="margin-top:12px">Configure provider keys via environment variables. See docs/ENVIRONMENT.md.</p></div>
     </div>
+    <div class="panel" style="margin-top:16px" id="install-panel">
+      <div class="section-title">Install JARVIS as an app</div>
+      <div id="install-body" class="muted">Checking…</div>
+    </div>
     <div class="panel" style="margin-top:16px">
       <div class="section-title">Connections — your accounts</div>
       <div class="muted" style="margin-bottom:14px">Link accounts so JARVIS can act on them. Weather &amp; news work with no setup.</div>
       <div id="conn-list"><div class="muted">Loading…</div></div>
     </div>`;
+    renderInstallPanel();
     document.getElementById("save-account").onclick = async () => {
       const updated = await API.savePrefs({
         display_name: document.getElementById("set-name").value,
@@ -1336,6 +1378,27 @@
     loadUsageToday();
     renderConnections();
   };
+
+  function renderInstallPanel() {
+    const box = document.getElementById("install-body");
+    if (!box) return;
+    if (isStandalone()) {
+      box.innerHTML = "✓ You're already running JARVIS as an installed app.";
+      return;
+    }
+    if (deferredInstall) {
+      box.innerHTML = `<p style="margin-bottom:12px">Get a home-screen icon and a fullscreen, app-like experience.</p>
+        <button class="btn solid" id="install-btn"><i data-i="plus"></i>Install JARVIS</button>`;
+      injectIcons(box);
+      document.getElementById("install-btn").onclick = promptInstall;
+    } else if (isIOS()) {
+      box.innerHTML = `On iPhone/iPad: tap the <strong>Share</strong> button in Safari, then
+        <strong>“Add to Home Screen”</strong> to install JARVIS as an app.`;
+    } else {
+      box.innerHTML = `To install: open your browser menu and choose <strong>“Install app”</strong>
+        or <strong>“Add to Home Screen.”</strong> (Not available in every browser.)`;
+    }
+  }
 
   async function loadUsageToday() {
     const box = document.getElementById("usage-today");
