@@ -10,7 +10,7 @@
  *
  * Bump CACHE to force every client to drop old cached assets.
  */
-const CACHE = "jarvis-v1";
+const CACHE = "jarvis-v2";
 const SHELL = [
   "/",
   "/static/css/app.css",
