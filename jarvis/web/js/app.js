@@ -1303,6 +1303,9 @@
           <select id="set-lang">${LANGUAGES.map((l) => `<option ${((state.user.preferences || {}).response_language || "English") === l ? "selected" : ""}>${l}</option>`).join("")}</select></div>
         <div class="field"><label>Response length</label>
           <select id="set-length">${[["", "Default"], ["short", "Short — brief and to the point"], ["medium", "Medium — a short paragraph"], ["long", "Long — thorough and detailed"]].map(([val, lbl]) => `<option value="${val}" ${((state.user.preferences || {}).response_length || "") === val ? "selected" : ""}>${lbl}</option>`).join("")}</select></div>
+        <div class="field"><label>Daily spend limit (USD) — blocks new requests once reached; 0 = no limit</label>
+          <input id="set-costcap" type="number" min="0" step="0.5" value="${esc((state.user.preferences || {}).daily_cost_cap_usd || 0)}"/>
+          <div class="muted" id="usage-today" style="margin-top:6px">Loading usage…</div></div>
         <button class="btn solid" id="save-account">Save</button></div>
       <div class="panel"><div class="section-title">System status</div>
         <table><tbody>
@@ -1324,12 +1327,31 @@
         display_name: document.getElementById("set-name").value,
         response_language: document.getElementById("set-lang").value,
         response_length: document.getElementById("set-length").value,
+        daily_cost_cap_usd: Math.max(0, parseFloat(document.getElementById("set-costcap").value) || 0),
       });
       state.user = updated;
       toast("Saved — JARVIS will reply in " + updated.preferences.response_language + ".");
+      loadUsageToday();
     };
+    loadUsageToday();
     renderConnections();
   };
+
+  async function loadUsageToday() {
+    const box = document.getElementById("usage-today");
+    if (!box) return;
+    try {
+      const u = await API.usageToday();
+      const spent = `$${u.cost_usd.toFixed(4)} · ${fmt(u.tokens)} tokens`;
+      if (u.cost_cap_usd > 0) {
+        const pct = Math.min(100, Math.round((u.cost_usd / u.cost_cap_usd) * 100));
+        box.innerHTML = `Used in the last 24h: <strong>${spent}</strong> — ${pct}% of your $${u.cost_cap_usd.toFixed(2)} limit` +
+          (u.over_cap ? ` <span style="color:var(--bad)">(limit reached)</span>` : "");
+      } else {
+        box.innerHTML = `Used in the last 24h: <strong>${spent}</strong> — no limit set`;
+      }
+    } catch { box.textContent = ""; }
+  }
 
   async function renderConnections() {
     const box = document.getElementById("conn-list");

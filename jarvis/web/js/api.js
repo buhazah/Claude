@@ -113,6 +113,7 @@ const API = (() => {
     // analytics
     overview: () => json("/api/analytics/overview"),
     agentActivity: () => json("/api/analytics/agent-activity"),
+    usageToday: () => json("/api/analytics/usage-today"),
     status: () => json("/api/analytics/status"),
   };
 })();

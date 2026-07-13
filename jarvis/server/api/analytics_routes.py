@@ -84,6 +84,24 @@ async def agent_activity(
     }
 
 
+@router.get("/usage-today")
+async def usage_today(
+    user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
+):
+    """Rolling-24h spend for this user plus the caps that apply to them."""
+    from ..usage import effective_caps, usage_last_24h
+
+    cost, tokens = await usage_last_24h(session, user.id)
+    cost_cap, token_cap = effective_caps(user)
+    return {
+        "cost_usd": round(cost, 6),
+        "tokens": tokens,
+        "cost_cap_usd": cost_cap,
+        "token_cap": token_cap,
+        "over_cap": (cost_cap > 0 and cost >= cost_cap) or (token_cap > 0 and tokens >= token_cap),
+    }
+
+
 @router.get("/status")
 async def system_status(_: User = Depends(get_current_user)):
     from ..memory.embeddings import embedder

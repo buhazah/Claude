@@ -14,6 +14,7 @@ from ..agents.orchestrator import orchestrator
 from ..db import Conversation, Message, User, get_session, SessionLocal
 from ..schemas import ChatIn, ConversationOut, MessageOut
 from ..security import get_current_user
+from ..usage import check_spend_cap
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -59,6 +60,9 @@ async def chat_stream(
     if body.agent and body.agent not in AGENTS and body.agent != "orchestrator":
         raise HTTPException(status_code=400, detail=f"Unknown agent '{body.agent}'")
     forced = body.agent if body.agent and body.agent != "orchestrator" else None
+
+    # Refuse before doing any expensive work if the user is over their daily cap.
+    await check_spend_cap(session, user)
 
     convo = await _get_or_create_conversation(
         session, user, body.conversation_id, body.message, body.agent or "orchestrator"

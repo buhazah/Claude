@@ -63,6 +63,10 @@ class Settings:
     refresh_token_days: int = int(os.environ.get("JARVIS_REFRESH_TOKEN_DAYS", "30"))
     allow_registration: bool = _bool("JARVIS_ALLOW_REGISTRATION", True)
     rate_limit_per_minute: int = int(os.environ.get("JARVIS_RATE_LIMIT_PER_MINUTE", "120"))
+    # Instance-wide spend guardrails (rolling 24h). 0 = unlimited. Individual
+    # users can set a tighter personal cap in their preferences.
+    daily_cost_cap_usd: float = float(os.environ.get("JARVIS_DAILY_COST_CAP_USD", "0") or "0")
+    daily_token_cap: int = int(os.environ.get("JARVIS_DAILY_TOKEN_CAP", "0") or "0")
     cors_origins: tuple[str, ...] = tuple(
         o.strip() for o in os.environ.get("JARVIS_CORS_ORIGINS", "").split(",") if o.strip()
     )

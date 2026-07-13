@@ -25,6 +25,8 @@ endpoints then return a "configure a provider" message).
 | `JARVIS_REFRESH_TOKEN_DAYS` | `30` | Refresh-token lifetime. |
 | `JARVIS_ALLOW_REGISTRATION` | `true` | When `false`, only the first (owner) user can be created. |
 | `JARVIS_RATE_LIMIT_PER_MINUTE` | `120` | Per-client request cap (sliding window). |
+| `JARVIS_DAILY_COST_CAP_USD` | `0` (off) | Instance-wide LLM spend cap over a rolling 24h. Requests are refused with HTTP 429 once exceeded. Users may set a tighter personal cap in Settings. |
+| `JARVIS_DAILY_TOKEN_CAP` | `0` (off) | Instance-wide token cap over a rolling 24h (same enforcement as the cost cap). |
 | `JARVIS_CORS_ORIGINS` | *(empty = allow all)* | Comma-separated allowed origins. Set this in production. |
 
 ## Sandbox (filesystem / shell / code tools)
