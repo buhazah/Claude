@@ -21,6 +21,8 @@ const ICONS = {
   speaker: "M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14",
   speakermute: "M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6",
   micmute: "M1 1l22 22M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-6-.34M17 16.95A7 7 0 0 1 5 12v-1M12 19v3",
+  paperclip: "M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48",
+  stop: "M6 6h12v12H6z",
 };
 
 function icon(name, size = 20) {
@@ -101,6 +103,7 @@ function mdToHtml(text) {
   let h = esc(stripToolArtifacts(text));
   h = h.replace(/```([\s\S]*?)```/g, (_, c) => `<pre style="background:var(--input-bg);padding:12px;border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;margin:8px 0">${c.trim()}</pre>`);
   h = h.replace(/`([^`]+)`/g, '<code style="background:var(--input-bg);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:0.9em">$1</code>');
+  h = h.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--gold)">$1</a>');
   h = h.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   h = h.replace(/(^|\s)\*([^*\n]+)\*/g, "$1<em>$2</em>");
   h = h.replace(/^### (.+)$/gm, '<h4 style="margin:10px 0 4px">$1</h4>');

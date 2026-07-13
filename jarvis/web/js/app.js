@@ -416,8 +416,11 @@
         </div>
         <div class="chat-main">
           <div class="messages" id="messages"></div>
+          <div class="attach-chip" id="attach-chip" hidden></div>
           <div class="composer">
             <select class="agent-select" id="agent-select"></select>
+            <button class="icon-btn" id="upload-btn" title="Upload a file (UPLINK)"><i data-i="paperclip"></i></button>
+            <input type="file" id="file-input" hidden accept="image/*,.pdf,.txt,.md,.json,.csv,.docx,.rtf" />
             <textarea id="composer-input" rows="1" placeholder="Ask JARVIS anything…"></textarea>
             <button class="send-btn" id="send-btn"><i data-i="send"></i></button>
           </div>
@@ -431,7 +434,11 @@
       const input = document.getElementById("composer-input");
       input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; });
       input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-      document.getElementById("send-btn").onclick = sendMessage;
+      document.getElementById("send-btn").onclick = () => sendMessage();
+      const fileInput = document.getElementById("file-input");
+      document.getElementById("upload-btn").onclick = () => fileInput.click();
+      fileInput.onchange = () => { if (fileInput.files[0]) uploadFile(fileInput.files[0]); fileInput.value = ""; };
+      renderAttachChip();
     }
     renderConvos();
   };
@@ -466,8 +473,51 @@
     const node = el(`<div class="msg ${role}"><div class="msg-avatar">${initial}</div>
       <div><div class="msg-bubble">${label}<span class="body">${role === "assistant" ? mdToHtml(content) : esc(content)}</span></div></div></div>`);
     box.appendChild(node);
+    if (role === "assistant") maybeEmbedYouTube(node, content);
     box.scrollTop = box.scrollHeight;
     return node.querySelector(".body");
+  }
+
+  // If a reply references a YouTube video, embed a privacy-friendly player.
+  function maybeEmbedYouTube(node, content) {
+    const m = String(content).match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+    if (!m) return;
+    const id = m[1];
+    const wrap = el(
+      `<div class="yt-embed"><iframe width="100%" height="220" frameborder="0" allowfullscreen ` +
+      `allow="autoplay; encrypted-media; picture-in-picture" ` +
+      `src="https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1"></iframe></div>`
+    );
+    node.querySelector(".msg-bubble").appendChild(wrap);
+  }
+
+  // ---- File upload (UPLINK): analyze a file, attach to the next message ----
+  let pendingAttachment = null; // { name, kind, text }
+
+  function renderAttachChip() {
+    const chip = document.getElementById("attach-chip");
+    if (!chip) return;
+    if (!pendingAttachment) { chip.hidden = true; chip.innerHTML = ""; return; }
+    chip.hidden = false;
+    const icon = pendingAttachment.kind === "image" ? "🖼️" : "📄";
+    chip.innerHTML = `<span>${icon} ${esc(pendingAttachment.name)} attached — ask about it</span>` +
+      `<button id="attach-x" title="Remove">✕</button>`;
+    document.getElementById("attach-x").onclick = () => { pendingAttachment = null; renderAttachChip(); };
+  }
+
+  async function uploadFile(file) {
+    if (file.size > 20 * 1024 * 1024) { toast("File exceeds 20MB.", 4000); return; }
+    const chip = document.getElementById("attach-chip");
+    if (chip) { chip.hidden = false; chip.innerHTML = `<span>⏳ Reading ${esc(file.name)}…</span>`; }
+    try {
+      const res = await API.analyzeFile(file);
+      pendingAttachment = res;
+      renderAttachChip();
+      toast(`“${file.name}” ready — now ask JARVIS about it.`, 3500);
+    } catch (e) {
+      pendingAttachment = null; renderAttachChip();
+      toast(e.message || "Couldn't read that file.", 5000);
+    }
   }
 
   let sending = false;
@@ -482,14 +532,19 @@
     sending = true;
     const sendBtn = document.getElementById("send-btn");
     if (sendBtn) sendBtn.disabled = true;
-    addMessage("user", text);
+    // Attach an uploaded file's contents to this message, if any.
+    const attach = pendingAttachment; pendingAttachment = null; renderAttachChip();
+    const messageToSend = attach
+      ? `The user attached a file named "${attach.name}" (${attach.kind}). Its contents:\n"""\n${attach.text}\n"""\n\nThe user's request: ${text}`
+      : text;
+    addMessage("user", attach ? `${text}\n📎 ${attach.name}` : text);
     const box = document.getElementById("messages");
     const thinking = el(`<div class="msg assistant"><div class="msg-avatar">J</div><div><div class="thinking"><span class="spinner"></span><span id="think-text">Thinking…</span></div><div id="trace-box"></div></div></div>`);
     box.appendChild(thinking);
     box.scrollTop = box.scrollHeight;
 
     try {
-      const res = await API.chatStream({ message: text, conversation_id: state.conversation, agent: agent || null });
+      const res = await API.chatStream({ message: messageToSend, conversation_id: state.conversation, agent: agent || null });
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "", finalBody = null, finalAgent = agent;

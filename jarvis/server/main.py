@@ -20,6 +20,7 @@ from .db import init_db
 from .tools import core_tools  # noqa: F401 — registers built-in tools on import
 from .tools import live_tools  # noqa: F401 — weather + news
 from .tools import connected_tools  # noqa: F401 — calendar/spotify/gmail
+from .tools import doc_tools  # noqa: F401 — PDF/Word/text export
 
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
@@ -52,14 +53,14 @@ app.add_middleware(
 # Routers
 from .api import (  # noqa: E402
     agent_routes, analytics_routes, auth_routes, chat_routes, computer_routes,
-    connection_routes, memory_routes, project_routes, vision_routes, voice_routes,
-    workflow_routes,
+    connection_routes, file_routes, memory_routes, project_routes, vision_routes,
+    voice_routes, workflow_routes,
 )
 
 for module in (
     auth_routes, chat_routes, agent_routes, memory_routes,
     project_routes, workflow_routes, voice_routes, analytics_routes,
-    connection_routes, vision_routes, computer_routes,
+    connection_routes, vision_routes, computer_routes, file_routes,
 ):
     app.include_router(module.router)
 

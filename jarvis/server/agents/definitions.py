@@ -9,9 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 BASE_TOOLS = ["web_search", "web_fetch"]
-FILE_TOOLS = ["fs_write", "fs_read", "fs_list", "generate_document"]
+FILE_TOOLS = ["fs_write", "fs_read", "fs_list", "generate_document", "export_document"]
 CODE_TOOLS = ["shell", "python_exec", "fs_write", "fs_read", "fs_list"]
-LIVE_TOOLS = ["weather", "news"]
+LIVE_TOOLS = ["weather", "news", "youtube_search"]
 CALENDAR_TOOLS = ["calendar_list_events", "calendar_create_event"]
 SPOTIFY_TOOLS = ["spotify_now_playing", "spotify_control"]
 GMAIL_TOOLS = ["gmail_list", "gmail_draft"]

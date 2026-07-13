@@ -93,6 +93,16 @@ const API = (() => {
     tts: (b) => raw("/api/voice/tts", { method: "POST", body: b }),
     // vision (desktop screen analysis)
     analyzeScreen: (image, prompt) => json("/api/vision/analyze", { method: "POST", body: { image, prompt } }),
+    // file upload + Q&A
+    analyzeFile: async (file, prompt = "") => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("prompt", prompt);
+      const res = await raw("/api/files/analyze", { method: "POST", body: fd });
+      const d = await res.json().catch(() => null);
+      if (!res.ok) throw new Error((d && d.detail) || `Upload failed (${res.status})`);
+      return d;
+    },
     // computer control
     computerConfig: () => json("/api/computer/config"),
     computerStep: (messages, width, height) => json("/api/computer/step", { method: "POST", body: { messages, width, height } }),

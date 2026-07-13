@@ -104,3 +104,39 @@ async def news(topic: str = "", count: int = 6) -> str:
         out.append(f"{i}. {t}\n   {link.group(1).strip() if link else ''}")
     header = f"Top headlines about '{topic}':" if topic.strip() else "Top headlines:"
     return header + "\n" + "\n".join(out)
+
+
+@tool(
+    "youtube_search",
+    "Find a YouTube video for a query and return a link to play it. Use when the "
+    "user says 'play a video about X' or 'find a video of Y'.",
+    [ToolParam("query", "string", "What video to find")],
+    timeout=25,
+)
+async def youtube_search(query: str) -> str:
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+        resp = await client.get(
+            "https://www.youtube.com/results",
+            params={"search_query": query, "sp": "EgIQAQ%3D%3D"},  # filter: videos
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        )
+        resp.raise_for_status()
+        match = re.search(r'"videoId":"([\w-]{11})"', resp.text)
+        if not match:
+            return f"Couldn't find a video for '{query}'."
+        video_id = match.group(1)
+        title = query
+        try:
+            ob = await client.get(
+                "https://www.youtube.com/oembed",
+                params={"url": f"https://youtu.be/{video_id}", "format": "json"},
+            )
+            if ob.status_code == 200:
+                title = ob.json().get("title", query)
+        except Exception:
+            pass
+    return f'▶ Playing "{title}": https://www.youtube.com/watch?v={video_id}'
