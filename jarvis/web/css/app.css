@@ -348,6 +348,13 @@ body.listening-active .composer textarea::placeholder { color: var(--gold-soft);
 .msg-agent-label { font-size: 10px; color: var(--gold-soft); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.1em; }
 .yt-embed { margin-top: 10px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
 .yt-embed iframe { display: block; }
+.timer-widget { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.timer-widget .timer-face { font-size: 26px; font-weight: 600; letter-spacing: 0.04em; color: var(--gold); font-variant-numeric: tabular-nums; }
+.timer-widget .timer-sub { font-size: 12px; color: var(--text-dim); }
+.timer-widget .timer-cancel { margin-top: 6px; font-size: 12px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); }
+.timer-widget .timer-cancel:hover { color: var(--bad); border-color: var(--bad); }
+.timer-widget.done .timer-face { color: var(--gold); animation: stopPulse 0.9s ease-in-out infinite; }
+.timer-widget.cancelled .timer-face { color: var(--text-faint); }
 .thinking { display: flex; gap: 9px; align-items: center; color: var(--text-dim); font-size: 13px; font-family: var(--serif); font-style: italic; font-size: 15px; padding: 4px 0; }
 .thinking .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: ringRotate 0.7s linear infinite; }
 .trace { font-size: 12px; color: var(--text-faint); margin: 3px 0; padding-left: 12px; border-left: 2px solid var(--border); }
@@ -365,6 +372,8 @@ body.listening-active .composer textarea::placeholder { color: var(--gold-soft);
 .agent-select { background: var(--input-bg); border: 1px solid var(--border); border-radius: 100px; padding: 10px 14px; color: var(--text); font-size: 13px; }
 .send-btn { width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 40% 30%, var(--gold), var(--gold-deep)); color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 0 20px rgba(214, 175, 105, 0.3); }
 .send-btn:disabled { opacity: 0.5; }
+.stop-btn { background: radial-gradient(circle at 40% 30%, #e26d5c, #b23a2b); box-shadow: 0 0 20px rgba(226, 109, 92, 0.35); animation: stopPulse 1.1s ease-in-out infinite; }
+@keyframes stopPulse { 0%, 100% { box-shadow: 0 0 16px rgba(226, 109, 92, 0.3); } 50% { box-shadow: 0 0 26px rgba(226, 109, 92, 0.6); } }
 
 /* --------------------------------------------------------------- voice */
 .voice-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: calc(100vh - 66px - 56px); gap: 30px; }

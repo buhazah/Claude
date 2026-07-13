@@ -58,3 +58,19 @@ def test_download_rejects_path_traversal(auth_client):
     name = "../secret"
     r = auth_client.get(f"/api/files/download/{name}?t={sign(name)}")
     assert r.status_code in (400, 404)
+
+
+def test_market_price_tool_registered():
+    import server.tools.live_tools  # noqa: F401  (registers tools)
+    from server.agents.definitions import LIVE_TOOLS
+    from server.tools.base import registry
+
+    assert registry.get("market_price") is not None
+    assert "market_price" in LIVE_TOOLS
+
+
+def test_response_length_directives_exist():
+    from server.agents.orchestrator import _LENGTH_DIRECTIVES
+
+    assert {"short", "medium", "long"} <= set(_LENGTH_DIRECTIVES)
+    assert all(v.strip() for v in _LENGTH_DIRECTIVES.values())

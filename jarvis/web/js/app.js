@@ -423,6 +423,7 @@
             <input type="file" id="file-input" hidden accept="image/*,.pdf,.txt,.md,.json,.csv,.docx,.rtf" />
             <textarea id="composer-input" rows="1" placeholder="Ask JARVIS anything…"></textarea>
             <button class="send-btn" id="send-btn"><i data-i="send"></i></button>
+            <button class="send-btn stop-btn" id="stop-btn" title="Stop" hidden><i data-i="stop"></i></button>
           </div>
         </div></div>`;
       v.dataset.built = "1";
@@ -435,6 +436,7 @@
       input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; });
       input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
       document.getElementById("send-btn").onclick = () => sendMessage();
+      document.getElementById("stop-btn").onclick = () => stopGeneration();
       const fileInput = document.getElementById("file-input");
       document.getElementById("upload-btn").onclick = () => fileInput.click();
       fileInput.onchange = () => { if (fileInput.files[0]) uploadFile(fileInput.files[0]); fileInput.value = ""; };
@@ -521,17 +523,42 @@
   }
 
   let sending = false;
+  let chatAbort = null; // AbortController for the in-flight chat stream
+
+  // Interrupt: stop the streaming reply and any audio playback right now.
+  function stopGeneration() {
+    if (chatAbort) { try { chatAbort.abort(); } catch (e) {} }
+    try { if (voiceAudio) { voiceAudio.pause(); voiceAudio.onended = null; } } catch (e) {}
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+    pauseListeningWhileSpeaking(false);
+  }
+
+  function setSending(on) {
+    sending = on;
+    const sb = document.getElementById("send-btn");
+    const stop = document.getElementById("stop-btn");
+    if (sb) sb.hidden = on;
+    if (stop) stop.hidden = !on;
+  }
+
   async function sendMessage(overrideText) {
     if (sending) return;
     const input = document.getElementById("composer-input");
     const text = (overrideText != null ? overrideText : (input ? input.value : "")).trim();
     if (!text) return;
+    // Timers run entirely in the browser — no round-trip to the model.
+    const timer = parseTimerCommand(text);
+    if (timer) {
+      if (overrideText == null && input) { input.value = ""; input.style.height = "auto"; }
+      addMessage("user", text);
+      startTimer(timer.seconds);
+      return;
+    }
     if (voiceOut.on) unlockAudio(); // this send is a user gesture — allow auto-play
     const agent = document.getElementById("agent-select") ? document.getElementById("agent-select").value : "";
     if (overrideText == null && input) { input.value = ""; input.style.height = "auto"; }
-    sending = true;
-    const sendBtn = document.getElementById("send-btn");
-    if (sendBtn) sendBtn.disabled = true;
+    setSending(true);
+    chatAbort = new AbortController();
     // Attach an uploaded file's contents to this message, if any.
     const attach = pendingAttachment; pendingAttachment = null; renderAttachChip();
     const messageToSend = attach
@@ -544,7 +571,7 @@
     box.scrollTop = box.scrollHeight;
 
     try {
-      const res = await API.chatStream({ message: messageToSend, conversation_id: state.conversation, agent: agent || null });
+      const res = await API.chatStream({ message: messageToSend, conversation_id: state.conversation, agent: agent || null }, chatAbort.signal);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "", finalBody = null, finalAgent = agent;
@@ -576,12 +603,117 @@
       if (!state.conversation) renderConvos();
     } catch (e) {
       thinking.remove();
-      addMessage("assistant", `⚠️ ${e.message}`);
+      if (e.name === "AbortError") addMessage("assistant", "⏹ Stopped.");
+      else addMessage("assistant", `⚠️ ${e.message}`);
     } finally {
-      sending = false;
-      const sb = document.getElementById("send-btn");
-      if (sb) sb.disabled = false;
+      setSending(false);
+      chatAbort = null;
     }
+  }
+
+  // ---- Timers (client-side) ----
+  const TIMER_UNITS = {
+    hours: 3600, hour: 3600, hrs: 3600, hr: 3600, h: 3600,
+    minutes: 60, minute: 60, mins: 60, min: 60, m: 60,
+    seconds: 1, second: 1, secs: 1, sec: 1, s: 1,
+  };
+
+  // Recognize "set a timer for 5 minutes", "timer 30 sec", "remind me in 1h 30m".
+  function parseTimerCommand(text) {
+    const t = text.toLowerCase().trim();
+    if (!/\b(timer|countdown|alarm|remind me in)\b/.test(t)) return null;
+    const re = /(\d+(?:\.\d+)?)\s*(hours?|hrs?|hr|h|minutes?|mins?|min|m|seconds?|secs?|sec|s)\b/g;
+    let total = 0, found = false, mm;
+    while ((mm = re.exec(t))) {
+      const unit = TIMER_UNITS[mm[2]];
+      if (unit) { total += parseFloat(mm[1]) * unit; found = true; }
+    }
+    if (!found || total <= 0 || total > 24 * 3600) return null;
+    return { seconds: Math.round(total) };
+  }
+
+  function fmtClock(s) {
+    s = Math.max(0, Math.round(s));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const pad = (n) => String(n).padStart(2, "0");
+    return (h ? pad(h) + ":" : "") + pad(m) + ":" + pad(sec);
+  }
+
+  function humanizeDuration(s) {
+    s = Math.round(s);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const parts = [];
+    if (h) parts.push(h + (h === 1 ? " hour" : " hours"));
+    if (m) parts.push(m + (m === 1 ? " minute" : " minutes"));
+    if (sec) parts.push(sec + (sec === 1 ? " second" : " seconds"));
+    return parts.join(" and ") || "0 seconds";
+  }
+
+  function startTimer(seconds) {
+    const box = document.getElementById("messages");
+    const node = el(`<div class="msg assistant"><div class="msg-avatar">J</div><div><div class="msg-bubble">
+      <div class="timer-widget"><div class="timer-face">⏱ <span class="timer-time">${fmtClock(seconds)}</span></div>
+      <div class="timer-sub">Timer for ${esc(humanizeDuration(seconds))}</div>
+      <button class="timer-cancel">Cancel</button></div></div></div></div>`);
+    box.appendChild(node);
+    box.scrollTop = box.scrollHeight;
+    const widget = node.querySelector(".timer-widget");
+    const timeEl = widget.querySelector(".timer-time");
+    const subEl = widget.querySelector(".timer-sub");
+    const end = Date.now() + seconds * 1000;
+    let done = false;
+    const iv = setInterval(() => {
+      const remaining = (end - Date.now()) / 1000;
+      if (remaining <= 0) {
+        clearInterval(iv); done = true;
+        widget.classList.add("done");
+        timeEl.textContent = "Time's up!";
+        subEl.textContent = "Timer finished";
+        const btn = widget.querySelector(".timer-cancel"); if (btn) btn.remove();
+        timerDone();
+      } else {
+        timeEl.textContent = fmtClock(remaining);
+      }
+    }, 250);
+    widget.querySelector(".timer-cancel").onclick = () => {
+      if (done) return;
+      clearInterval(iv); done = true;
+      widget.classList.add("cancelled");
+      timeEl.textContent = "Cancelled";
+      subEl.textContent = "Timer cancelled";
+      widget.querySelector(".timer-cancel").remove();
+    };
+    const conf = `Timer set for ${humanizeDuration(seconds)}.`;
+    toast(conf, 3000);
+    if (voiceOut.on) { unlockAudio(); speak(conf); }
+    try { if (window.Notification && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
+  }
+
+  function timerDone() {
+    beep();
+    toast("⏰ Timer finished!", 6000);
+    if (voiceOut.on) { unlockAudio(); speak("Your timer is done."); }
+    try {
+      if (window.Notification && Notification.permission === "granted")
+        new Notification("JARVIS", { body: "⏰ Your timer is done." });
+    } catch (e) {}
+  }
+
+  // Three short beeps via WebAudio (no asset needed).
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.3, 0.6].forEach((delay) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = "sine"; o.frequency.value = 880;
+        const start = ctx.currentTime + delay;
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.2);
+        o.start(start); o.stop(start + 0.22);
+      });
+    } catch (e) {}
   }
 
   function handleChatEvent(ev, thinking, setFinal) {
@@ -1169,6 +1301,8 @@
         <div class="field"><label>Role</label><input value="${esc(state.user.role)}" disabled/></div>
         <div class="field"><label>Response language — JARVIS always replies (and speaks) in this</label>
           <select id="set-lang">${LANGUAGES.map((l) => `<option ${((state.user.preferences || {}).response_language || "English") === l ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="field"><label>Response length</label>
+          <select id="set-length">${[["", "Default"], ["short", "Short — brief and to the point"], ["medium", "Medium — a short paragraph"], ["long", "Long — thorough and detailed"]].map(([val, lbl]) => `<option value="${val}" ${((state.user.preferences || {}).response_length || "") === val ? "selected" : ""}>${lbl}</option>`).join("")}</select></div>
         <button class="btn solid" id="save-account">Save</button></div>
       <div class="panel"><div class="section-title">System status</div>
         <table><tbody>
@@ -1189,6 +1323,7 @@
       const updated = await API.savePrefs({
         display_name: document.getElementById("set-name").value,
         response_language: document.getElementById("set-lang").value,
+        response_length: document.getElementById("set-length").value,
       });
       state.user = updated;
       toast("Saved — JARVIS will reply in " + updated.preferences.response_language + ".");

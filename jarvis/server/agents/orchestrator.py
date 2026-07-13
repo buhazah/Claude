@@ -25,6 +25,12 @@ from .runtime import get_agent
 
 log = logging.getLogger("jarvis.orchestrator")
 
+_LENGTH_DIRECTIVES = {
+    "short": "Keep the response brief and to the point — a sentence or two, no preamble.",
+    "medium": "Keep the response moderately concise — a short paragraph or a few bullets.",
+    "long": "Give a thorough, detailed response with full explanation and examples.",
+}
+
 
 @dataclass
 class SubTask:
@@ -124,11 +130,15 @@ class Orchestrator:
         # regardless of the language they typed/spoke in — so the reply and the
         # spoken voice are consistently in that language.
         user = await session.get(User, user_id)
-        lang = ((user.preferences or {}).get("response_language") if user else "") or "English"
+        prefs = (user.preferences or {}) if user else {}
+        lang = prefs.get("response_language") or "English"
         directive = (
             f"CRITICAL: Write your entire response to the user in {lang}, "
             "regardless of the language they use. Keep code and proper nouns as-is."
         )
+        length = (prefs.get("response_length") or "").lower()
+        if length in _LENGTH_DIRECTIVES:
+            directive += "\n" + _LENGTH_DIRECTIVES[length]
         memory_context = directive + ("\n\n" + memory_context if memory_context else "")
 
         if forced_agent and forced_agent in AGENTS:

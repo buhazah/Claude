@@ -140,3 +140,55 @@ async def youtube_search(query: str) -> str:
         except Exception:
             pass
     return f'▶ Playing "{title}": https://www.youtube.com/watch?v={video_id}'
+
+
+CRYPTO_IDS = {
+    "btc": "bitcoin", "bitcoin": "bitcoin", "eth": "ethereum", "ethereum": "ethereum",
+    "sol": "solana", "solana": "solana", "xrp": "ripple", "ripple": "ripple",
+    "ada": "cardano", "cardano": "cardano", "doge": "dogecoin", "dogecoin": "dogecoin",
+    "bnb": "binancecoin", "matic": "matic-network", "dot": "polkadot", "ltc": "litecoin",
+}
+
+
+@tool(
+    "market_price",
+    "Get the current price of a cryptocurrency (e.g. bitcoin) or a stock ticker "
+    "(e.g. AAPL, TSLA). Use for 'what's Bitcoin at' or 'price of Apple stock'.",
+    [ToolParam("symbol", "string", "Coin name/symbol or stock ticker")],
+    timeout=20,
+)
+async def market_price(symbol: str) -> str:
+    key = symbol.strip().lower()
+    async with httpx.AsyncClient(timeout=15) as client:
+        # Crypto via CoinGecko (no key).
+        coin = CRYPTO_IDS.get(key, key if key.isalpha() and len(key) > 3 else None)
+        if key in CRYPTO_IDS or (coin and key not in {"aapl", "tsla"}):
+            try:
+                r = await client.get(
+                    "https://api.coingecko.com/api/v3/simple/price",
+                    params={"ids": coin, "vs_currencies": "usd", "include_24hr_change": "true"},
+                )
+                data = r.json()
+                if coin in data:
+                    p = data[coin]
+                    chg = p.get("usd_24h_change", 0)
+                    return f"{coin.capitalize()}: ${p['usd']:,} ({chg:+.2f}% 24h)."
+            except Exception:
+                pass
+        # Stock/index via Yahoo Finance chart API.
+        try:
+            r = await client.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol.strip().upper()}",
+                params={"interval": "1d", "range": "1d"},
+                headers={"User-Agent": "Mozilla/5.0 (JARVIS)"},
+            )
+            meta = r.json()["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+            cur = meta.get("currency", "USD")
+            if price is not None:
+                chg = f" ({(price - prev) / prev * 100:+.2f}%)" if prev else ""
+                return f"{meta.get('symbol', symbol.upper())}: {price:,} {cur}{chg}."
+        except Exception:
+            pass
+    return f"Couldn't find a price for '{symbol}'."

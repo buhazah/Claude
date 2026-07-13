@@ -62,7 +62,7 @@ const API = (() => {
     conversations: () => json("/api/chat/conversations"),
     messages: (id) => json(`/api/chat/conversations/${id}/messages`),
     deleteConversation: (id) => json(`/api/chat/conversations/${id}`, { method: "DELETE" }),
-    chatStream: (b) => raw("/api/chat/stream", { method: "POST", body: b }),
+    chatStream: (b, signal) => raw("/api/chat/stream", { method: "POST", body: b, signal }),
     // agents
     agents: () => json("/api/agents"),
     agentRuns: () => json("/api/agents/runs"),
