@@ -52,6 +52,44 @@ def _agent_catalog() -> str:
     return "\n".join(f"- {a.key}: {a.role}" for a in AGENTS.values())
 
 
+# Instant keyword routing so everyday messages skip the extra "planning" LLM
+# round-trip. Order matters — first match wins.
+_ROUTE_HINTS: list[tuple[tuple[str, ...], str]] = [
+    (("debug", "traceback", "stack trace", "compile", "refactor", "function ", "def ",
+      "python", "javascript", "typescript", "regex", "sql query"), "coding"),
+    (("contract", "clause", "nda", "lawsuit", "legal ", "terms of service", "liability"), "legal"),
+    (("budget", "revenue", "profit", "cash flow", "runway", "valuation", "unit economics"), "finance"),
+    (("workout", "exercise routine", "training plan", "reps", "gym"), "fitness"),
+    (("essay", "blog post", "article", "cover letter", "draft a"), "writing"),
+    (("tweet", "instagram", "linkedin post", "caption", "hashtag"), "social"),
+]
+
+
+def _fast_route(request: str) -> str:
+    """Pick a specialized agent by keyword, defaulting to the generalist assistant."""
+    r = request.lower()
+    for keys, agent in _ROUTE_HINTS:
+        if any(k in r for k in keys):
+            return agent
+    return "assistant"
+
+
+def _looks_simple(request: str) -> bool:
+    """True when a request is clearly single-intent and needs no multi-agent plan."""
+    r = request.strip()
+    if len(r) > 320:
+        return False
+    lowered = r.lower()
+    compound = (" and then ", "step by step", "after that", "\n- ", "\n1.", "\n2.",
+                "then, ", "; then", "also, ", "as well as")
+    if any(sig in lowered for sig in compound):
+        return False
+    # Several sentences usually means several intents — let the planner handle it.
+    if r.count(". ") + r.count("? ") + r.count("! ") > 2:
+        return False
+    return True
+
+
 def _parse_json_object(text: str) -> dict | None:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
@@ -143,6 +181,10 @@ class Orchestrator:
 
         if forced_agent and forced_agent in AGENTS:
             plan = {"mode": "simple", "agent": forced_agent, "reason": "user-selected agent", "tasks": []}
+        elif _looks_simple(request):
+            # Skip the planning round-trip for everyday messages — answer directly.
+            plan = {"mode": "simple", "agent": _fast_route(request),
+                    "reason": "fast-routed (simple request)", "tasks": []}
         else:
             yield Event("status", {"message": "Thinking about how to approach this…"})
             plan = await self._plan(user_id, request, memory_context)
