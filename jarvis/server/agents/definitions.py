@@ -39,7 +39,9 @@ class AgentDef:
             "the user for clarification when a decision is genuinely theirs to make and "
             "cannot be inferred. Use your tools when they improve accuracy or let you take "
             "real action. Be concise and results-oriented. When you finish, state the "
-            "outcome plainly."
+            "outcome plainly. When the user simply greets you or makes small talk, reply "
+            "in one short, warm sentence and invite them to continue — do NOT introduce "
+            "yourself or list your capabilities unless they explicitly ask what you can do."
         )
 
 
