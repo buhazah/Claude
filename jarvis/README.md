@@ -13,12 +13,19 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 
 ## Status
 
-**Milestone 1 (kernel) is complete**: event bus, model router with fallback and
-circuit breaking, 30-agent catalog with a spec-driven runtime, tiered memory
-with hybrid recall, permissioned tool registry, durable runs, and a streaming
-HTTP surface. 134 tests, `ruff` clean, `mypy --strict` clean.
+**Milestones 1 and 2 are complete.**
 
-Milestone 2 (the client) is next.
+*M1 — kernel*: event bus, model router with fallback and circuit breaking,
+30-agent catalog with a spec-driven runtime, tiered memory with hybrid recall,
+permissioned tool registry, durable runs, streaming HTTP surface.
+134 tests · `ruff` clean · `mypy --strict` clean.
+
+*M2 — client*: design system, ⌘K command palette that previews routing before
+executing, streaming chat, live activity rail wired to the kernel's event bus,
+and browsers for agents, memory, runs and tools.
+20 unit tests · 7 Playwright end-to-end checks · `tsc` and ESLint clean.
+
+Milestone 3 (Postgres + pgvector persistence) is next.
 
 ## Run it
 
@@ -27,11 +34,15 @@ boots with a deterministic offline provider so the whole system is explorable
 immediately.
 
 ```bash
-cd apps/api
-uv venv && source .venv/bin/activate
-uv pip install -e ".[dev]"
-uvicorn jarvis.main:app --reload
+# kernel — :8000
+cd apps/api && uv venv && source .venv/bin/activate
+uv pip install -e ".[dev]" && uvicorn jarvis.main:app --reload
+
+# client — :3000
+cd apps/web && pnpm install && pnpm dev
 ```
+
+Open http://localhost:3000 and press ⌘K.
 
 ```bash
 curl localhost:8000/health
@@ -62,10 +73,11 @@ export JARVIS_ENABLE_LOCAL_LLM=true    # any Ollama-compatible endpoint
 ## Develop
 
 ```bash
-make test     # pytest
-make lint     # ruff check + format check
-make types    # mypy --strict
-make check    # all three
+make test     # pytest + vitest
+make lint     # ruff + eslint
+make types    # mypy --strict + tsc
+make check    # everything
+make e2e      # Playwright, against both servers running
 ```
 
 ## Layout
@@ -84,7 +96,11 @@ jarvis/
     │   │   ├── runs/    durable run records
     │   │   └── api/     routes · schemas · SSE
     │   └── tests/
-    └── web/             Next.js client (M2)
+    └── web/             Next.js client
+        ├── src/app/      dashboard · chat · agents · memory · runs · tools
+        ├── src/components/  shell · command palette · activity rail · ui
+        ├── src/lib/      typed API client · incremental SSE parser
+        └── e2e/          Playwright smoke test
 ```
 
 ## Design notes

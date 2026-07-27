@@ -6,7 +6,7 @@ begins before the previous one's suite is green.
 | # | Milestone | Contents | State |
 |---|---|---|---|
 | **M1** | **Kernel** | Config, structured logging, event bus, model router + provider adapters (Anthropic/OpenAI/Echo), agent spec + runtime + registry + 30-agent catalog, memory store + embeddings + categorizer, run store, tool registry, FastAPI surface with SSE streaming | ✅ **done** |
-| **M2** | **Client shell** | Next.js app, design system, command palette, dashboard, streaming chat, agent/memory browsers, live activity feed off the event firehose | ⏳ next |
+| **M2** | **Client** | Next.js app, design system, command palette with routing preview, dashboard, streaming chat, agent/memory/run/tool browsers, live activity rail off the event firehose | ✅ **done** |
 | **M3** | **Persistence** | Postgres + pgvector, Alembic migrations, real embeddings, Redis-backed bus, docker-compose | |
 | **M4** | **Tools & connectors** | MCP client, browser tool, terminal tool, filesystem, GitHub, Gmail, Calendar, Slack, Notion, Stripe; permission tiers + approval UI | |
 | **M5** | **Knowledge** | Ingestion pipeline (PDF/DOCX/PPTX/XLSX/images/audio/repos/URLs), chunking, hybrid retrieval, citations |  |
@@ -38,6 +38,33 @@ begins before the previous one's suite is green.
 circuit breaking, bus fan-out and backpressure, agent routing, memory recall
 ranking, run lifecycle, and the HTTP surface end-to-end. Runs with no API keys
 and no network.
+
+## Milestone 2 — delivered
+
+**Built**
+- Design system in CSS custom properties: dark-first tokens, layered surfaces,
+  one accent reserved for live state, glass restricted to floating surfaces.
+- App shell — sidebar with spring-animated active indicator, ⌘K palette,
+  live activity rail.
+- **Command palette** — the defining interaction. As you type, it calls
+  `/v1/route` and shows which agents Jarvis would activate, with confidence
+  bars and the matched signals, *before* you commit.
+- **Streaming chat** — token-by-token rendering with a caret, the answering
+  agent and its confidence, recalled-memory count, and live cost/token/latency.
+  Interruptible mid-answer via `AbortController`.
+- **Live activity rail** — the kernel's event bus rendered directly. Not
+  instrumentation; a subscriber.
+- Dashboard, agent grid with per-agent metrics, memory browser showing the
+  lexical/semantic/recency signals behind each recall, run history, and a tool
+  browser grouped by permission tier.
+- Every surface defines loading (geometry-matched skeletons), empty, error and
+  streaming states.
+
+**Verification** — 20 unit tests (incremental SSE parsing across arbitrary
+chunk boundaries, malformed frames, the typed API client) plus a 7-check
+Playwright end-to-end run against the real kernel: routing preview →
+execution → streaming → run history, with zero console errors. `tsc --noEmit`
+and ESLint clean.
 
 ## Definition of done (every milestone)
 
