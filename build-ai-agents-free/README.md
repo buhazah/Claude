@@ -456,6 +456,14 @@ run it to see the whole thing working end to end:
 python3 src/agent.py
 ```
 
+there's also [`src/05_custom_agent.py`](src/05_custom_agent.py) — the same pattern
+with two hand-written tools swapped in (`calculator`, `current_time`) alongside
+search, as a starting point for building your own tools:
+
+```bash
+python3 src/05_custom_agent.py
+```
+
 ---
 
 ## where to go from here
