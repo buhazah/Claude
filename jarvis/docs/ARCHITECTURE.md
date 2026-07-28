@@ -153,6 +153,17 @@ section. Citations are captured from what the section was handed and filtered
 to the markers that actually appear in its prose — a claim about provenance the
 system can make, unlike asking a model afterwards what it used.
 
+### 3.11 Security (`jarvis.security`)
+The vault is AES-256-GCM over a `SecretStore`, but its substantive part is the
+**redactor** (ADR 0011): every known secret scrubbed from anything headed for a
+log, an event or the audit log. The model references a secret by name and never
+receives one; the tool registry resolves `${vault:name}` at call time, after
+authorisation and after the audit write.
+
+`CostGovernor` grades a call *before* it is made, against a conservative
+estimate, in the model router — the one place every call passes through. A soft
+ceiling routes into the approval gate; a hard ceiling refuses outright.
+
 ## 4. Technology decisions
 
 | Choice | Why | Rejected alternative |

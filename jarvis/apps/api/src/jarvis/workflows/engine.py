@@ -335,7 +335,7 @@ class WorkflowEngine:
 
             case StepKind.APPROVAL:
                 question, _ = render(step.question or step.label or step.id, run.context)
-                approval = self._approvals.create(
+                approval = await self._approvals.create(
                     tool=f"workflow:{workflow.name}",
                     arguments={"question": question, "step": step.id},
                     run_id=run.id,

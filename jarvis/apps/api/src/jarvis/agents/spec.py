@@ -10,6 +10,7 @@ execution path stays a single well-tested code path.
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Protocol
 
 from pydantic import BaseModel, Field
 
@@ -111,6 +112,14 @@ class AgentMetrics(BaseModel):
         self.total_tokens += tokens
         self.recent_latencies_ms.append(latency_ms)
         del self.recent_latencies_ms[:-100]  # keep a bounded window
+
+
+class AgentMetricsStore(Protocol):
+    """Durable per-agent track record."""
+
+    async def save(self, agent_id: str, metrics: AgentMetrics) -> None: ...
+
+    async def load(self) -> dict[str, AgentMetrics]: ...
 
 
 class AgentMatch(BaseModel):

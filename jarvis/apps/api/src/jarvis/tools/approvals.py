@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import Any, Protocol
 
 import structlog
 
@@ -69,6 +69,14 @@ class Approval:
         }
 
 
+class ApprovalJournal(Protocol):
+    """Where decisions are kept so a restart does not lose them."""
+
+    async def save(self, approval: Approval) -> None: ...
+
+    async def load(self, *, limit: int = 200) -> list[Approval]: ...
+
+
 class ApprovalBroker:
     """Holds pending approvals and unblocks the callers waiting on them."""
 
@@ -78,11 +86,34 @@ class ApprovalBroker:
         bus: EventBus | None = None,
         clock: Clock = SYSTEM_CLOCK,
         timeout_s: float = DEFAULT_TIMEOUT_S,
+        journal: ApprovalJournal | None = None,
     ) -> None:
         self._bus = bus
         self._clock = clock
         self._timeout_s = timeout_s
         self._approvals: dict[str, Approval] = {}
+        # The in-memory map stays authoritative for *waiting* — an asyncio
+        # Event cannot be persisted — while the journal keeps the decision
+        # record. A restart therefore loses whoever was parked mid-call, which
+        # is correct (their connection is gone too) but keeps the history.
+        self._journal = journal
+
+    async def restore(self) -> int:
+        """Reload decisions written before the last restart."""
+        if self._journal is None:
+            return 0
+        restored = 0
+        for approval in await self._journal.load():
+            # Anything still pending from a previous process has nobody waiting
+            # on it, and an approval nobody can answer must not stay open.
+            if approval.state is ApprovalState.PENDING:
+                approval.state = ApprovalState.EXPIRED
+                approval.reason = "the process restarted before a decision"
+            approval._gate.set()
+            self._approvals[approval.id] = approval
+            restored += 1
+        log.info("approvals_restored", count=restored)
+        return restored
 
     def pending(self) -> list[Approval]:
         return [a for a in self._approvals.values() if a.state is ApprovalState.PENDING]
@@ -96,7 +127,7 @@ class ApprovalBroker:
         except KeyError:
             raise NotFoundError(f"unknown approval: {approval_id}") from None
 
-    def create(
+    async def create(
         self,
         *,
         tool: str,
@@ -121,6 +152,8 @@ class ApprovalBroker:
             requested_at=self._clock.now().isoformat(),
         )
         self._approvals[approval.id] = approval
+        if self._journal:
+            await self._journal.save(approval)
         if self._bus:
             self._bus.publish("approval.requested", approval.to_dict(), run_id=run_id)
         log.info("approval_requested", approval=approval.id, tool=tool)
@@ -136,7 +169,9 @@ class ApprovalBroker:
         timeout_s: float | None = None,
     ) -> Approval:
         """Park until a human decides, or the request expires."""
-        approval = self.create(tool=tool, arguments=arguments, run_id=run_id, agent_id=agent_id)
+        approval = await self.create(
+            tool=tool, arguments=arguments, run_id=run_id, agent_id=agent_id
+        )
         try:
             await asyncio.wait_for(approval._gate.wait(), timeout=timeout_s or self._timeout_s)
         except TimeoutError:
@@ -144,13 +179,17 @@ class ApprovalBroker:
             approval.state = ApprovalState.EXPIRED
             approval.reason = "no decision before timeout"
             approval.decided_at = self._clock.now().isoformat()
+            if self._journal:
+                await self._journal.save(approval)
             if self._bus:
                 self._bus.publish("approval.expired", approval.to_dict(), run_id=run_id)
             log.warning("approval_expired", approval=approval.id, tool=tool)
 
         return approval
 
-    def resolve(self, approval_id: str, *, approved: bool, reason: str | None = None) -> Approval:
+    async def resolve(
+        self, approval_id: str, *, approved: bool, reason: str | None = None
+    ) -> Approval:
         """Record a human decision and release whoever is waiting on it."""
         approval = self.get(approval_id)
         if approval.state is not ApprovalState.PENDING:
@@ -162,6 +201,8 @@ class ApprovalBroker:
         approval.decided_at = self._clock.now().isoformat()
         approval._gate.set()
 
+        if self._journal:
+            await self._journal.save(approval)
         if self._bus:
             self._bus.publish(
                 "approval.approved" if approved else "approval.denied",

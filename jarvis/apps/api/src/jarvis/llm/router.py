@@ -25,7 +25,6 @@ from jarvis.kernel.clock import SYSTEM_CLOCK, Clock
 from jarvis.kernel.errors import (
     AllProvidersFailedError,
     ConfigurationError,
-    ProviderError,
 )
 from jarvis.llm.base import (
     POLICY_WEIGHTS,
@@ -38,6 +37,8 @@ from jarvis.llm.base import (
     ToolSchema,
     Usage,
 )
+from jarvis.security.budget import BudgetExceededError, CostGovernor, Verdict
+from jarvis.tools.approvals import ApprovalBroker, ApprovalState
 
 log = structlog.get_logger(__name__)
 
@@ -92,6 +93,8 @@ class ModelRouter:
         *,
         bus: EventBus | None = None,
         clock: Clock = SYSTEM_CLOCK,
+        governor: CostGovernor | None = None,
+        approvals: ApprovalBroker | None = None,
     ) -> None:
         if not providers:
             raise ConfigurationError("ModelRouter requires at least one provider")
@@ -108,6 +111,11 @@ class ModelRouter:
         self._bus = bus
         self._clock = clock
         self._circuits: dict[str, _Circuit] = {p.name: _Circuit() for p in providers}
+        # Cost is governed here rather than in the runtime because this is the
+        # only place every call passes through — agents, workflows, documents,
+        # voice and the routing arbiter all end up in `stream` or `complete`.
+        self._governor = governor
+        self._approvals = approvals
 
     @property
     def providers(self) -> dict[str, LLMProvider]:
@@ -193,6 +201,8 @@ class ModelRouter:
         if not chain:
             raise AllProvidersFailedError("no model satisfies the request constraints", failures={})
 
+        await self._authorise_spend(chain[0], request, run_id=run_id)
+
         failures: dict[str, str] = {}
         for attempt, candidate in enumerate(chain[: max_fallbacks + 1]):
             model = candidate.model
@@ -214,6 +224,10 @@ class ModelRouter:
                 async for chunk in provider.stream(request, model, tools):
                     chunk.model_id = model.id
                     emitted = emitted or bool(chunk.text)
+                    if chunk.done and chunk.usage and self._governor:
+                        # Actual spend, not the estimate the ceiling was
+                        # checked against — the estimate is deliberately high.
+                        self._governor.record(chunk.usage.cost_usd)
                     if chunk.done and chunk.usage and self._bus:
                         self._bus.publish(
                             "llm.completed",
@@ -228,7 +242,19 @@ class ModelRouter:
                     yield chunk
                 self._circuits[model.provider].record_success()
                 return
-            except ProviderError as exc:
+            except BudgetExceededError:
+                # A refusal to spend is a decision, not a provider fault. Never
+                # fall back on it — the next model costs money too.
+                raise
+            except Exception as exc:
+                # Deliberately broad. `ProviderError` is what a well-behaved
+                # adapter raises, but the whole point of a fallback chain is
+                # that a provider failing for *any* reason degrades quality
+                # instead of failing the request — and in production the
+                # failure is as likely to be a connection reset or a JSON
+                # decode error that some adapter forgot to wrap.
+                # `CancelledError` derives from BaseException, so a client
+                # hanging up still propagates rather than triggering a retry.
                 self._circuits[model.provider].record_failure(self._clock.monotonic())
                 failures[model.id] = str(exc)
                 log.warning(
@@ -252,6 +278,54 @@ class ModelRouter:
         raise AllProvidersFailedError(
             f"all {len(failures)} candidate models failed — {detail}", failures=failures
         )
+
+    async def _authorise_spend(
+        self, candidate: Candidate, request: CompletionRequest, *, run_id: str | None
+    ) -> None:
+        """Grade this call against the ceilings, before it is made.
+
+        The estimate assumes the model emits its full output allowance. That
+        over-states most calls, deliberately: a budget that under-estimates is
+        a budget that gets exceeded, and the failure mode of being slightly too
+        careful with someone's money is much better than the alternative.
+        """
+        if self._governor is None or not self._governor.enforced:
+            return
+
+        model = candidate.model
+        estimate = model.cost_for(request.token_estimate(), request.max_output_tokens)
+        assessment = self._governor.assess(estimate)
+        if assessment.verdict is Verdict.ALLOW:
+            return
+
+        if self._bus:
+            self._bus.publish("budget.exceeded", assessment.to_dict(), run_id=run_id)
+
+        if assessment.verdict is Verdict.REFUSE:
+            raise BudgetExceededError(
+                assessment.reason, spent=assessment.spent, limit=assessment.limit
+            )
+
+        # Soft ceiling: the same gate that guards a dangerous tool. Without an
+        # approver there is nobody to ask, and spending money unasked is not
+        # the safe default.
+        if self._approvals is None:
+            raise BudgetExceededError(
+                f"{assessment.reason}; no approver is configured",
+                spent=assessment.spent,
+                limit=assessment.limit,
+            )
+        approval = await self._approvals.request(
+            tool="spend",
+            arguments={"description": assessment.reason, **assessment.to_dict()},
+            run_id=run_id,
+        )
+        if approval.state is not ApprovalState.APPROVED:
+            raise BudgetExceededError(
+                f"spending was {approval.state.value}: {assessment.reason}",
+                spent=assessment.spent,
+                limit=assessment.limit,
+            )
 
     async def complete(
         self,

@@ -42,6 +42,14 @@ from jarvis.observability.audit import AuditLog, NullAuditLog, SqlAuditLog
 from jarvis.persistence.db import Database
 from jarvis.runs.models import RunStore
 from jarvis.runs.sql_store import SqlRunStore
+from jarvis.security.budget import CostGovernor, Ledger, budgets_from_settings
+from jarvis.security.sql_store import (
+    SqlAgentMetricsStore,
+    SqlApprovalJournal,
+    SqlDocumentStore,
+    SqlSecretStore,
+)
+from jarvis.security.vault import InMemorySecretStore, Vault, derive_key
 from jarvis.tools.approvals import ApprovalBroker
 from jarvis.tools.builtins import register_builtins
 from jarvis.tools.mcp import MCPManager, MCPServerConfig
@@ -158,6 +166,8 @@ class Jarvis:
     modes: ModeRegistry
     documents: DocumentStore
     composer: DocumentComposer
+    vault: Vault
+    governor: CostGovernor
     database: Database | None = None
 
     @property
@@ -221,6 +231,13 @@ class Jarvis:
         if not await self.workflows.all():
             for workflow in starter_workflows():
                 await self.workflows.save(workflow)
+        # Everything durable comes back before anything is served. The vault
+        # is loaded eagerly rather than lazily because a secret nobody has read
+        # yet cannot be redacted — which is exactly when it ends up in a log.
+        await self.vault.load()
+        await self.approvals.restore()
+        await self.agents.restore()
+
         if self.settings.enable_scheduler:
             await self.scheduler.start()
 
@@ -248,7 +265,6 @@ def build(
         if settings.redis_url
         else EventBus(clock=clock)
     )
-    router = ModelRouter(providers or build_providers(settings), bus=bus, clock=clock)
     agents = AgentRegistry()
     embedder = build_embedder(settings)
 
@@ -272,7 +288,36 @@ def build(
         SqlWorkflowStore(database, clock=clock) if database else InMemoryWorkflowStore(clock=clock)
     )
     audit: AuditLog = SqlAuditLog(database, clock=clock) if database else NullAuditLog()
-    approvals = ApprovalBroker(bus=bus, clock=clock, timeout_s=settings.approval_timeout_s)
+
+    vault = Vault(
+        store=SqlSecretStore(database) if database else InMemorySecretStore(),
+        key=derive_key(settings.vault_key) if settings.vault_key else None,
+    )
+    governor = CostGovernor(
+        ledger=Ledger(clock=clock),
+        budgets=budgets_from_settings(
+            daily_soft=settings.daily_budget_soft_usd,
+            daily_hard=settings.daily_budget_hard_usd,
+            monthly_soft=settings.monthly_budget_soft_usd,
+            monthly_hard=settings.monthly_budget_hard_usd,
+        ),
+    )
+    approvals = ApprovalBroker(
+        bus=bus,
+        clock=clock,
+        timeout_s=settings.approval_timeout_s,
+        journal=SqlApprovalJournal(database) if database else None,
+    )
+    # The router is the one place every model call passes through — agents,
+    # workflows, documents, voice and the routing arbiter all end up there — so
+    # the ceilings are enforced there rather than in each caller.
+    router = ModelRouter(
+        providers or build_providers(settings),
+        bus=bus,
+        clock=clock,
+        governor=governor,
+        approvals=approvals,
+    )
     tools = ToolRegistry(
         bus=bus,
         # Default posture: safe tools run freely, sensitive ones are permitted
@@ -285,6 +330,7 @@ def build(
         grants=[Grant("*", Permission.DANGEROUS, auto_approve=False)],
         approvals=approvals,
         audit=audit,
+        vault=vault,
     )
     workspace = Workspace(settings.workspace_dir)
     register_builtins(tools, memory, knowledge)
@@ -310,7 +356,11 @@ def build(
     if settings.enable_computer:
         register_computer_tools(tools, computer)
 
-    documents: DocumentStore = InMemoryDocumentStore()
+    documents: DocumentStore = (
+        SqlDocumentStore(database, clock=clock) if database else InMemoryDocumentStore()
+    )
+    if database is not None:
+        agents.store = SqlAgentMetricsStore(database)
 
     runtime = AgentRuntime(
         router=router,
@@ -402,5 +452,7 @@ def build(
         modes=built_in_modes(),
         documents=documents,
         composer=composer,
+        vault=vault,
+        governor=governor,
         database=database,
     )

@@ -47,6 +47,11 @@ e2e:
 e2e-computer:
 	cd $(WEB) && pnpm e2e:computer
 
+# The vault suite needs an API started with a key:
+#   JARVIS_VAULT_KEY=$$(python -m jarvis.security.keygen) uvicorn jarvis.main:app
+e2e-settings:
+	cd $(WEB) && pnpm e2e:settings
+
 run-api:
 	cd $(API) && .venv/bin/uvicorn jarvis.main:app --reload
 

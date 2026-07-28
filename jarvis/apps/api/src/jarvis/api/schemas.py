@@ -26,6 +26,10 @@ class DocumentRequest(BaseModel):
     agent_id: str = "research"
 
 
+class SecretRequest(BaseModel):
+    value: str = Field(min_length=1, max_length=8_000)
+
+
 class RouteRequest(BaseModel):
     message: str = Field(min_length=1, max_length=32_000)
 

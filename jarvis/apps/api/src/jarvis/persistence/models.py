@@ -19,6 +19,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     TypeDecorator,
@@ -256,6 +257,48 @@ class AgentMetricsRow(Base):
     total_tokens: Mapped[int] = mapped_column(Integer, default=0)
     recent_latencies_ms: Mapped[list[float]] = mapped_column(JsonColumn, default=list)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class ApprovalRow(Base):
+    """A human decision, kept so a restart loses the wait but not the record."""
+
+    __tablename__ = "approvals"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tool: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    arguments: Mapped[dict[str, Any]] = mapped_column(JsonColumn, default=dict)
+    run_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    agent_id: Mapped[str | None] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    reason: Mapped[str | None] = mapped_column(Text)
+    requested_at: Mapped[str] = mapped_column(String(40), nullable=False)
+    decided_at: Mapped[str | None] = mapped_column(String(40))
+
+
+class GeneratedDocumentRow(Base):
+    """A document Jarvis wrote — distinct from `documents`, which it read."""
+
+    __tablename__ = "generated_documents"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    body: Mapped[dict[str, Any]] = mapped_column(JsonColumn, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, index=True
+    )
+
+
+class SecretRow(Base):
+    """Ciphertext only. The key never touches the database."""
+
+    __tablename__ = "secrets"
+
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class AuditRow(Base):

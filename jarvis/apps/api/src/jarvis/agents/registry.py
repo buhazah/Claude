@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 
 from jarvis.agents.catalog import CATALOG, DEFAULT_AGENT_ID
-from jarvis.agents.spec import AgentMatch, AgentMetrics, AgentSpec, Capability
+from jarvis.agents.spec import AgentMatch, AgentMetrics, AgentMetricsStore, AgentSpec, Capability
 from jarvis.kernel.errors import NotFoundError
 
 _WORD_RE = re.compile(r"[a-z0-9']+")
@@ -32,6 +32,10 @@ class AgentRegistry:
     def __init__(self, specs: list[AgentSpec] | None = None) -> None:
         self._specs: dict[str, AgentSpec] = {}
         self._metrics: dict[str, AgentMetrics] = {}
+        # Set by the composition root when a database is configured. Without
+        # it, metrics are per-process and routing forgets its track record on
+        # every restart — which it did from M1 until M10.
+        self.store: AgentMetricsStore | None = None
         for spec in specs if specs is not None else CATALOG:
             self.register(spec)
 
@@ -53,6 +57,21 @@ class AgentRegistry:
             return self._specs[agent_id]
         except KeyError:
             raise NotFoundError(f"unknown agent: {agent_id}") from None
+
+    async def restore(self) -> int:
+        """Reload each agent's track record, so routing keeps learning."""
+        if self.store is None:
+            return 0
+        loaded = await self.store.load()
+        for agent_id, metrics in loaded.items():
+            if agent_id in self._specs:
+                self._metrics[agent_id] = metrics
+        return len(loaded)
+
+    async def persist(self, agent_id: str) -> None:
+        """Write one agent's metrics through. Called after each run."""
+        if self.store is not None and agent_id in self._metrics:
+            await self.store.save(agent_id, self._metrics[agent_id])
 
     def metrics(self, agent_id: str) -> AgentMetrics:
         self.get(agent_id)

@@ -27,6 +27,7 @@ from jarvis.kernel.bus import EventBus
 from jarvis.kernel.errors import ApprovalRequiredError, NotFoundError, PermissionDeniedError
 from jarvis.llm.base import ToolSchema
 from jarvis.observability.audit import AuditLog
+from jarvis.security.vault import Vault
 from jarvis.tools.approvals import ApprovalBroker, ApprovalState
 
 log = structlog.get_logger(__name__)
@@ -81,12 +82,14 @@ class ToolRegistry:
         grants: list[Grant] | None = None,
         approvals: ApprovalBroker | None = None,
         audit: AuditLog | None = None,
+        vault: Vault | None = None,
     ) -> None:
         self._tools: dict[str, Tool] = {}
         self._bus = bus
         self._grants = grants if grants is not None else [Grant("*", Permission.SAFE)]
         self._approvals = approvals
         self._audit = audit
+        self._vault = vault
 
     def register(
         self,
@@ -193,6 +196,14 @@ class ToolRegistry:
         tool = self.get(name)
         await self.authorise(tool, arguments, run_id=run_id, agent_id=agent_id)
 
+        # The model never holds a secret; it names one. References are resolved
+        # here, *after* authorisation and the audit write below, so the log and
+        # the approval prompt both record `${vault:stripe}` rather than the key
+        # itself — which is what makes the audit trail safe to keep.
+        call_arguments = arguments
+        if self._vault is not None:
+            call_arguments = await self._vault.resolve(arguments)
+
         if self._audit and tool.permission >= Permission.SENSITIVE:
             # Recorded *before* execution, so the log can never hold an action
             # whose authorisation is missing.
@@ -209,15 +220,24 @@ class ToolRegistry:
                 run_id=run_id,
             )
         try:
-            result = tool.fn(**arguments)
+            result = tool.fn(**call_arguments)
             if inspect.isawaitable(result):
                 result = await result
         except Exception as exc:
+            # Error messages are the most common leak path of all: an HTTP
+            # client quoting the header it failed to send puts the key in the
+            # log without anyone writing a line that logs a key.
+            message = str(exc)
+            if self._vault is not None:
+                message = self._vault.redact(message)
             if self._bus:
-                self._bus.publish("tool.failed", {"tool": name, "error": str(exc)}, run_id=run_id)
+                self._bus.publish("tool.failed", {"tool": name, "error": message}, run_id=run_id)
             raise
         if self._bus:
+            preview = str(result)[:200]
+            if self._vault is not None:
+                preview = self._vault.redact(preview)
             self._bus.publish(
-                "tool.succeeded", {"tool": name, "result_preview": str(result)[:200]}, run_id=run_id
+                "tool.succeeded", {"tool": name, "result_preview": preview}, run_id=run_id
             )
         return result

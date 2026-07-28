@@ -127,7 +127,7 @@ async def test_a_committing_click_needs_a_human() -> None:
         == "click button «Place order — £2,480» on shop.example.com"
     )
 
-    approvals.resolve(pending[0].id, approved=True)
+    await approvals.resolve(pending[0].id, approved=True)
     result = await task
     assert result.ok
     assert [a.ref for a in computer.performed] == ["e3"]
@@ -142,7 +142,7 @@ async def test_a_denied_click_does_not_happen() -> None:
     task = asyncio.create_task(session.act(Action(kind=ActionKind.CLICK, ref="e3")))
     await asyncio.sleep(0.05)
     pending = [a for a in approvals.all() if a.state.value == "pending"]
-    approvals.resolve(pending[0].id, approved=False, reason="not this one")
+    await approvals.resolve(pending[0].id, approved=False, reason="not this one")
 
     with pytest.raises(PermissionDeniedError, match="denied"):
         await task
@@ -230,7 +230,7 @@ async def test_navigating_off_the_allowlist_asks_first() -> None:
     assert pending[0].arguments["description"] == f"open {BANK}"
     assert "not on the allowlist" in pending[0].arguments["reason"]
 
-    approvals.resolve(pending[0].id, approved=True)
+    await approvals.resolve(pending[0].id, approved=True)
     await task
     assert computer.url == BANK
 
@@ -500,7 +500,7 @@ async def test_a_real_committing_click_is_put_to_a_human(browser, site) -> None:
     assert pending and pending[0].arguments["description"].startswith(
         "click button «Place order» on 127.0.0.1"
     )
-    approvals.resolve(pending[0].id, approved=False)
+    await approvals.resolve(pending[0].id, approved=False)
     with pytest.raises(PermissionDeniedError):
         await task
 

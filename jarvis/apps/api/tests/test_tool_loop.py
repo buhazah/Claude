@@ -284,7 +284,7 @@ async def test_a_dangerous_tool_suspends_until_approved(settings, clock, tmp_pat
         for _ in range(200):
             await asyncio.sleep(0.01)
             if pending := system.approvals.pending():
-                system.approvals.resolve(pending[0].id, approved=True)
+                await system.approvals.resolve(pending[0].id, approved=True)
                 return
         raise AssertionError("no approval was ever requested")
 
@@ -317,7 +317,9 @@ async def test_a_denied_tool_reports_refusal_and_the_run_continues(
         for _ in range(200):
             await asyncio.sleep(0.01)
             if pending := system.approvals.pending():
-                system.approvals.resolve(pending[0].id, approved=False, reason="absolutely not")
+                await system.approvals.resolve(
+                    pending[0].id, approved=False, reason="absolutely not"
+                )
                 return
 
     denier = asyncio.create_task(deny_when_asked())
@@ -367,7 +369,7 @@ async def test_approval_events_are_published(settings, clock, tmp_path) -> None:
         for _ in range(200):
             await asyncio.sleep(0.01)
             if pending := system.approvals.pending():
-                system.approvals.resolve(pending[0].id, approved=True)
+                await system.approvals.resolve(pending[0].id, approved=True)
                 return
 
     task = asyncio.create_task(approve())
@@ -392,8 +394,8 @@ async def test_deciding_twice_does_not_flip_the_outcome(settings, clock) -> None
             break
 
     approval = system.approvals.pending()[0]
-    system.approvals.resolve(approval.id, approved=True)
-    again = system.approvals.resolve(approval.id, approved=False)
+    await system.approvals.resolve(approval.id, approved=True)
+    again = await system.approvals.resolve(approval.id, approved=False)
     await task
 
     assert again.state.value == "approved"

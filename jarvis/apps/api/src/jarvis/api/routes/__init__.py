@@ -24,6 +24,7 @@ from jarvis.api.schemas import (
     ModelSummary,
     RememberRequest,
     RouteRequest,
+    SecretRequest,
     ToolInvocation,
     WorkflowRunRequest,
 )
@@ -38,6 +39,7 @@ from jarvis.kernel.errors import (
     PermissionDeniedError,
 )
 from jarvis.memory.models import MemoryKind
+from jarvis.security.vault import VaultLockedError
 
 router = APIRouter()
 
@@ -63,6 +65,11 @@ async def health(request: Request) -> dict[str, Any]:
         "documents": len(await jarvis.documents.list(limit=1000)),
         "workflows": len(await jarvis.workflows.all()),
         "scheduler": jarvis.scheduler.running,
+        "vault": {
+            "locked": jarvis.vault.locked,
+            "secrets": len(await jarvis.vault.names()),
+        },
+        "budget": jarvis.governor.snapshot(),
         "computer": {
             "driver": jarvis.computer.computer.name,
             "available": jarvis.computer.computer.is_available(),
@@ -343,6 +350,39 @@ async def voice(websocket: WebSocket) -> None:
             await pumping
         with contextlib.suppress(Exception):
             await websocket.close()
+
+
+@router.get("/v1/secrets")
+async def list_secrets(request: Request) -> dict[str, Any]:
+    """Names and hints only. There is no endpoint that returns a secret."""
+    vault = _jarvis(request).vault
+    return {
+        "locked": vault.locked,
+        "secrets": [info.to_dict() for info in await vault.names()],
+    }
+
+
+@router.put("/v1/secrets/{name}")
+async def put_secret(name: str, body: SecretRequest, request: Request) -> dict[str, Any]:
+    jarvis = _jarvis(request)
+    try:
+        info = await jarvis.vault.put(name, body.value, at=jarvis.settings.environment)
+    except VaultLockedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return info.to_dict()
+
+
+@router.delete("/v1/secrets/{name}")
+async def delete_secret(name: str, request: Request) -> dict[str, bool]:
+    return {"deleted": await _jarvis(request).vault.delete(name)}
+
+
+@router.get("/v1/budget")
+async def budget(request: Request) -> dict[str, Any]:
+    """What has been spent, and what would stop it."""
+    return _jarvis(request).governor.snapshot()
 
 
 @router.get("/v1/documents")
@@ -672,7 +712,7 @@ async def decide_approval(
 ) -> dict[str, Any]:
     """Approve or deny a suspended tool call, releasing the waiting run."""
     try:
-        approval = _jarvis(request).approvals.resolve(
+        approval = await _jarvis(request).approvals.resolve(
             approval_id, approved=body.approved, reason=body.reason
         )
     except NotFoundError as exc:

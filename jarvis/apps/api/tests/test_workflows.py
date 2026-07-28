@@ -394,7 +394,7 @@ async def test_approving_resumes_the_run(system) -> None:
     workflow = await system.workflows.save(_approval_workflow())
     run = await system.engine.start(workflow)
 
-    system.approvals.resolve(run.awaiting_approval_id, approved=True)
+    await system.approvals.resolve(run.awaiting_approval_id, approved=True)
     resumed = await system.engine.resume(run.id)
 
     assert resumed.state is WorkflowRunState.SUCCEEDED
@@ -405,7 +405,7 @@ async def test_denying_cancels_the_run(system) -> None:
     workflow = await system.workflows.save(_approval_workflow())
     run = await system.engine.start(workflow)
 
-    system.approvals.resolve(run.awaiting_approval_id, approved=False, reason="not yet")
+    await system.approvals.resolve(run.awaiting_approval_id, approved=False, reason="not yet")
     resumed = await system.engine.resume(run.id)
 
     assert resumed.state is WorkflowRunState.CANCELLED
@@ -429,7 +429,7 @@ async def test_a_denial_can_be_routed_around(system) -> None:
         )
     )
     run = await system.engine.start(workflow)
-    system.approvals.resolve(run.awaiting_approval_id, approved=False)
+    await system.approvals.resolve(run.awaiting_approval_id, approved=False)
     resumed = await system.engine.resume(run.id)
 
     assert resumed.state is WorkflowRunState.SUCCEEDED
@@ -489,7 +489,7 @@ async def test_a_suspended_run_survives_a_process_restart(settings, clock, tmp_p
     # The approval broker is also new; the decision is replayed into it, which
     # is what a durable approval store will do for real in M10.
     broker: ApprovalBroker = second_system.approvals
-    revived = broker.create(
+    revived = await broker.create(
         tool="workflow:Needs approval", arguments={"step": "approve"}, run_id=run.id
     )
     stored = await second_store.get_run(run.id)
@@ -507,7 +507,7 @@ async def test_a_suspended_run_survives_a_process_restart(settings, clock, tmp_p
         bus=second_system.bus,
         clock=clock,
     )
-    broker.resolve(revived.id, approved=True)
+    await broker.resolve(revived.id, approved=True)
     finished = await engine_two.resume(run.id)
 
     assert finished.state is WorkflowRunState.SUCCEEDED
@@ -615,7 +615,7 @@ async def test_workflow_events_cannot_trigger_workflows(system, clock: FrozenClo
 async def test_recovery_resumes_runs_left_suspended(system) -> None:
     workflow = await system.workflows.save(_approval_workflow())
     run = await system.engine.start(workflow)
-    system.approvals.resolve(run.awaiting_approval_id, approved=True)
+    await system.approvals.resolve(run.awaiting_approval_id, approved=True)
 
     # A fresh scheduler, as if the process had just started.
     scheduler = Scheduler(store=system.workflows, engine=system.engine, bus=system.bus)

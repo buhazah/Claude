@@ -15,6 +15,7 @@ import {
   Mic,
   MonitorSmartphone,
   FileText,
+  Settings,
   Search,
   Wrench,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const NAV = [
   { href: "/tools", label: "Tools", icon: Wrench, key: "8" },
   { href: "/documents", label: "Documents", icon: FileText, key: "9" },
   { href: "/computer", label: "Computer", icon: MonitorSmartphone, key: "0" },
+  { href: "/settings", label: "Settings", icon: Settings, key: "," },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

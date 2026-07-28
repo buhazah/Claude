@@ -13,7 +13,7 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 
 ## Status
 
-**Milestones 1 through 9 are complete.**
+**All ten milestones are complete.**
 
 *M1 — kernel*: event bus, model router with fallback and circuit breaking,
 30-agent catalog with a spec-driven runtime, tiered memory with hybrid recall,
@@ -65,7 +65,12 @@ section by section, and carry checkable sources.
 543 tests, including proof the narrowing is enforced by the kernel rather than
 by the client.
 
-Milestone 10 (hardening) is next.
+*M10 — hardening*: an encrypted vault whose real work is keeping secrets out of
+logs, events and the audit trail; cost ceilings checked before each call rather
+than reported after; and durable backings for the vault, approvals, documents
+and agent metrics.
+583 tests, including load and chaos, and durability verified across a real
+process restart.
 
 ## Run it
 
@@ -83,6 +88,22 @@ cd apps/web && pnpm install && pnpm dev
 ```
 
 Open http://localhost:3000 and press ⌘K — or ⌘⇧V to talk to it.
+
+## Secrets and spending
+
+```bash
+export JARVIS_VAULT_KEY=$(python -m jarvis.security.keygen)
+export JARVIS_DAILY_BUDGET_SOFT_USD=5      # asks you
+export JARVIS_DAILY_BUDGET_HARD_USD=25     # refuses
+```
+
+The model never holds a secret — it references one as `${vault:stripe}`, and
+Jarvis substitutes the value inside the tool call, after the audit entry is
+written. Every stored value is scrubbed from logs, events, audit entries and
+exception messages, which is where secrets actually escape.
+
+Ceilings are checked *before* each call, against a conservative estimate. The
+soft one parks for your approval; the hard one refuses without asking.
 
 ## Modes
 
@@ -215,17 +236,19 @@ jarvis/
     │   │   ├── computer/  element index · permission wall · browser driver
     │   │   ├── modes/    narrowed registries: agents · tools · memory scope
     │   │   ├── documents/  outline → sections → citations → md/html
+    │   │   ├── security/ vault · redaction · cost governance · SQL stores
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
     │   │   └── api/     routes · schemas · SSE
     │   └── tests/
     └── web/             Next.js client
         ├── src/app/      dashboard · chat · agents · memory · knowledge ·
-        │                 workflows · runs · tools · documents · computer
+        │                 workflows · runs · tools · documents · computer ·
+        │                 settings
         ├── src/components/  shell · command palette · activity rail · ui
         ├── src/lib/      typed API client · incremental SSE parser
         └── e2e/          Playwright: smoke · approval · knowledge ·
-                          workflows · voice · computer · modes
+                          workflows · voice · computer · modes · settings
 ```
 
 ## Design notes

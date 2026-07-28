@@ -225,6 +225,7 @@ class AgentRuntime:
             self._registry.metrics(spec.id).record(
                 ok=False, latency_ms=latency_ms, cost_usd=cost, tokens=tokens
             )
+            await self._registry.persist(spec.id)
             self._bus.publish("agent.failed", {"agent": spec.id, "error": str(exc)}, run_id=run.id)
             yield AgentDelta("error", text=str(exc))
             return
@@ -237,6 +238,10 @@ class AgentRuntime:
         self._registry.metrics(spec.id).record(
             ok=True, latency_ms=latency_ms, cost_usd=cost, tokens=tokens
         )
+        # Written through after each run, not on a timer: routing weights a
+        # spec by its track record, so losing the last N runs to a crash means
+        # routing quietly gets worse with no sign that anything happened.
+        await self._registry.persist(spec.id)
 
         if remember and output:
             await self._memory.remember(

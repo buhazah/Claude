@@ -78,6 +78,20 @@ class Settings(BaseSettings):
     browser_max_steps: int = 40
     browser_max_seconds: float = 300.0
 
+    # Secrets. Without a key the vault is locked: nothing can be stored and
+    # nothing can be read, which is the right default — a vault that silently
+    # keeps plaintext because it was misconfigured is worse than no vault.
+    # Generate one with `python -m jarvis.security.keygen`.
+    vault_key: str = ""
+
+    # Cost governance. Zero means unenforced. The soft ceiling asks a human;
+    # the hard ceiling refuses, because the case a hard ceiling exists for is
+    # the one where approval requests are arriving faster than anyone reads.
+    daily_budget_soft_usd: float = 0.0
+    daily_budget_hard_usd: float = 0.0
+    monthly_budget_soft_usd: float = 0.0
+    monthly_budget_hard_usd: float = 0.0
+
     # Routing
     default_policy: str = "balanced"
     use_llm_arbiter: bool = True

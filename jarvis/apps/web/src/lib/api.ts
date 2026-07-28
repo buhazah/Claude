@@ -182,6 +182,27 @@ export type VoiceEvent = {
   truncated?: boolean;
 };
 
+export type SecretInfo = {
+  name: string;
+  hint: string;
+  length: number;
+  created_at: string;
+};
+
+export type BudgetLine = {
+  period: string;
+  soft_usd: number;
+  hard_usd: number;
+  spent_usd: number;
+  remaining_usd: number | null;
+};
+
+export type BudgetStatus = {
+  enforced: boolean;
+  spend: Record<string, { spent_usd: number; calls: number }>;
+  budgets: BudgetLine[];
+};
+
 export type ModeInfo = {
   id: string;
   name: string;
@@ -286,6 +307,22 @@ export const api = {
   computer: () => get<ComputerStatus>("/v1/computer"),
 
   modes: () => get<{ default: string; modes: ModeInfo[] }>("/v1/modes"),
+
+  secrets: () => get<{ locked: boolean; secrets: SecretInfo[] }>("/v1/secrets"),
+
+  putSecret: (name: string, value: string) =>
+    get<SecretInfo>(`/v1/secrets/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ value }),
+    }),
+
+  deleteSecret: (name: string) =>
+    fetch(`${API_BASE}/v1/secrets/${encodeURIComponent(name)}`, { method: "DELETE" }).then(
+      (r) => r.ok,
+    ),
+
+  budget: () => get<BudgetStatus>("/v1/budget"),
 
   generatedDocuments: (mode?: string) =>
     get<DocumentSummary[]>(`/v1/documents${mode ? `?mode=${mode}` : ""}`),
@@ -542,6 +579,7 @@ export const TRACKED_TOPICS = [
   "routing.decided",
   "routing.arbitrated",
   "system.started",
+  "budget.exceeded",
   "document.started",
   "document.outlined",
   "document.section",

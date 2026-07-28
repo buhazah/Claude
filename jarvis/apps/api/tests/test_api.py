@@ -684,3 +684,68 @@ def test_health_counts_ingested_and_generated_separately(client: TestClient) -> 
     after = client.get("/health").json()
     assert after["documents"] == 1
     assert after["knowledge"] == 0
+
+
+# ── Vault and budget ──────────────────────────────────────────────────────────
+
+
+def test_a_locked_vault_says_so_and_refuses_writes(client: TestClient) -> None:
+    body = client.get("/v1/secrets").json()
+    assert body == {"locked": True, "secrets": []}
+
+    refused = client.put("/v1/secrets/stripe", json={"value": "irrelevant-while-locked"})
+    assert refused.status_code == 409
+    assert "no vault key" in refused.json()["detail"]
+
+
+def _unlocked(settings: Settings, clock: FrozenClock) -> TestClient:
+    from jarvis.security.vault import new_key
+
+    unlocked = settings.model_copy(update={"vault_key": new_key()})
+    system = container.build(unlocked, providers=[EchoProvider()], clock=clock)
+    return TestClient(create_app(unlocked, jarvis=system))
+
+
+def test_no_endpoint_returns_a_secret(settings: Settings, clock: FrozenClock) -> None:
+    """The property that matters: there is no shape of the API that leaks one."""
+    secret = "NOT-A-REAL-KEY-vault-fixture-4821"
+    with _unlocked(settings, clock) as client:
+        stored = client.put("/v1/secrets/stripe", json={"value": secret})
+        assert stored.status_code == 200
+        assert secret not in stored.text
+
+        listing = client.get("/v1/secrets")
+        assert secret not in listing.text
+        assert listing.json()["secrets"][0]["hint"] == "NOT…21"
+
+        assert secret not in client.get("/health").text
+        assert client.get("/health").json()["vault"] == {"locked": False, "secrets": 1}
+
+
+def test_a_secret_can_be_deleted(settings: Settings, clock: FrozenClock) -> None:
+    with _unlocked(settings, clock) as client:
+        client.put("/v1/secrets/stripe", json={"value": "a-long-enough-fixture"})
+        assert client.delete("/v1/secrets/stripe").json() == {"deleted": True}
+        assert client.get("/v1/secrets").json()["secrets"] == []
+
+
+def test_budget_reports_unenforced_by_default(client: TestClient) -> None:
+    body = client.get("/v1/budget").json()
+    assert body["enforced"] is False
+    assert body["budgets"] == []
+    assert body["spend"]["day"]["spent_usd"] == 0.0
+
+
+def test_budget_publishes_the_ceilings_it_will_enforce(
+    settings: Settings, clock: FrozenClock
+) -> None:
+    """A ceiling nobody can see is a ceiling nobody plans around."""
+    governed = settings.model_copy(
+        update={"daily_budget_soft_usd": 1.0, "daily_budget_hard_usd": 5.0}
+    )
+    system = container.build(governed, providers=[EchoProvider()], clock=clock)
+    with TestClient(create_app(governed, jarvis=system)) as client:
+        body = client.get("/v1/budget").json()
+        assert body["enforced"] is True
+        day = next(b for b in body["budgets"] if b["period"] == "day")
+        assert (day["soft_usd"], day["hard_usd"], day["remaining_usd"]) == (1.0, 5.0, 5.0)

@@ -14,7 +14,7 @@ begins before the previous one's suite is green.
 | **M7** | **Voice** | Streaming STT, TTS, barge-in/interruption, wake word | ✅ **done** |
 | **M8** | **Computer control** | Sandboxed desktop/browser control with screenshot loop and a hard permission wall | ✅ **done** |
 | **M9** | **Modes** | Business / Coding / Research mode surfaces + document generation | ✅ **done** |
-| **M10** | **Hardening** | Vault, audit chain, cost governance, CI/CD, load + chaos tests, packaging | |
+| **M10** | **Hardening** | Vault, audit chain, cost governance, CI/CD, load + chaos tests, packaging | ✅ **done** |
 
 ## Milestone 1 — delivered
 
@@ -273,6 +273,38 @@ routing preview stays inside the mode.
 request in coding mode would have escaped straight to an agent coding mode
 excludes. Also: `memory_scopes` had been declared on `AgentSpec` since M1 and
 never read — dead config that modes made real.
+
+## Milestone 10 — delivered
+
+**Built**
+- **A secrets vault whose real work is redaction** (ADR 0011). AES-256-GCM with
+  the name as associated data; the model names a secret (`${vault:stripe}`) and
+  never holds one, resolved inside the tool registry *after* the audit write.
+  Every known value is scrubbed from logs, events, audit entries and exception
+  messages — the paths a secret actually escapes through.
+- **Cost governance that is a control, not a report.** Checked before each call
+  against a deliberately conservative estimate, enforced in the router because
+  that is where every call passes. A soft ceiling parks in the same approval
+  gate as a dangerous tool; a hard ceiling refuses with no path around it.
+- **Everything durable is durable.** The vault, approvals, generated documents
+  and agent metrics all have SQL backings behind the Protocols written for the
+  swap — retiring three caveats carried since M1, M4 and M9.
+- **Load and chaos tests** — concurrent runs, concurrent memory writes, bus
+  backpressure under 2,000 messages, a provider failing half the time, a
+  circuit opening, budget refusal under twenty concurrent callers, and
+  abandoned mid-stream runs.
+- `GET /v1/secrets` (names and hints, never values), `PUT`/`DELETE`,
+  `GET /v1/budget`, a Settings page, and `python -m jarvis.security.keygen`.
+
+**Verification** — 583 tests with backends live, plus a browser suite that
+stores a secret through the UI and asserts it appears in *no response the page
+received* and in no audit entry. Durability verified across a real process
+restart on Postgres: secret, approval decision, agent metrics and a generated
+document all survived.
+
+**Found by testing** — the router only caught `ProviderError`, so an adapter
+raising a connection reset or an unwrapped decode error killed the request with
+no fallback at all — the exact failure a fallback chain exists for.
 
 ## Definition of done (every milestone)
 
