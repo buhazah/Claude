@@ -182,6 +182,48 @@ export type VoiceEvent = {
   truncated?: boolean;
 };
 
+export type ModeInfo = {
+  id: string;
+  name: string;
+  tagline: string;
+  agents: string[];
+  agent_count: number;
+  memory_scope: string;
+  policy: string | null;
+  surfaces: string[];
+  accent: string;
+  briefing: string;
+};
+
+export type DocumentSummary = {
+  id: string;
+  title: string;
+  kind: string;
+  state: "planning" | "writing" | "complete" | "failed";
+  mode: string;
+  sections: number;
+  words: number;
+  citations: number;
+  cost_usd: number;
+  tokens: number;
+  error: string;
+  created_at: string | null;
+};
+
+export type DocumentSection = {
+  id: string;
+  heading: string;
+  intent: string;
+  body: string;
+  citations: { document_title: string; locator: string; reference: string }[];
+};
+
+export type DocumentDetail = DocumentSummary & {
+  request: string;
+  sections: DocumentSection[];
+  references: { document_title: string; locator: string; reference: string }[];
+};
+
 export type ComputerStep = {
   action: { id: string; kind: string; ref: string; text: string; url: string };
   verdict: "allow" | "approve" | "refuse";
@@ -242,6 +284,16 @@ export const api = {
   models: () => get<Model[]>("/v1/models"),
   tools: () => get<Tool[]>("/v1/tools"),
   computer: () => get<ComputerStatus>("/v1/computer"),
+
+  modes: () => get<{ default: string; modes: ModeInfo[] }>("/v1/modes"),
+
+  generatedDocuments: (mode?: string) =>
+    get<DocumentSummary[]>(`/v1/documents${mode ? `?mode=${mode}` : ""}`),
+
+  document: (id: string) => get<DocumentDetail>(`/v1/documents/${id}`),
+
+  deleteDocument: (id: string) =>
+    fetch(`${API_BASE}/v1/documents/${id}`, { method: "DELETE" }).then((r) => r.ok),
   runs: (limit = 25) => get<Run[]>(`/v1/runs?limit=${limit}`),
 
   approvals: (pendingOnly = false) =>
@@ -299,12 +351,15 @@ export const api = {
     }),
 
   /** Preview the routing decision without executing — powers the palette. */
-  route: (message: string) =>
-    get<{ candidates: AgentMatch[] }>("/v1/route", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message }),
-    }),
+  route: (message: string, mode?: string) =>
+    get<{ candidates: AgentMatch[]; mode: string }>(
+      `/v1/route${mode ? `?mode=${mode}` : ""}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message }),
+      },
+    ),
 };
 
 export type ChatEvent =
@@ -319,12 +374,16 @@ export type ChatEvent =
 /** Stream a chat turn. Abort via `signal` to interrupt mid-answer. */
 export async function* streamChat(
   message: string,
-  options: { agentId?: string; signal?: AbortSignal } = {},
+  options: { agentId?: string; mode?: string; signal?: AbortSignal } = {},
 ): AsyncGenerator<ChatEvent> {
   const response = await fetch(`${API_BASE}/v1/chat`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ message, agent_id: options.agentId ?? null }),
+    body: JSON.stringify({
+      message,
+      agent_id: options.agentId ?? null,
+      mode: options.mode ?? null,
+    }),
     signal: options.signal,
   });
 
@@ -335,6 +394,39 @@ export async function* streamChat(
   for await (const frame of readSSE(response)) {
     const payload = (frame.data ?? {}) as Record<string, unknown>;
     yield { type: frame.event, ...payload } as ChatEvent;
+  }
+}
+
+export type DocumentEvent =
+  | { type: "outline"; id: string; title: string; sections: { heading: string; intent: string }[] }
+  | { type: "token"; text: string }
+  | { type: "section"; heading: string }
+  | { type: "done"; id: string; title: string; sections: number; words: number; citations: number }
+  | { type: "error"; message: string };
+
+/** Compose a document, streaming the outline and then each section. */
+export async function* streamDocument(
+  request: string,
+  options: { kind?: string; mode?: string; agentId?: string; signal?: AbortSignal } = {},
+): AsyncGenerator<DocumentEvent> {
+  const response = await fetch(`${API_BASE}/v1/documents`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      request,
+      kind: options.kind ?? "report",
+      mode: options.mode ?? null,
+      agent_id: options.agentId ?? "research",
+    }),
+    signal: options.signal,
+  });
+
+  if (!response.ok) {
+    throw new ApiError(`compose failed (${response.status})`, response.status);
+  }
+
+  for await (const frame of readSSE(response)) {
+    yield { type: frame.event, ...((frame.data ?? {}) as object) } as DocumentEvent;
   }
 }
 
@@ -450,6 +542,10 @@ export const TRACKED_TOPICS = [
   "routing.decided",
   "routing.arbitrated",
   "system.started",
+  "document.started",
+  "document.outlined",
+  "document.section",
+  "document.finished",
   "computer.started",
   "computer.acted",
   "computer.stopped",

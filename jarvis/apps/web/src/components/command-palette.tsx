@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { CornerDownLeft, Loader2, Sparkles } from "lucide-react";
+import { useMode } from "@/lib/mode";
 import { api, type AgentMatch } from "@/lib/api";
 
 const SUGGESTIONS = [
@@ -40,6 +41,7 @@ export function CommandPalette({
 function Palette({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const { mode } = useMode();
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<AgentMatch[]>([]);
   const [routing, setRouting] = useState(false);
@@ -62,7 +64,7 @@ function Palette({ onClose }: { onClose: () => void }) {
       }
       setRouting(true);
       try {
-        const { candidates } = await api.route(text);
+        const { candidates } = await api.route(text, mode);
         if (!cancelled) setCandidates(candidates);
       } catch {
         if (!cancelled) setCandidates([]);
@@ -75,7 +77,9 @@ function Palette({ onClose }: { onClose: () => void }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+    // Re-previews on a mode switch, because the answer to "who would handle
+    // this" is different in each one.
+  }, [query, mode]);
 
   const execute = useCallback(() => {
     const text = query.trim();

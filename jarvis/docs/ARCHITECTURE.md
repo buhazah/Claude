@@ -139,6 +139,20 @@ clicks escalate quoting the page, and a ref absent from the current snapshot is
 refused as acting blind. Budgets — steps, wall clock, and loop detection — are
 part of the boundary, not a nicety.
 
+### 3.9 Modes (`jarvis.modes`)
+A mode is a **narrowing**, not a preset (ADR 0010). It produces a narrowed
+`AgentRegistry` of narrowed specs — agents filtered, tools intersected with the
+agent's own allowlist, memory namespaced, routing policy overridden — and
+everything downstream runs unchanged against it. The invariant is that a mode
+can only subtract: it cannot grant a tool, raise a permission, or reach an
+agent the catalog lacks, so choosing a mode can never widen authority.
+
+### 3.10 Documents (`jarvis.documents`)
+Outline first, then each section written against passages retrieved for that
+section. Citations are captured from what the section was handed and filtered
+to the markers that actually appear in its prose — a claim about provenance the
+system can make, unlike asking a model afterwards what it used.
+
 ## 4. Technology decisions
 
 | Choice | Why | Rejected alternative |

@@ -13,7 +13,7 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 
 ## Status
 
-**Milestones 1 through 8 are complete.**
+**Milestones 1 through 9 are complete.**
 
 *M1 — kernel*: event bus, model router with fallback and circuit breaking,
 30-agent catalog with a spec-driven runtime, tiered memory with hybrid recall,
@@ -58,7 +58,14 @@ asks first, committing clicks quote the page, and credential fields are refused
 outright with no approval to click through.
 477 tests, including five against real Chromium.
 
-Milestone 9 (business, coding and research modes) is next.
+*M9 — modes and documents*: Business, Coding and Research narrow which agents
+can be reached, which tools survive, and which memory answers — and can only
+ever subtract, never grant. Documents are planned as an outline, written
+section by section, and carry checkable sources.
+543 tests, including proof the narrowing is enforced by the kernel rather than
+by the client.
+
+Milestone 10 (hardening) is next.
 
 ## Run it
 
@@ -76,6 +83,27 @@ cd apps/web && pnpm install && pnpm dev
 ```
 
 Open http://localhost:3000 and press ⌘K — or ⌘⇧V to talk to it.
+
+## Modes
+
+Switching mode is a real constraint, not a theme. Each one narrows which agents
+can be routed to, which tools they keep, and which memory namespace they read —
+and a mode can only ever *subtract*, so picking one can never widen what Jarvis
+is allowed to do.
+
+| Mode | Narrows to |
+|---|---|
+| **Personal** | everything — the unconstrained default |
+| **Business** | operating agents, `business:` memory |
+| **Coding** | engineering agents, quality-first routing, `coding:` memory |
+| **Research** | research agents, every claim cited, `research:` memory |
+
+## Documents
+
+Ask for a report and Jarvis plans an outline first, then writes each section
+against passages retrieved for *that section* — so the sources at the bottom
+are the ones actually used, with the locators M5 preserved. Exports as Markdown
+or a self-contained HTML file.
 
 ## Computer control
 
@@ -185,17 +213,19 @@ jarvis/
     │   │   ├── tools/   registry · tiers · approvals · system · MCP
     │   │   ├── voice/   session · segmenter · wake word · speech ports
     │   │   ├── computer/  element index · permission wall · browser driver
+    │   │   ├── modes/    narrowed registries: agents · tools · memory scope
+    │   │   ├── documents/  outline → sections → citations → md/html
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
     │   │   └── api/     routes · schemas · SSE
     │   └── tests/
     └── web/             Next.js client
         ├── src/app/      dashboard · chat · agents · memory · knowledge ·
-        │                 workflows · runs · tools · computer
+        │                 workflows · runs · tools · documents · computer
         ├── src/components/  shell · command palette · activity rail · ui
         ├── src/lib/      typed API client · incremental SSE parser
         └── e2e/          Playwright: smoke · approval · knowledge ·
-                          workflows · voice · computer
+                          workflows · voice · computer · modes
 ```
 
 ## Design notes

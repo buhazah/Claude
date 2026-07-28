@@ -13,7 +13,7 @@ begins before the previous one's suite is green.
 | **M6** | **Workflows** | Graph engine with durable suspension, structured conditions, schedule/event triggers, scheduler with boot recovery, workflow UI | ✅ **done** |
 | **M7** | **Voice** | Streaming STT, TTS, barge-in/interruption, wake word | ✅ **done** |
 | **M8** | **Computer control** | Sandboxed desktop/browser control with screenshot loop and a hard permission wall | ✅ **done** |
-| **M9** | **Modes** | Business / Coding (Claude Code integration) / Research mode surfaces + document generation | |
+| **M9** | **Modes** | Business / Coding / Research mode surfaces + document generation | ✅ **done** |
 | **M10** | **Hardening** | Vault, audit chain, cost governance, CI/CD, load + chaos tests, packaging | |
 
 ## Milestone 1 — delivered
@@ -240,6 +240,39 @@ page, and the denied click on the record as denied.
 shopping" matched the `pin` hint and an ordinary link was classified as a
 credential field. Only the real-browser test surfaced it; the scripted site had
 no such text. Matching is now per token.
+
+## Milestone 9 — delivered
+
+**Built**
+- **Modes as narrowings, not themes** (ADR 0010). Business, Coding and Research
+  each constrain three seams — which agents can be routed to, which tools
+  survive the intersection with the agent's own allowlist, and which memory
+  namespace is read and written. Personal is the unconstrained default, so
+  switching *out* of it is what narrows.
+- **The subtract-only invariant**, enforced and tested: a mode cannot grant a
+  tool the agent lacks, cannot reach an agent the catalog lacks, and cannot
+  raise a permission. A briefing is context, never capability.
+- **Fail-closed resolution** — an unknown mode is refused rather than defaulted,
+  because the default is the unconstrained one; and pinning an agent is checked
+  against the *mode's* catalog so `agent_id` is not a way around it.
+- **Document generation** — outline first, then each section written against it
+  with passages retrieved per section, citations captured at write time and
+  filtered to the markers that actually appear. Markdown and self-contained
+  HTML export.
+- `GET /v1/modes`, mode-aware `/v1/chat` and `/v1/route`, the `/v1/documents`
+  surface, a sidebar mode switcher that states what each mode costs you, and a
+  Documents page that shows the outline landing before any prose.
+
+**Verification** — 543 tests with backends live, plus a browser suite that
+proves the narrowing is held by the kernel and not merely by the client:
+pinning an excluded agent is refused over HTTP, an unknown mode is refused, and
+routing preview stays inside the mode.
+
+**Found by testing** — the routing fallback returned a hardcoded
+`chief_of_staff` regardless of which registry was asked, so an unmatched
+request in coding mode would have escaped straight to an agent coding mode
+excludes. Also: `memory_scopes` had been declared on `AgentSpec` since M1 and
+never read — dead config that modes made real.
 
 ## Definition of done (every milestone)
 

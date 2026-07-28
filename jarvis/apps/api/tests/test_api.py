@@ -327,7 +327,7 @@ def test_documents_are_listed_and_removable(client: TestClient) -> None:
 
     documents = client.get("/v1/knowledge").json()
     assert len(documents) == 1
-    assert client.get("/health").json()["documents"] == 1
+    assert client.get("/health").json()["knowledge"] == 1
 
     assert client.delete(f"/v1/knowledge/{documents[0]['id']}").status_code == 204
     assert client.delete(f"/v1/knowledge/{documents[0]['id']}").status_code == 404
@@ -548,3 +548,139 @@ async def _drive(system: container.Jarvis) -> None:
 
     await system.computer.start()
     await system.computer.act(Action(kind=ActionKind.SCROLL, amount=600))
+
+
+# ── Modes ─────────────────────────────────────────────────────────────────────
+
+
+def test_modes_publish_what_they_narrow(client: TestClient) -> None:
+    body = client.get("/v1/modes").json()
+    modes = {m["id"]: m for m in body["modes"]}
+
+    assert body["default"] == "personal"
+    assert modes["personal"]["agent_count"] > modes["coding"]["agent_count"]
+    assert modes["coding"]["memory_scope"] == "coding"
+    assert "life_coach" not in modes["coding"]["agents"]
+
+
+def test_an_unknown_mode_is_refused_by_the_api(client: TestClient) -> None:
+    response = client.post("/v1/chat", json={"message": "hello", "mode": "busines"})
+    assert response.status_code == 404
+    assert "unknown mode" in response.json()["detail"]
+
+
+def test_routing_preview_is_scoped_to_the_mode(client: TestClient) -> None:
+    body = client.post("/v1/route?mode=coding", json={"message": "refactor this module"}).json()
+    assert body["mode"] == "coding"
+    assert all(c["agent_id"] != "life_coach" for c in body["candidates"])
+
+
+def test_pinning_an_agent_the_mode_excludes_is_refused(client: TestClient) -> None:
+    """Otherwise `agent_id` is a way straight around the narrowing."""
+    response = client.post(
+        "/v1/chat", json={"message": "hello", "mode": "coding", "agent_id": "life_coach"}
+    )
+    assert response.status_code == 404
+    assert "not available in coding mode" in response.json()["detail"]
+
+    # The same agent is reachable without the mode.
+    unscoped = client.post("/v1/chat", json={"message": "hi", "agent_id": "life_coach"})
+    assert unscoped.status_code == 200
+
+
+def test_chatting_in_a_mode_routes_within_it(client: TestClient) -> None:
+    response = client.post("/v1/chat", json={"message": "ship the login fix", "mode": "coding"})
+    assert response.status_code == 200
+    routing = next(data for event, data in _sse(response.text) if event == "routing")
+    assert routing["chosen"] in {
+        "coding",
+        "architect",
+        "security",
+        "data_analyst",
+        "product_manager",
+        "planner",
+    }
+
+
+# ── Documents ─────────────────────────────────────────────────────────────────
+
+
+def _compose(client: TestClient, **body: object) -> dict:
+    response = client.post("/v1/documents", json={"request": "Brief on Q3 revenue", **body})
+    assert response.status_code == 200, response.text
+    frames = _sse(response.text)
+    assert next(e for e, _ in frames) == "outline"
+    return next(data for event, data in frames if event == "done")
+
+
+def test_composing_streams_an_outline_then_finishes(client: TestClient) -> None:
+    done = _compose(client)
+    assert done["state"] == "complete"
+    assert done["sections"] >= 1
+    assert done["words"] > 0
+
+
+def test_a_composed_document_is_retrievable_the_moment_done_arrives(client: TestClient) -> None:
+    """`done` is saved before the frame is sent, so a client can act on it."""
+    done = _compose(client)
+    fetched = client.get(f"/v1/documents/{done['id']}").json()
+
+    assert fetched["title"] == done["title"]
+    assert len(fetched["sections"]) == done["sections"]
+    assert all(s["body"] for s in fetched["sections"])
+
+
+def test_documents_carry_their_mode(client: TestClient) -> None:
+    done = _compose(client, mode="business")
+    assert done["mode"] == "business"
+    assert [d["id"] for d in client.get("/v1/documents?mode=business").json()] == [done["id"]]
+    assert client.get("/v1/documents?mode=coding").json() == []
+
+
+def test_an_unknown_document_kind_is_a_bad_request(client: TestClient) -> None:
+    response = client.post("/v1/documents", json={"request": "x", "kind": "haiku"})
+    assert response.status_code == 400
+
+
+def test_a_document_exports_as_markdown_and_html(client: TestClient) -> None:
+    done = _compose(client)
+
+    markdown = client.get(f"/v1/documents/{done['id']}/export?format=md")
+    assert markdown.status_code == 200
+    assert markdown.headers["content-type"].startswith("text/markdown")
+    assert markdown.text.startswith("# ")
+    assert ".md" in markdown.headers["content-disposition"]
+
+    html = client.get(f"/v1/documents/{done['id']}/export?format=html")
+    assert html.status_code == 200
+    assert html.text.startswith("<!doctype html>")
+    # Self-contained: it has to survive being emailed to someone.
+    assert "http://" not in html.text and "https://" not in html.text
+
+
+def test_an_unknown_export_format_is_refused(client: TestClient) -> None:
+    done = _compose(client)
+    assert client.get(f"/v1/documents/{done['id']}/export?format=docx").status_code == 400
+
+
+def test_a_missing_document_is_404_everywhere(client: TestClient) -> None:
+    assert client.get("/v1/documents/doc_nope").status_code == 404
+    assert client.get("/v1/documents/doc_nope/export").status_code == 404
+    assert client.delete("/v1/documents/doc_nope").json() == {"deleted": False}
+
+
+def test_a_document_can_be_deleted(client: TestClient) -> None:
+    done = _compose(client)
+    assert client.delete(f"/v1/documents/{done['id']}").json() == {"deleted": True}
+    assert client.get("/v1/documents").json() == []
+
+
+def test_health_counts_ingested_and_generated_separately(client: TestClient) -> None:
+    """Two different things that were both called "documents"."""
+    before = client.get("/health").json()
+    assert before["documents"] == 0
+
+    _compose(client)
+    after = client.get("/health").json()
+    assert after["documents"] == 1
+    assert after["knowledge"] == 0

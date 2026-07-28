@@ -99,6 +99,16 @@ class Orchestrator:
             )
         return matches
 
+    @property
+    def registry(self) -> AgentRegistry:
+        """The catalog this orchestrator can reach.
+
+        Public because a mode narrows by handing over a different one, and a
+        caller that pins an agent must be able to ask whether *this*
+        orchestrator has it — not whether the system does.
+        """
+        return self._registry
+
     def resolve(self, agent_id: str) -> AgentSpec:
         return self._registry.get(agent_id)
 

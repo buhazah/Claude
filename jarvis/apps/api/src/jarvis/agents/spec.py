@@ -56,6 +56,9 @@ class AgentSpec(BaseModel):
     capabilities: tuple[Capability, ...] = ()
     tools: tuple[str, ...] = ()
     keywords: tuple[str, ...] = ()
+    # Where this agent's memories live. Empty means its own id, which is the
+    # right default — an agent should not read another's working notes. A mode
+    # rewrites this to namespace the whole catalog (ADR 0010).
     memory_scopes: tuple[str, ...] = ()
     policy: RoutingPolicy = RoutingPolicy.BALANCED
     min_privacy: Privacy = Privacy.CLOUD
@@ -65,6 +68,11 @@ class AgentSpec(BaseModel):
     collaborators: tuple[str, ...] = ()
 
     model_config = {"frozen": True}
+
+    @property
+    def scope(self) -> str:
+        """The memory namespace this agent reads from and writes to."""
+        return self.memory_scopes[0] if self.memory_scopes else self.id
 
 
 class AgentMetrics(BaseModel):

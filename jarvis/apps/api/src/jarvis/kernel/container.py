@@ -21,6 +21,8 @@ from jarvis.computer.ports import Computer, UnavailableComputer
 from jarvis.computer.session import ComputerSession
 from jarvis.computer.tools import register_computer_tools
 from jarvis.config import Settings, get_settings
+from jarvis.documents.compose import DocumentComposer
+from jarvis.documents.store import DocumentStore, InMemoryDocumentStore
 from jarvis.kernel.bus import EventBus
 from jarvis.kernel.clock import SYSTEM_CLOCK, Clock
 from jarvis.kernel.redis_bus import RedisEventBus
@@ -34,6 +36,8 @@ from jarvis.llm.router import ModelRouter
 from jarvis.memory.embeddings import Embedder, HashingEmbedder, HostedEmbedder
 from jarvis.memory.sql_store import SqlMemoryStore
 from jarvis.memory.store import InMemoryStore, MemoryStore
+from jarvis.modes.catalog import built_in_modes
+from jarvis.modes.spec import Mode, ModeRegistry
 from jarvis.observability.audit import AuditLog, NullAuditLog, SqlAuditLog
 from jarvis.persistence.db import Database
 from jarvis.runs.models import RunStore
@@ -151,6 +155,9 @@ class Jarvis:
     workspace: Workspace
     mcp: MCPManager
     computer: ComputerSession
+    modes: ModeRegistry
+    documents: DocumentStore
+    composer: DocumentComposer
     database: Database | None = None
 
     @property
@@ -169,6 +176,29 @@ class Jarvis:
                 self.settings.require_wake_word if require_wake_word is None else require_wake_word
             ),
             wake=WakeWordDetector((self.settings.wake_word, f"hey {self.settings.wake_word}")),
+        )
+
+    def mode(self, mode_id: str | None = None) -> Mode:
+        return self.modes.get(mode_id)
+
+    def orchestrator_for(self, mode_id: str | None) -> Orchestrator:
+        """An orchestrator that can only see what the mode allows.
+
+        Built per request rather than cached: it is a handful of references,
+        and a cached one would go stale the moment an agent's metrics moved.
+        The narrowing happens once, here, so nothing downstream needs to know
+        modes exist (ADR 0010).
+        """
+        mode = self.modes.get(mode_id)
+        if mode.id == self.modes.default_id and not mode.agents and not mode.briefing:
+            return self.orchestrator  # the unconstrained default, unwrapped
+        return Orchestrator(
+            registry=mode.view(self.agents),
+            runtime=self.runtime,
+            router=self.router,
+            runs=self.runs,
+            bus=self.bus,
+            use_arbiter=self.settings.use_llm_arbiter,
         )
 
     @property
@@ -280,6 +310,8 @@ def build(
     if settings.enable_computer:
         register_computer_tools(tools, computer)
 
+    documents: DocumentStore = InMemoryDocumentStore()
+
     runtime = AgentRuntime(
         router=router,
         registry=agents,
@@ -296,6 +328,15 @@ def build(
         runs=runs,
         bus=bus,
         use_arbiter=settings.use_llm_arbiter,
+    )
+
+    composer = DocumentComposer(
+        router=router,
+        runtime=runtime,
+        agents=agents,
+        knowledge=knowledge,
+        bus=bus,
+        clock=clock,
     )
 
     engine = WorkflowEngine(
@@ -358,5 +399,8 @@ def build(
         workspace=workspace,
         mcp=mcp,
         computer=computer,
+        modes=built_in_modes(),
+        documents=documents,
+        composer=composer,
         database=database,
     )

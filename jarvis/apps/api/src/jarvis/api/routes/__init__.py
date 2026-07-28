@@ -19,6 +19,7 @@ from jarvis.api.schemas import (
     AgentSummary,
     ApprovalDecision,
     ChatRequest,
+    DocumentRequest,
     IngestRequest,
     ModelSummary,
     RememberRequest,
@@ -27,6 +28,8 @@ from jarvis.api.schemas import (
     WorkflowRunRequest,
 )
 from jarvis.api.sse import HEADERS, frame
+from jarvis.documents.models import DocumentKind
+from jarvis.documents.render import MEDIA_TYPES, RENDERERS
 from jarvis.kernel.container import Jarvis
 from jarvis.kernel.errors import (
     ApprovalRequiredError,
@@ -54,7 +57,10 @@ async def health(request: Request) -> dict[str, Any]:
         "agents": len(jarvis.agents),
         "tools": len(jarvis.tools.all()),
         "memories": await jarvis.memory.count(),
-        "documents": await jarvis.knowledge.count(),
+        # Two different things, deliberately named apart: `knowledge` is what
+        # was ingested, `documents` is what Jarvis wrote.
+        "knowledge": await jarvis.knowledge.count(),
+        "documents": len(await jarvis.documents.list(limit=1000)),
         "workflows": len(await jarvis.workflows.all()),
         "scheduler": jarvis.scheduler.running,
         "computer": {
@@ -111,24 +117,69 @@ async def get_agent(agent_id: str, request: Request) -> AgentSummary:
     return AgentSummary.build(spec, jarvis.agents.metrics(agent_id))
 
 
+@router.get("/v1/modes")
+async def list_modes(request: Request) -> dict[str, Any]:
+    """The ways of working, and exactly what each one narrows.
+
+    Published rather than hardcoded in the client, so the UI cannot claim a
+    constraint the kernel does not enforce.
+    """
+    jarvis = _jarvis(request)
+    return {
+        "default": jarvis.modes.default_id,
+        "modes": [
+            {
+                "id": mode.id,
+                "name": mode.name,
+                "tagline": mode.tagline,
+                "agents": [s.id for s in mode.view(jarvis.agents).all()],
+                "agent_count": len(mode.view(jarvis.agents).all()),
+                "memory_scope": mode.memory_scope,
+                "policy": mode.policy.value if mode.policy else None,
+                "surfaces": list(mode.surfaces),
+                "accent": mode.accent,
+                "briefing": mode.briefing,
+            }
+            for mode in jarvis.modes.all()
+        ],
+    }
+
+
 @router.post("/v1/route")
-async def route_request(body: RouteRequest, request: Request) -> dict[str, Any]:
+async def route_request(
+    body: RouteRequest, request: Request, mode: str | None = None
+) -> dict[str, Any]:
     """Preview the routing decision without executing it — powers the palette."""
-    matches = await _jarvis(request).orchestrator.plan(body.message)
-    return {"candidates": [m.model_dump() for m in matches]}
+    jarvis = _jarvis(request)
+    try:
+        orchestrator = jarvis.orchestrator_for(mode)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    matches = await orchestrator.plan(body.message)
+    return {"candidates": [m.model_dump() for m in matches], "mode": jarvis.mode(mode).id}
 
 
 @router.post("/v1/chat")
 async def chat(body: ChatRequest, request: Request) -> StreamingResponse:
     jarvis = _jarvis(request)
-    if body.agent_id and body.agent_id not in jarvis.agents:
-        raise HTTPException(status_code=404, detail=f"unknown agent: {body.agent_id}")
+    try:
+        orchestrator = jarvis.orchestrator_for(body.mode)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    # Checked against the *mode's* catalog, not the whole one: pinning an agent
+    # the mode excludes must fail rather than quietly escape the narrowing.
+    if body.agent_id and body.agent_id not in orchestrator.registry:
+        raise HTTPException(
+            status_code=404,
+            detail=f"agent '{body.agent_id}' is not available in {jarvis.mode(body.mode).id} mode",
+        )
 
     history = body.history[-jarvis.settings.max_history_messages :]
 
     async def stream() -> AsyncIterator[str]:
         try:
-            async for delta in jarvis.orchestrator.handle(
+            async for delta in orchestrator.handle(
                 body.message, agent_id=body.agent_id, history=history
             ):
                 yield frame(delta.type, {"text": delta.text, **(delta.data or {})})
@@ -294,6 +345,107 @@ async def voice(websocket: WebSocket) -> None:
             await websocket.close()
 
 
+@router.get("/v1/documents")
+async def list_documents(
+    request: Request, limit: int = 50, mode: str | None = None
+) -> list[dict[str, Any]]:
+    documents = await _jarvis(request).documents.list(limit=limit, mode=mode)
+    return [d.summarise() for d in documents]
+
+
+@router.post("/v1/documents")
+async def compose_document(body: DocumentRequest, request: Request) -> StreamingResponse:
+    """Compose a document, streaming the outline and then each section.
+
+    Streaming rather than returning: a document takes long enough that a
+    spinner would be a lie about what is happening, and the outline landing
+    first is the point at which the user can tell it is going wrong.
+    """
+    jarvis = _jarvis(request)
+    try:
+        kind = DocumentKind(body.kind)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"unknown document kind: {body.kind}") from None
+    try:
+        mode = jarvis.mode(body.mode)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    async def stream() -> AsyncIterator[str]:
+        try:
+            async for event, document, text in jarvis.composer.compose(
+                body.request,
+                kind=kind,
+                mode=mode.id,
+                scope=body.scope,
+                agent_id=body.agent_id,
+            ):
+                if event == "token":
+                    yield frame("token", {"text": text})
+                elif event == "outline":
+                    yield frame(
+                        "outline",
+                        {
+                            "id": document.id,
+                            "title": document.title,
+                            "sections": [
+                                {"heading": s.heading, "intent": s.intent}
+                                for s in document.sections
+                            ],
+                        },
+                    )
+                elif event == "section":
+                    yield frame("section", {"heading": text})
+                elif event in ("done", "error"):
+                    # Saved before the terminal frame, so a client that acts on
+                    # `done` can immediately fetch what it was told about.
+                    await jarvis.documents.save(document)
+                    yield frame(event, {**document.summarise(), "message": text})
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            yield frame("error", {"message": str(exc), "type": "InternalError"})
+
+    return StreamingResponse(stream(), media_type="text/event-stream", headers=HEADERS)
+
+
+@router.get("/v1/documents/{document_id}")
+async def get_document(document_id: str, request: Request) -> dict[str, Any]:
+    document = await _jarvis(request).documents.get(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail=f"unknown document: {document_id}")
+    return {
+        **document.summarise(),
+        "request": document.request,
+        "sections": [s.model_dump() for s in document.sections],
+        "references": [c.model_dump() for c in document.citations],
+    }
+
+
+@router.get("/v1/documents/{document_id}/export")
+async def export_document(document_id: str, request: Request, format: str = "md") -> Response:
+    """The document as something you can send to a person."""
+    if format not in RENDERERS:
+        raise HTTPException(
+            status_code=400, detail=f"unknown format: {format} (try {', '.join(RENDERERS)})"
+        )
+    document = await _jarvis(request).documents.get(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail=f"unknown document: {document_id}")
+
+    slug = "".join(c if c.isalnum() else "-" for c in document.title.lower()).strip("-")[:60]
+    return Response(
+        content=RENDERERS[format](document),
+        media_type=MEDIA_TYPES[format],
+        headers={"content-disposition": f'inline; filename="{slug or document.id}.{format}"'},
+    )
+
+
+@router.delete("/v1/documents/{document_id}")
+async def delete_document(document_id: str, request: Request) -> dict[str, bool]:
+    return {"deleted": await _jarvis(request).documents.delete(document_id)}
+
+
 @router.get("/v1/computer")
 async def computer_status(request: Request) -> dict[str, Any]:
     """What the browser is looking at, and everything it has done."""
@@ -443,7 +595,7 @@ async def delete_trigger(trigger_id: str, request: Request) -> None:
 
 
 @router.get("/v1/knowledge")
-async def list_documents(request: Request, limit: int = 100) -> list[dict[str, Any]]:
+async def list_knowledge(request: Request, limit: int = 100) -> list[dict[str, Any]]:
     documents = await _jarvis(request).knowledge.documents(limit=limit)
     return [d.model_dump() for d in documents]
 

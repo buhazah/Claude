@@ -13,8 +13,17 @@ from jarvis.llm.base import Message
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=32_000)
     agent_id: str | None = None  # pin an agent; omit to let Jarvis route
+    mode: str | None = None  # omit for the default, unconstrained mode
     history: list[Message] = Field(default_factory=list)
     remember: bool = True
+
+
+class DocumentRequest(BaseModel):
+    request: str = Field(min_length=1, max_length=8_000)
+    kind: str = "report"
+    mode: str | None = None
+    scope: str | None = None
+    agent_id: str = "research"
 
 
 class RouteRequest(BaseModel):

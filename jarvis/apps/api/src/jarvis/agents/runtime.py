@@ -68,9 +68,14 @@ class AgentRuntime:
         self._clock = clock
 
     async def _build_context(self, spec: AgentSpec, request: str, run: Run) -> str | None:
-        """Recall memory relevant to this request, scoped to the agent."""
+        """Recall memory relevant to this request, scoped to the agent.
+
+        The scope is the spec's, not the agent id, because a mode rewrites it
+        to namespace the whole catalog — which is what keeps what Jarvis
+        learns about a client out of a personal draft (ADR 0010).
+        """
         step = self._runs.start_step(run, StepKind.MEMORY, "recall")
-        recalls = await self._memory.search(request, limit=MEMORY_RECALL_LIMIT, scope=spec.id)
+        recalls = await self._memory.search(request, limit=MEMORY_RECALL_LIMIT, scope=spec.scope)
         self._runs.end_step(step, hits=len(recalls))
         if not recalls:
             return None
@@ -110,6 +115,7 @@ class AgentRuntime:
         history: list[Message] | None = None,
         run: Run | None = None,
         remember: bool = True,
+        system_override: str | None = None,
     ) -> AsyncIterator[AgentDelta]:
         """Run an agent, streaming deltas and recording the run."""
         run = run or self._runs.create(request=request, agent_id=spec.id)
@@ -125,7 +131,12 @@ class AgentRuntime:
 
         messages = list(history or [])
         messages.append(Message(role=Role.USER, content=request))
-        system = spec.system_prompt if not context else f"{spec.system_prompt}\n\n{context}"
+        # An override replaces the *instruction*, never the spec: the agent's
+        # model policy, privacy floor and tool reach are unchanged. A caller
+        # that wants different behaviour gets a different prompt, not a
+        # different permission surface.
+        base = system_override or spec.system_prompt
+        system = base if not context else f"{base}\n\n{context}"
 
         tool_schemas = self._tools.schemas_for(spec.tools)
         parts: list[str] = []
@@ -231,7 +242,7 @@ class AgentRuntime:
             await self._memory.remember(
                 f"Asked: {request}\nAnswered ({spec.name}): {output[:600]}",
                 kind=MemoryKind.CONVERSATION,
-                scope=spec.id,
+                scope=spec.scope,
                 source=f"run:{run.id}",
             )
 

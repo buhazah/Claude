@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Square } from "lucide-react";
+import { useMode } from "@/lib/mode";
 import { streamChat, type AgentMatch } from "@/lib/api";
 import { Chip } from "@/components/ui";
 
@@ -25,6 +26,7 @@ type Turn = {
 function ChatView() {
   const params = useSearchParams();
   const seeded = params.get("q");
+  const { mode } = useMode();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,7 +56,7 @@ function ChatView() {
       );
 
     try {
-      for await (const event of streamChat(text, { signal: controller.signal })) {
+      for await (const event of streamChat(text, { mode, signal: controller.signal })) {
         switch (event.type) {
           case "routing":
             patch({ agent: event.chosen, candidates: event.candidates });
@@ -128,7 +130,9 @@ function ChatView() {
       setBusy(false);
       abortRef.current = null;
     }
-  }, []);
+    // `mode` matters: without it this closure keeps whichever mode was
+    // current when the page mounted, and switching would silently do nothing.
+  }, [mode]);
 
   // A query param from the palette starts the conversation immediately.
   const seededRef = useRef(false);

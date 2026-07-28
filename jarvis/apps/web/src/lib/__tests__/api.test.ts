@@ -83,6 +83,7 @@ describe("streamChat", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       message: "hi",
       agent_id: "legal",
+      mode: null,
     });
   });
 
@@ -92,5 +93,38 @@ describe("streamChat", () => {
       for await (const _ of streamChat("hi", { agentId: "ghost" })) void _;
     };
     await expect(iterate()).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe("mode", () => {
+  it("sends the mode so the kernel narrows, not the client", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse(""));
+    vi.stubGlobal("fetch", fetchMock);
+
+    for await (const _ of streamChat("hi", { mode: "coding" })) void _;
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).mode).toBe("coding");
+  });
+
+  it("previews routing inside the mode", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ candidates: [], mode: "coding" })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.route("refactor this", "coding");
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/v1/route?mode=coding");
+  });
+
+  it("omits the query string when no mode is given", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ candidates: [], mode: "personal" })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.route("anything");
+
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/v1\/route$/);
   });
 });

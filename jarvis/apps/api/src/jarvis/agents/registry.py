@@ -114,14 +114,29 @@ class AgentRegistry:
 
         matches.sort(key=lambda m: (-m.confidence, m.agent_id))
         if not matches:
-            return [
-                AgentMatch(
-                    agent_id=DEFAULT_AGENT_ID,
-                    confidence=0.2,
-                    reasons=["no specialist matched; chief of staff owns it"],
-                )
-            ]
+            return [self._fallback()]
         return matches[:limit]
+
+    def _fallback(self) -> AgentMatch:
+        """Who owns a request nothing matched.
+
+        Must come from *this* registry. A mode narrows by handing over a
+        smaller catalog, so a hardcoded default id would be a hole straight
+        through the narrowing: an unmatched request in coding mode would route
+        to an agent coding mode deliberately excluded.
+        """
+        if DEFAULT_AGENT_ID in self._specs:
+            return AgentMatch(
+                agent_id=DEFAULT_AGENT_ID,
+                confidence=0.2,
+                reasons=["no specialist matched; chief of staff owns it"],
+            )
+        first = next(iter(self._specs))
+        return AgentMatch(
+            agent_id=first,
+            confidence=0.15,
+            reasons=["no specialist matched; the most general agent here owns it"],
+        )
 
     def is_ambiguous(self, matches: list[AgentMatch]) -> bool:
         """True when stage one is not confident enough to decide alone."""

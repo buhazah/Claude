@@ -14,6 +14,7 @@ import {
   Workflow as WorkflowIcon,
   Mic,
   MonitorSmartphone,
+  FileText,
   Search,
   Wrench,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { CommandPalette } from "./command-palette";
 import { ActivityRail } from "./activity-rail";
 import { ApprovalGate } from "./approvals";
 import { VoiceMode } from "./voice";
+import { ModeSwitcher } from "./mode-switcher";
 
 const NAV = [
   { href: "/", label: "Home", icon: Home, key: "1" },
@@ -31,7 +33,8 @@ const NAV = [
   { href: "/workflows", label: "Workflows", icon: WorkflowIcon, key: "6" },
   { href: "/runs", label: "Runs", icon: Activity, key: "7" },
   { href: "/tools", label: "Tools", icon: Wrench, key: "8" },
-  { href: "/computer", label: "Computer", icon: MonitorSmartphone, key: "9" },
+  { href: "/documents", label: "Documents", icon: FileText, key: "9" },
+  { href: "/computer", label: "Computer", icon: MonitorSmartphone, key: "0" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -67,6 +70,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </span>
           <span className="text-[15px] font-semibold tracking-tight">Jarvis</span>
         </Link>
+
+        <ModeSwitcher />
 
         <button
           onClick={() => setPaletteOpen(true)}
