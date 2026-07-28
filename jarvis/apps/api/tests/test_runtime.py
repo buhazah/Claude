@@ -94,7 +94,7 @@ async def test_provider_failure_marks_the_run_failed_and_records_it(
     deltas = await _collect(jarvis.runtime.stream(spec, "research something"))
     assert deltas[-1].type == "error"
 
-    run = jarvis.runs.list()[0]
+    run = (await jarvis.runs.list())[0]
     assert run.state is RunState.FAILED
     assert run.error and "down" in run.error
     metrics = jarvis.agents.metrics("research")
@@ -156,7 +156,7 @@ async def test_orchestrator_honours_an_explicitly_pinned_agent(jarvis: container
 
 async def test_routing_decision_is_stored_on_the_run(jarvis: container.Jarvis) -> None:
     await _collect(jarvis.orchestrator.handle("build a revenue forecast"))
-    run = jarvis.runs.list()[0]
+    run = (await jarvis.runs.list())[0]
     assert run.routing[0]["agent_id"] == "financial_analyst"
     assert run.steps[0].kind is StepKind.AGENT
 
@@ -175,7 +175,7 @@ async def test_runs_are_listed_newest_first(jarvis: container.Jarvis) -> None:
         clock_run = await jarvis.runtime.run(spec, f"question {i}")
         assert clock_run.state is RunState.SUCCEEDED
 
-    runs = jarvis.runs.list()
+    runs = await jarvis.runs.list()
     assert len(runs) >= 3
     assert runs[0].request == "question 2"
 
@@ -186,7 +186,7 @@ async def test_run_store_evicts_beyond_capacity(clock: FrozenClock) -> None:
     store = RunStore(clock=clock, capacity=5)
     for i in range(12):
         store.create(request=f"r{i}", agent_id="research")
-    assert len(store.list(limit=100)) == 5
+    assert len(await store.list(limit=100)) == 5
 
 
 async def test_custom_agent_specs_run_on_the_same_runtime(jarvis: container.Jarvis) -> None:

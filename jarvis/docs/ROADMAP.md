@@ -7,7 +7,7 @@ begins before the previous one's suite is green.
 |---|---|---|---|
 | **M1** | **Kernel** | Config, structured logging, event bus, model router + provider adapters (Anthropic/OpenAI/Echo), agent spec + runtime + registry + 30-agent catalog, memory store + embeddings + categorizer, run store, tool registry, FastAPI surface with SSE streaming | ✅ **done** |
 | **M2** | **Client** | Next.js app, design system, command palette with routing preview, dashboard, streaming chat, agent/memory/run/tool browsers, live activity rail off the event firehose | ✅ **done** |
-| **M3** | **Persistence** | Postgres + pgvector, Alembic migrations, real embeddings, Redis-backed bus, docker-compose | |
+| **M3** | **Persistence** | Postgres + pgvector, Alembic migrations, hosted embeddings, Redis-backed bus, docker-compose | ✅ **done** |
 | **M4** | **Tools & connectors** | MCP client, browser tool, terminal tool, filesystem, GitHub, Gmail, Calendar, Slack, Notion, Stripe; permission tiers + approval UI | |
 | **M5** | **Knowledge** | Ingestion pipeline (PDF/DOCX/PPTX/XLSX/images/audio/repos/URLs), chunking, hybrid retrieval, citations |  |
 | **M6** | **Workflows** | Graph engine, triggers, scheduler, approvals, workflow builder UI | |
@@ -65,6 +65,36 @@ chunk boundaries, malformed frames, the typed API client) plus a 7-check
 Playwright end-to-end run against the real kernel: routing preview →
 execution → streaming → run history, with zero console errors. `tsc --noEmit`
 and ESLint clean.
+
+## Milestone 3 — delivered
+
+**Built**
+- `jarvis.persistence` — SQLAlchemy 2 async schema serving both dialects. The
+  only dialect-specific piece is the embedding column: a real pgvector
+  `vector` on Postgres, JSON on SQLite, behind one `TypeDecorator`.
+- `SqlMemoryStore` / `SqlRunStore` — durable stores behind the existing ports.
+  Recall retrieves candidates per-backend (HNSW ANN ∪ lexical on Postgres, a
+  bounded window on SQLite) and ranks them with **shared** code, so results
+  cannot drift between deployments (ADR 0004).
+- Run persistence splits cheap synchronous mutation from explicit awaited
+  checkpoints, keeping IO off the streaming hot path.
+- Alembic migrations with an HNSW cosine index, applied and verified against a
+  live Postgres 16 + pgvector.
+- `RedisEventBus` — cross-process fan-out that extends rather than replaces the
+  in-process bus, so local delivery keeps its latency and a Redis outage
+  degrades to single-node instead of failing.
+- `HostedEmbedder` — OpenAI-compatible embeddings that fall back to the
+  deterministic local embedder on any failure.
+- `docker-compose.yml` + API `Dockerfile` for the server deployment.
+
+**Verification** — 192 tests. The store contract suite runs against all three
+backends; migrations are asserted not to have drifted from the models; Redis
+cross-node delivery and no-Redis degradation are both covered. Verified for
+real against Postgres 16 + pgvector and Redis 7: migrations applied, HNSW index
+created, and runs, steps and memories all survived a process restart.
+
+Storage stays opt-in — with no `JARVIS_DATABASE_URL` the system is fully
+in-process, and the offline suite (174 tests) still runs with no server.
 
 ## Definition of done (every milestone)
 

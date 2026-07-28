@@ -13,17 +13,40 @@ jobs:
     defaults:
       run:
         working-directory: jarvis/apps/api
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: jarvis
+          POSTGRES_PASSWORD: jarvis
+          POSTGRES_DB: jarvis
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jarvis" --health-interval 5s
+          --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv venv --python 3.11
       - run: uv pip install -e ".[dev]"
-      # No API keys and no network access are needed: the suite runs against
-      # the offline provider by design (see docs/adr/0001).
       - run: .venv/bin/ruff check .
       - run: .venv/bin/ruff format --check .
       - run: .venv/bin/mypy
+      # Offline first: no keys, no services, no network. This is the run that
+      # proves Jarvis works with nothing configured (see docs/adr/0001).
       - run: .venv/bin/python -m pytest -q
+      # Then the same suite again with the backends live, which additionally
+      # exercises the Postgres, pgvector and Redis paths.
+      - run: .venv/bin/python -m pytest -q
+        env:
+          JARVIS_TEST_POSTGRES_URL: postgresql+asyncpg://jarvis:jarvis@localhost:5432/jarvis
+          JARVIS_TEST_REDIS_URL: redis://localhost:6379/0
 
   web:
     runs-on: ubuntu-latest

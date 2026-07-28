@@ -163,11 +163,19 @@ class EventBus:
             timestamp=self._clock.now().isoformat(),
             run_id=run_id,
         )
+        self._deliver_local(event)
+        return event
+
+    def _deliver_local(self, event: Event) -> None:
+        """Fan an event out to this process's subscribers.
+
+        Separate from :meth:`publish` so a distributed bus can inject events
+        that arrived from another node without re-broadcasting them.
+        """
         self._published += 1
         for sub in list(self._subscriptions):
-            if sub.wants(topic):
+            if sub.wants(event.topic):
                 sub.offer(event)
-        return event
 
     async def drain(self) -> None:
         """Yield to the loop so subscribers can observe what was just published."""

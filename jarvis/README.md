@@ -25,7 +25,12 @@ executing, streaming chat, live activity rail wired to the kernel's event bus,
 and browsers for agents, memory, runs and tools.
 20 unit tests · 7 Playwright end-to-end checks · `tsc` and ESLint clean.
 
-Milestone 3 (Postgres + pgvector persistence) is next.
+*M3 — persistence*: SQLAlchemy 2 async stores on SQLite or Postgres+pgvector,
+Alembic migrations with an HNSW index, a Redis-backed bus for multi-process
+fan-out, and hosted embeddings — all behind the M1 ports, all opt-in.
+192 tests, including a contract suite run against every backend.
+
+Milestone 4 (tools and connectors) is next.
 
 ## Run it
 
@@ -70,6 +75,34 @@ export JARVIS_OPENAI_API_KEY=...
 export JARVIS_ENABLE_LOCAL_LLM=true    # any Ollama-compatible endpoint
 ```
 
+## Persistence
+
+Nothing is stored by default — the system runs entirely in-process. Point it at
+a database and the same code becomes durable:
+
+```bash
+# local-first: a file on your machine, no server, no extension
+export JARVIS_DATABASE_URL="sqlite:///jarvis.db"
+
+# server: Postgres + pgvector, with migrations
+export JARVIS_DATABASE_URL="postgresql://jarvis:jarvis@localhost/jarvis"
+export JARVIS_REDIS_URL="redis://localhost:6379/0"   # multi-process event bus
+alembic upgrade head
+```
+
+Or bring up the whole server stack:
+
+```bash
+docker compose up
+```
+
+SQLite creates its schema on start. Postgres is owned by Alembic, so a server
+deployment migrates first — `docker compose` does that before serving.
+
+Embeddings follow the same pattern: deterministic local ones by default,
+hosted ones when `JARVIS_EMBEDDING_API_KEY` is set, falling back to local if
+the provider fails.
+
 ## Develop
 
 ```bash
@@ -93,7 +126,8 @@ jarvis/
     │   │   ├── agents/  spec · runtime · registry · catalog · orchestrator
     │   │   ├── memory/  store · embeddings · categorisation
     │   │   ├── tools/   registry · permission tiers · builtins
-    │   │   ├── runs/    durable run records
+    │   │   ├── runs/    run records · durable store
+    │   │   ├── persistence/  schema · engine · migrations
     │   │   └── api/     routes · schemas · SSE
     │   └── tests/
     └── web/             Next.js client

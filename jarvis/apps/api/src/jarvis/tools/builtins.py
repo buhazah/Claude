@@ -10,11 +10,11 @@ from __future__ import annotations
 from typing import Any
 
 from jarvis.memory.models import MemoryKind
-from jarvis.memory.store import InMemoryStore
+from jarvis.memory.store import MemoryStore
 from jarvis.tools.registry import Permission, ToolRegistry
 
 
-def register_builtins(registry: ToolRegistry, memory: InMemoryStore) -> None:
+def register_builtins(registry: ToolRegistry, memory: MemoryStore) -> None:
     async def memory_search(query: str, limit: int = 5) -> list[dict[str, Any]]:
         recalls = await memory.search(query, limit=limit)
         return [

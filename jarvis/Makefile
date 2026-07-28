@@ -11,6 +11,18 @@ test:
 	cd $(API) && .venv/bin/python -m pytest -q
 	cd $(WEB) && pnpm test
 
+# Same suite, additionally against live Postgres and Redis. Backend-specific
+# tests skip themselves when these are unset, so `make test` stays offline.
+test-all:
+	cd $(API) && JARVIS_TEST_POSTGRES_URL=postgresql+asyncpg://jarvis:jarvis@localhost/jarvis \
+		JARVIS_TEST_REDIS_URL=redis://localhost:6379/0 .venv/bin/python -m pytest -q
+
+migrate:
+	cd $(API) && .venv/bin/alembic upgrade head
+
+migration:
+	cd $(API) && .venv/bin/alembic revision --autogenerate -m "$(m)"
+
 lint:
 	cd $(API) && .venv/bin/ruff check . && .venv/bin/ruff format --check .
 	cd $(WEB) && pnpm lint

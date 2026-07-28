@@ -23,6 +23,21 @@ class Settings(BaseSettings):
     local_llm_base_url: str = "http://localhost:11434/v1"
     enable_local_llm: bool = False
 
+    # Persistence. Empty means fully in-process — no file, no server, which is
+    # what tests and a first run get. "sqlite+aiosqlite:///jarvis.db" is the
+    # local-first default for a real install; a postgresql:// url is the server.
+    database_url: str = ""
+    database_echo: bool = False
+
+    # Distributed event bus. Empty means in-process only, which is correct
+    # until Jarvis runs more than one worker.
+    redis_url: str = ""
+
+    # Embeddings. Without a key, the deterministic local embedder is used.
+    embedding_api_key: str | None = None
+    embedding_model: str = "text-embedding-3-small"
+    embedding_base_url: str = "https://api.openai.com/v1"
+
     # Routing
     default_policy: str = "balanced"
     use_llm_arbiter: bool = True

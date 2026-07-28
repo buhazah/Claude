@@ -86,7 +86,13 @@ class Run(BaseModel):
 
 
 class RunStore:
-    """In-process run storage. Swapped for the relational store in M3."""
+    """In-process run storage, and the base every durable store extends.
+
+    Mutation (``create``, ``start_step``, ``end_step``, ``finish``) is
+    synchronous because it only touches the ``Run`` object — putting IO on the
+    streaming path would buy nothing. Durability is the separate, awaited
+    ``persist`` call, which is a no-op here and a write in ``SqlRunStore``.
+    """
 
     def __init__(self, clock: Clock = SYSTEM_CLOCK, *, capacity: int = 1000) -> None:
         self._runs: dict[str, Run] = {}
@@ -103,10 +109,13 @@ class RunStore:
         while len(self._runs) > self._capacity:
             self._runs.pop(next(iter(self._runs)))
 
-    def get(self, run_id: str) -> Run | None:
+    async def persist(self, run: Run) -> None:
+        """Checkpoint a run. Nothing to do when the store *is* memory."""
+
+    async def get(self, run_id: str) -> Run | None:
         return self._runs.get(run_id)
 
-    def list(self, *, limit: int = 50, agent_id: str | None = None) -> list[Run]:
+    async def list(self, *, limit: int = 50, agent_id: str | None = None) -> list[Run]:
         # Insertion order, reversed. Ids and timestamps only resolve to the
         # millisecond, so neither orders runs created in the same tick.
         runs = [r for r in self._runs.values() if agent_id is None or r.agent_id == agent_id]

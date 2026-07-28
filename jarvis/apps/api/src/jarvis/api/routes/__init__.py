@@ -43,8 +43,10 @@ async def health(request: Request) -> dict[str, Any]:
         "models": len(jarvis.router.catalog()),
         "agents": len(jarvis.agents),
         "tools": len(jarvis.tools.all()),
-        "memories": len(jarvis.memory),
+        "memories": await jarvis.memory.count(),
         "events_published": jarvis.bus.published_count,
+        "storage": jarvis.storage,
+        "database_healthy": await jarvis.database.healthy() if jarvis.database else None,
     }
 
 
@@ -149,7 +151,7 @@ async def events(
 async def list_runs(
     request: Request, limit: int = 25, agent_id: str | None = None
 ) -> list[dict[str, Any]]:
-    runs = _jarvis(request).runs.list(limit=limit, agent_id=agent_id)
+    runs = await _jarvis(request).runs.list(limit=limit, agent_id=agent_id)
     return [
         {
             "id": r.id,
@@ -168,7 +170,7 @@ async def list_runs(
 
 @router.get("/v1/runs/{run_id}")
 async def get_run(run_id: str, request: Request) -> dict[str, Any]:
-    run = _jarvis(request).runs.get(run_id)
+    run = await _jarvis(request).runs.get(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail=f"unknown run: {run_id}")
     return {

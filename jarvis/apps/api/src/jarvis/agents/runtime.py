@@ -20,7 +20,7 @@ from jarvis.kernel.clock import SYSTEM_CLOCK, Clock
 from jarvis.llm.base import CompletionRequest, Message, Role
 from jarvis.llm.router import ModelRouter
 from jarvis.memory.models import MemoryKind
-from jarvis.memory.store import InMemoryStore
+from jarvis.memory.store import MemoryStore
 from jarvis.runs.models import Run, RunState, RunStore, StepKind
 from jarvis.tools.registry import ToolRegistry
 
@@ -49,7 +49,7 @@ class AgentRuntime:
         *,
         router: ModelRouter,
         registry: AgentRegistry,
-        memory: InMemoryStore,
+        memory: MemoryStore,
         runs: RunStore,
         tools: ToolRegistry,
         bus: EventBus,
@@ -132,6 +132,7 @@ class AgentRuntime:
         except Exception as exc:
             self._runs.end_step(step, state=RunState.FAILED, error=str(exc))
             self._runs.finish(run, state=RunState.FAILED, error=str(exc))
+            await self._runs.persist(run)
             latency_ms = (self._clock.monotonic() - started) * 1000
             self._registry.metrics(spec.id).record(
                 ok=False, latency_ms=latency_ms, cost_usd=0.0, tokens=0
@@ -143,6 +144,7 @@ class AgentRuntime:
         output = "".join(parts).strip()
         self._runs.end_step(step, cost_usd=cost, tokens=tokens)
         self._runs.finish(run, state=RunState.SUCCEEDED, output=output)
+        await self._runs.persist(run)
 
         latency_ms = (self._clock.monotonic() - started) * 1000
         self._registry.metrics(spec.id).record(

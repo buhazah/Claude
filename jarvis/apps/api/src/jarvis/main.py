@@ -32,11 +32,17 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.jarvis = jarvis or container.build(settings)
-        app.state.jarvis.bus.publish("system.started", {"environment": settings.environment})
-        log.info("api_ready", environment=settings.environment)
+        system = jarvis or container.build(settings)
+        app.state.jarvis = system
+        await system.start()
+        system.bus.publish(
+            "system.started",
+            {"environment": settings.environment, "storage": system.storage},
+        )
+        log.info("api_ready", environment=settings.environment, storage=system.storage)
         yield
-        app.state.jarvis.bus.publish("system.stopping", {})
+        system.bus.publish("system.stopping", {})
+        await system.stop()
 
     app = FastAPI(
         title="Jarvis",

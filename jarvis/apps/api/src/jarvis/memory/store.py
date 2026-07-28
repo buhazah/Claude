@@ -6,21 +6,20 @@ embeddings blur, semantic similarity catches paraphrase, and recency decay
 keeps stale facts from outranking current ones. Salience then weights the
 whole, so a recorded decision outranks small talk that happens to match.
 
-The Postgres+pgvector adapter (M3) implements this same interface; the scoring
-maths moves into SQL, the semantics do not change.
+That blend lives in ``jarvis.memory.ranking`` and is shared with the SQL store,
+so recall order cannot depend on which backend happens to be deployed.
 """
 
 from __future__ import annotations
 
-import math
-import re
 from typing import Protocol
 
 import structlog
 
 from jarvis.kernel.bus import EventBus
 from jarvis.kernel.clock import SYSTEM_CLOCK, Clock
-from jarvis.memory.embeddings import Embedder, HashingEmbedder, cosine
+from jarvis.memory import ranking
+from jarvis.memory.embeddings import Embedder, HashingEmbedder
 from jarvis.memory.models import (
     Memory,
     MemoryKind,
@@ -32,18 +31,47 @@ from jarvis.memory.models import (
 
 log = structlog.get_logger(__name__)
 
-_WORD_RE = re.compile(r"[a-z0-9']+")
-HALF_LIFE_DAYS = 45.0  # a memory's recency weight halves over this span
-
 
 class MemoryStore(Protocol):
-    async def remember(self, content: str, **kwargs: object) -> Memory: ...
+    """What the runtime needs from memory, regardless of where it is stored.
 
-    async def search(self, query: str, *, limit: int = 8) -> list[Recall]: ...
+    Spelled out in full rather than with ``**kwargs``: a loose protocol would
+    type-check against a store missing half the arguments, and the whole point
+    of the port is that the backends are interchangeable.
+    """
+
+    async def remember(
+        self,
+        content: str,
+        *,
+        kind: MemoryKind | None = None,
+        scope: str = "global",
+        tags: list[str] | None = None,
+        source: str | None = None,
+        salience: float | None = None,
+    ) -> Memory: ...
+
+    async def search(
+        self,
+        query: str,
+        *,
+        limit: int = 8,
+        scope: str | None = None,
+        kinds: list[MemoryKind] | None = None,
+        min_score: float = 0.05,
+    ) -> list[Recall]: ...
 
     async def get(self, memory_id: str) -> Memory | None: ...
 
     async def forget(self, memory_id: str) -> bool: ...
+
+    async def all(
+        self, *, scope: str | None = None, kind: MemoryKind | None = None, limit: int = 200
+    ) -> list[Memory]: ...
+
+    async def count(self) -> int: ...
+
+    async def supersede(self, old_id: str, new_content: str, **kwargs: object) -> Memory: ...
 
 
 class InMemoryStore:
@@ -62,6 +90,9 @@ class InMemoryStore:
         self._clock = clock
 
     def __len__(self) -> int:
+        return len(self._items)
+
+    async def count(self) -> int:
         return len(self._items)
 
     async def remember(
@@ -115,7 +146,7 @@ class InMemoryStore:
         return removed
 
     async def all(
-        self, *, scope: str | None = None, kind: MemoryKind | None = None
+        self, *, scope: str | None = None, kind: MemoryKind | None = None, limit: int = 200
     ) -> list[Memory]:
         items = [
             m
@@ -124,25 +155,8 @@ class InMemoryStore:
             and (kind is None or m.kind == kind)
             and m.superseded_by is None
         ]
-        items.sort(key=lambda m: m.created_at or self._clock.now(), reverse=True)
-        return items
-
-    def _lexical(self, query_tokens: set[str], memory: Memory) -> float:
-        if not query_tokens:
-            return 0.0
-        haystack = set(_WORD_RE.findall(memory.content.lower())) | {t.lower() for t in memory.tags}
-        overlap = query_tokens & haystack
-        if not overlap:
-            return 0.0
-        # Normalised by query length: matching 3 of 4 query terms beats
-        # matching 3 of 10, independent of how long the memory is.
-        return len(overlap) / len(query_tokens)
-
-    def _recency(self, memory: Memory) -> float:
-        if not memory.created_at:
-            return 0.5
-        age_days = (self._clock.now() - memory.created_at).total_seconds() / 86_400
-        return math.exp(-math.log(2) * max(age_days, 0.0) / HALF_LIFE_DAYS)
+        items.sort(key=lambda m: (m.created_at or self._clock.now(), m.id), reverse=True)
+        return items[:limit]
 
     async def search(
         self,
@@ -153,46 +167,33 @@ class InMemoryStore:
         kinds: list[MemoryKind] | None = None,
         min_score: float = 0.05,
     ) -> list[Recall]:
-        """Hybrid recall: lexical + semantic + recency, weighted by salience."""
+        """Hybrid recall. Candidates are the whole store; ranking is shared."""
         if not self._items:
             return []
 
         query_vector = (await self._embedder.embed([query]))[0]
-        query_tokens = set(_WORD_RE.findall(query.lower()))
+        candidates = [
+            memory
+            for memory in self._items.values()
+            if memory.superseded_by is None
+            # An agent sees its own scope plus anything global.
+            and (scope is None or memory.scope in (scope, "global"))
+            and (not kinds or memory.kind in kinds)
+        ]
 
-        results: list[Recall] = []
-        for memory in self._items.values():
-            if memory.superseded_by is not None:
-                continue
-            if scope is not None and memory.scope not in (scope, "global"):
-                continue
-            if kinds and memory.kind not in kinds:
-                continue
-
-            lexical = self._lexical(query_tokens, memory)
-            semantic = max(0.0, cosine(query_vector, memory.embedding or []))
-            recency = self._recency(memory)
-            relevance = 0.45 * lexical + 0.40 * semantic + 0.15 * recency
-            score = relevance * (0.6 + 0.4 * memory.salience)
-
-            if score >= min_score:
-                results.append(
-                    Recall(
-                        memory=memory,
-                        score=round(score, 6),
-                        lexical=round(lexical, 4),
-                        semantic=round(semantic, 4),
-                        recency=round(recency, 4),
-                    )
-                )
-
-        results.sort(key=lambda r: (-r.score, r.memory.id))
-        top = results[:limit]
-        for recall in top:
+        recalls = ranking.rank(
+            candidates,
+            query=query,
+            query_vector=query_vector,
+            now=self._clock.now(),
+            limit=limit,
+            min_score=min_score,
+        )
+        for recall in recalls:
             recall.memory.touch(self._clock.now())
         if self._bus:
-            self._bus.publish("memory.recalled", {"query": query[:120], "hits": len(top)})
-        return top
+            self._bus.publish("memory.recalled", {"query": query[:120], "hits": len(recalls)})
+        return recalls
 
     async def supersede(self, old_id: str, new_content: str, **kwargs: object) -> Memory:
         """Replace a stale memory, keeping the old one for audit."""

@@ -10,10 +10,27 @@ dependencies = [
     "pydantic-settings>=2.6",
     "httpx>=0.27",
     "structlog>=24.4",
+    "sqlalchemy[asyncio]>=2.0",
+    "alembic>=1.14",
+    "aiosqlite>=0.20",
 ]
 
+# postgres / redis extras are optional: Jarvis runs local-first on SQLite with
+# an in-process bus, and only needs these when pointed at a server.
 [project.optional-dependencies]
+postgres = [
+    "asyncpg>=0.30",
+    "pgvector>=0.3",
+]
+redis = [
+    "redis>=5.2",
+]
 dev = [
+    "asyncpg>=0.30",
+    "pgvector>=0.3",
+    # Alembic runs migrations synchronously; the async driver cannot serve it.
+    "psycopg2-binary>=2.9",
+    "redis>=5.2",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.7",
@@ -35,6 +52,9 @@ filterwarnings = ["error::DeprecationWarning:jarvis.*"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+# Alembic writes these; reformatting them only creates diff noise on every
+# autogenerate, and their content is asserted by the schema-drift test.
+extend-exclude = ["src/jarvis/persistence/migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
