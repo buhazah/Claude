@@ -303,3 +303,61 @@ def test_direct_invocation_goes_through_the_same_permission_wall(
     with TestClient(create_app(settings, jarvis=system)) as local:
         response = local.post("/v1/tools/run_command/invoke", json={"arguments": {"command": "ls"}})
     assert response.status_code == 403
+
+
+# ── Knowledge ─────────────────────────────────────────────────────────────────
+
+
+def test_pasted_text_is_ingested_and_searchable(client: TestClient) -> None:
+    created = client.post(
+        "/v1/knowledge",
+        json={"text": "The vendor contract renews on 1 March.", "title": "Contract"},
+    )
+    assert created.status_code == 201
+    assert created.json()["ingested"][0]["title"] == "Contract"
+
+    found = client.get("/v1/knowledge/search", params={"q": "when does the contract renew"}).json()
+    assert found
+    assert "1 March" in found[0]["snippet"]
+    assert found[0]["reference"].startswith("Contract")
+
+
+def test_documents_are_listed_and_removable(client: TestClient) -> None:
+    client.post("/v1/knowledge", json={"text": "A durable note.", "title": "Note"})
+
+    documents = client.get("/v1/knowledge").json()
+    assert len(documents) == 1
+    assert client.get("/health").json()["documents"] == 1
+
+    assert client.delete(f"/v1/knowledge/{documents[0]['id']}").status_code == 204
+    assert client.delete(f"/v1/knowledge/{documents[0]['id']}").status_code == 404
+
+
+def test_ingesting_without_a_source_is_rejected(client: TestClient) -> None:
+    assert client.post("/v1/knowledge", json={}).status_code == 422
+
+
+def test_ingesting_a_path_outside_the_workspace_is_refused(client: TestClient) -> None:
+    """Ingestion must not become a way to read arbitrary files off the host."""
+    response = client.post("/v1/knowledge", json={"path": "../../etc/passwd"})
+    assert response.status_code == 403
+
+
+def test_the_knowledge_tool_is_registered_and_safe(client: TestClient) -> None:
+    tools = {t["name"]: t for t in client.get("/v1/tools").json()}
+    assert tools["search_documents"]["permission"] == "safe"
+    assert tools["search_documents"]["namespace"] == "knowledge"
+
+
+def test_an_agent_can_search_documents_through_the_tool(client: TestClient) -> None:
+    client.post("/v1/knowledge", json={"text": "Runway is 14 months.", "title": "Finance"})
+
+    result = client.post(
+        "/v1/tools/search_documents/invoke", json={"arguments": {"query": "how much runway"}}
+    ).json()["result"]
+
+    assert result
+    # The reference travels with the passage, so an agent has no excuse for
+    # using the text without citing it.
+    assert result[0]["reference"].startswith("Finance")
+    assert "untrusted_content" in result[0]

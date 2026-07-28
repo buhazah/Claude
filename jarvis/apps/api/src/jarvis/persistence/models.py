@@ -159,6 +159,42 @@ class StepRow(Base):
     run: Mapped[RunRow] = relationship(back_populates="steps")
 
 
+class DocumentRow(Base):
+    """An ingested source. Chunks hang off it and die with it."""
+
+    __tablename__ = "documents"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    scope: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    doc_metadata: Mapped[dict[str, Any]] = mapped_column(JsonColumn, default=dict)
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    bytes: Mapped[int] = mapped_column(Integer, default=0)
+    # Content hash, so re-ingesting an unchanged source is a no-op rather than
+    # a second copy that skews retrieval toward whatever was ingested twice.
+    fingerprint: Mapped[str] = mapped_column(String(64), default="", index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, index=True
+    )
+
+
+class ChunkRow(Base):
+    __tablename__ = "document_chunks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    document_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("documents.id", ondelete="CASCADE"), index=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Where inside the document: "p. 4", "slide 2", "Sheet1!1:40", "lines 1-80".
+    locator: Mapped[str] = mapped_column(String(255), default="")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    tokens: Mapped[int] = mapped_column(Integer, default=0)
+    embedding: Mapped[list[float] | None] = mapped_column(EmbeddingVector)
+
+
 class AgentMetricsRow(Base):
     """Per-agent performance, durable across restarts so routing keeps learning."""
 

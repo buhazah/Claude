@@ -20,6 +20,8 @@ from jarvis.config import Settings, get_settings
 from jarvis.kernel.bus import EventBus
 from jarvis.kernel.clock import SYSTEM_CLOCK, Clock
 from jarvis.kernel.redis_bus import RedisEventBus
+from jarvis.knowledge.ingest import Ingestor
+from jarvis.knowledge.store import InMemoryKnowledgeStore, KnowledgeStore, SqlKnowledgeStore
 from jarvis.llm.base import LLMProvider
 from jarvis.llm.providers.anthropic import AnthropicProvider
 from jarvis.llm.providers.echo import EchoProvider
@@ -105,6 +107,8 @@ class Jarvis:
     tools: ToolRegistry
     runtime: AgentRuntime
     orchestrator: Orchestrator
+    knowledge: KnowledgeStore
+    ingestor: Ingestor
     approvals: ApprovalBroker
     audit: AuditLog
     workspace: Workspace
@@ -160,13 +164,17 @@ def build(
     database: Database | None = None
     memory: MemoryStore
     runs: RunStore
+    knowledge: KnowledgeStore
     if settings.database_url:
         database = Database(settings.database_url, echo=settings.database_echo)
         memory = SqlMemoryStore(database, embedder=embedder, bus=bus, clock=clock)
         runs = SqlRunStore(database, clock=clock)
+        knowledge = SqlKnowledgeStore(database, embedder=embedder, bus=bus, clock=clock)
     else:
         memory = InMemoryStore(embedder=embedder, bus=bus, clock=clock)
         runs = RunStore(clock=clock)
+        knowledge = InMemoryKnowledgeStore(embedder=embedder, bus=bus, clock=clock)
+    ingestor = Ingestor(knowledge)
     audit: AuditLog = SqlAuditLog(database, clock=clock) if database else NullAuditLog()
     approvals = ApprovalBroker(bus=bus, clock=clock, timeout_s=settings.approval_timeout_s)
     tools = ToolRegistry(
@@ -183,7 +191,7 @@ def build(
         audit=audit,
     )
     workspace = Workspace(settings.workspace_dir)
-    register_builtins(tools, memory)
+    register_builtins(tools, memory, knowledge)
     register_system_tools(tools, workspace)
     mcp = MCPManager(tools)
 
@@ -225,6 +233,8 @@ def build(
         tools=tools,
         runtime=runtime,
         orchestrator=orchestrator,
+        knowledge=knowledge,
+        ingestor=ingestor,
         approvals=approvals,
         audit=audit,
         workspace=workspace,

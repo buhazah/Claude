@@ -36,7 +36,12 @@ connector as a tool namespace, human approval for irreversible actions, and a
 hash-chained audit log.
 262 tests, including a browser-driven approval flow.
 
-Milestone 5 (knowledge ingestion) is next.
+*M5 — knowledge*: ingestion for PDF, DOCX, PPTX, XLSX, CSV, HTML, URLs, code
+and folders, with locators preserved from extraction through chunking so every
+retrieved passage carries a checkable citation.
+319 tests, including extraction against real generated documents.
+
+Milestone 6 (workflows) is next.
 
 ## Run it
 
@@ -130,7 +135,8 @@ jarvis/
     │   │   ├── kernel/  bus · clock · ids · errors · container
     │   │   ├── llm/     provider port · router · adapters
     │   │   ├── agents/  spec · runtime · registry · catalog · orchestrator
-    │   │   ├── memory/  store · embeddings · categorisation
+    │   │   ├── memory/  store · embeddings · ranking · categorisation
+    │   │   ├── knowledge/  extract · chunk · ingest · store
     │   │   ├── tools/   registry · tiers · approvals · system · MCP
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
@@ -156,6 +162,10 @@ ambiguous. Most messages therefore cost zero extra latency to route.
 **Everything is an event.** Token deltas, tool calls, memory writes and run
 transitions all publish to one bus. The live activity feed, observability and
 (later) workflow triggers are subscribers, not instrumentation.
+
+**Citations are structural.** A locator (`p. 4`, `slide 2`, `Revenue!1:40`) is
+captured at extraction and carried through chunking, so a retrieved passage can
+always be checked against its source rather than merely attributed to a file.
 
 **Permissions are data.** Tools declare a blast-radius tier; grants are checked
 at call time. An agent cannot widen its own reach by reasoning about it, and a

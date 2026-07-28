@@ -47,6 +47,17 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# Vector indexes are created by raw DDL because SQLAlchemy has no HNSW
+# construct. Autogenerate cannot see them in the metadata and would helpfully
+# emit a DROP for each one on the next migration, so they are excluded from
+# comparison entirely.
+UNMANAGED_INDEXES = {"ix_memories_embedding_hnsw", "ix_document_chunks_embedding_hnsw"}
+
+
+def _managed_by_alembic(obj: object, name: str | None, type_: str, *args: object) -> bool:
+    return not (type_ == "index" and name in UNMANAGED_INDEXES)
+
+
 def do_run_migrations(connection: Connection) -> None:
     if connection.dialect.name == "postgresql":
         # The vector type must exist before any table that uses it.
@@ -54,6 +65,7 @@ def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        include_object=_managed_by_alembic,
         # SQLite cannot ALTER most things in place; batch mode rewrites the
         # table instead, so one migration script works on both dialects.
         render_as_batch=connection.dialect.name == "sqlite",

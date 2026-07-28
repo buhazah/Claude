@@ -18,6 +18,7 @@ from jarvis.api.schemas import (
     AgentSummary,
     ApprovalDecision,
     ChatRequest,
+    IngestRequest,
     ModelSummary,
     RememberRequest,
     RouteRequest,
@@ -51,6 +52,7 @@ async def health(request: Request) -> dict[str, Any]:
         "agents": len(jarvis.agents),
         "tools": len(jarvis.tools.all()),
         "memories": await jarvis.memory.count(),
+        "documents": await jarvis.knowledge.count(),
         "events_published": jarvis.bus.published_count,
         "storage": jarvis.storage,
         "pending_approvals": len(jarvis.approvals.pending()),
@@ -222,6 +224,52 @@ async def remember(body: RememberRequest, request: Request) -> dict[str, Any]:
 async def forget(memory_id: str, request: Request) -> None:
     if not await _jarvis(request).memory.forget(memory_id):
         raise HTTPException(status_code=404, detail=f"unknown memory: {memory_id}")
+
+
+@router.get("/v1/knowledge")
+async def list_documents(request: Request, limit: int = 100) -> list[dict[str, Any]]:
+    documents = await _jarvis(request).knowledge.documents(limit=limit)
+    return [d.model_dump() for d in documents]
+
+
+@router.get("/v1/knowledge/search")
+async def search_knowledge(request: Request, q: str, limit: int = 6) -> list[dict[str, Any]]:
+    """Retrieve passages with the citation attached to each."""
+    citations = await _jarvis(request).knowledge.search(q, limit=limit)
+    return [{**c.model_dump(), "reference": c.reference()} for c in citations]
+
+
+@router.post("/v1/knowledge", status_code=201)
+async def ingest(body: IngestRequest, request: Request) -> dict[str, Any]:
+    """Ingest a URL, a path on disk, or pasted text."""
+    jarvis = _jarvis(request)
+    if body.url:
+        result = await jarvis.ingestor.ingest_url(body.url, scope=body.scope)
+    elif body.path:
+        # Paths are resolved inside the workspace: ingestion must not become a
+        # way to read arbitrary files off the host.
+        try:
+            target = jarvis.workspace.resolve(body.path)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        result = (
+            await jarvis.ingestor.ingest_directory(target, scope=body.scope)
+            if target.is_dir()
+            else await jarvis.ingestor.ingest_file(target, scope=body.scope)
+        )
+    elif body.text:
+        result = await jarvis.ingestor.ingest_text(
+            body.text, title=body.title or "Pasted note", scope=body.scope
+        )
+    else:
+        raise HTTPException(status_code=422, detail="provide one of url, path or text")
+    return result.to_dict()
+
+
+@router.delete("/v1/knowledge/{document_id}", status_code=204)
+async def forget_document(document_id: str, request: Request) -> None:
+    if not await _jarvis(request).knowledge.remove(document_id):
+        raise HTTPException(status_code=404, detail=f"unknown document: {document_id}")
 
 
 @router.post("/v1/tools/{name}/invoke")

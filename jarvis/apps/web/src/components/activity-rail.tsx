@@ -44,6 +44,14 @@ function describe(topic: string, payload: Record<string, unknown>): Omit<Entry, 
       return { label: "model failed", detail: String(payload.provider ?? ""), tone: "danger" };
     case "memory.written":
       return { label: "remembered", detail: String(payload.kind ?? ""), tone: "positive" };
+    case "knowledge.ingested":
+      return {
+        label: "ingested",
+        detail: `${payload.title ?? ""} · ${payload.chunks ?? 0} chunks`,
+        tone: "positive",
+      };
+    case "knowledge.removed":
+      return { label: "removed doc", detail: "", tone: "neutral" };
     case "memory.recalled":
       return { label: "recalled", detail: `${payload.hits ?? 0} memories`, tone: "neutral" };
     case "tool.called":

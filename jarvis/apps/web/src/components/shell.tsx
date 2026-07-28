@@ -9,6 +9,7 @@ import {
   Bot,
   Brain,
   Home,
+  Library,
   MessageSquare,
   Mic,
   Search,
@@ -23,8 +24,9 @@ const NAV = [
   { href: "/chat", label: "Chat", icon: MessageSquare, key: "2" },
   { href: "/agents", label: "Agents", icon: Bot, key: "3" },
   { href: "/memory", label: "Memory", icon: Brain, key: "4" },
-  { href: "/runs", label: "Runs", icon: Activity, key: "5" },
-  { href: "/tools", label: "Tools", icon: Wrench, key: "6" },
+  { href: "/knowledge", label: "Knowledge", icon: Library, key: "5" },
+  { href: "/runs", label: "Runs", icon: Activity, key: "6" },
+  { href: "/tools", label: "Tools", icon: Wrench, key: "7" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

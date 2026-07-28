@@ -102,6 +102,35 @@ export type AuditEntry = {
   hash: string | null;
 };
 
+export type KnowledgeDoc = {
+  id: string;
+  title: string;
+  source: string;
+  kind: string;
+  scope: string;
+  chunk_count: number;
+  bytes: number;
+  created_at: string | null;
+};
+
+export type CitationHit = {
+  document_id: string;
+  document_title: string;
+  source: string;
+  locator: string;
+  snippet: string;
+  score: number;
+  reference: string;
+  signals: { lexical: number; semantic: number; recency: number };
+};
+
+export type IngestResult = {
+  ingested: { id: string; title: string; kind: string; chunks: number; source: string }[];
+  chunks: number;
+  skipped: Record<string, string>;
+  unchanged: string[];
+};
+
 export type Tool = {
   name: string;
   namespace: string;
@@ -144,6 +173,21 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ approved, reason: reason ?? null }),
     }),
+
+  documents: (limit = 100) => get<KnowledgeDoc[]>(`/v1/knowledge?limit=${limit}`),
+
+  searchKnowledge: (query: string, limit = 6) =>
+    get<CitationHit[]>(`/v1/knowledge/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+
+  ingest: (body: { url?: string; path?: string; text?: string; title?: string }) =>
+    get<IngestResult>("/v1/knowledge", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+
+  forgetDocument: (id: string) =>
+    fetch(`${API_BASE}/v1/knowledge/${id}`, { method: "DELETE" }).then((r) => r.ok),
 
   audit: (limit = 50) =>
     get<{ intact: boolean; broken_at: string | null; entries: AuditEntry[] }>(
@@ -249,6 +293,8 @@ export const TRACKED_TOPICS = [
   "llm.completed",
   "llm.failed",
   "memory.written",
+  "knowledge.ingested",
+  "knowledge.removed",
   "memory.recalled",
   "tool.called",
   "approval.requested",

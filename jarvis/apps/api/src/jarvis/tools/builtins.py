@@ -9,12 +9,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from jarvis.knowledge.store import KnowledgeStore
 from jarvis.memory.models import MemoryKind
 from jarvis.memory.store import MemoryStore
 from jarvis.tools.registry import Permission, ToolRegistry
 
 
-def register_builtins(registry: ToolRegistry, memory: MemoryStore) -> None:
+def register_builtins(
+    registry: ToolRegistry, memory: MemoryStore, knowledge: KnowledgeStore | None = None
+) -> None:
     async def memory_search(query: str, limit: int = 5) -> list[dict[str, Any]]:
         recalls = await memory.search(query, limit=limit)
         return [
@@ -43,6 +46,38 @@ def register_builtins(registry: ToolRegistry, memory: MemoryStore) -> None:
         permission=Permission.SAFE,
         namespace="memory",
     )
+
+    if knowledge is not None:
+
+        async def search_documents(query: str, limit: int = 5) -> list[dict[str, Any]]:
+            citations = await knowledge.search(query, limit=limit)
+            # The reference travels with the text, so an agent that uses a
+            # passage has no excuse for citing it vaguely or not at all.
+            return [
+                {
+                    "reference": c.reference(),
+                    "source": c.source,
+                    "untrusted_content": c.snippet,
+                    "score": c.score,
+                }
+                for c in citations
+            ]
+
+        registry.register(
+            "search_documents",
+            "Search ingested documents. Results carry a reference you must cite.",
+            search_documents,
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "What to look for"},
+                    "limit": {"type": "integer", "default": 5},
+                },
+                "required": ["query"],
+            },
+            permission=Permission.SAFE,
+            namespace="knowledge",
+        )
 
     registry.register(
         "memory_write",

@@ -26,6 +26,17 @@ class ApprovalDecision(BaseModel):
     reason: str | None = None
 
 
+class IngestRequest(BaseModel):
+    """Exactly one source. Which one is checked by the handler, not the schema,
+    so the error names the actual problem rather than a validation shape."""
+
+    url: str | None = None
+    path: str | None = None
+    text: str | None = None
+    title: str | None = None
+    scope: str = "global"
+
+
 class ToolInvocation(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
