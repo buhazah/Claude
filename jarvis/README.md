@@ -41,7 +41,12 @@ and folders, with locators preserved from extraction through chunking so every
 retrieved passage carries a checkable citation.
 319 tests, including extraction against real generated documents.
 
-Milestone 6 (workflows) is next.
+*M6 — workflows*: a graph engine whose suspended runs survive a restart,
+structured conditions, schedule and event triggers, and a scheduler that
+recovers parked work on boot.
+381 tests, including finishing a workflow on a different engine than started it.
+
+Milestone 7 (voice) is next.
 
 ## Run it
 
@@ -137,6 +142,7 @@ jarvis/
     │   │   ├── agents/  spec · runtime · registry · catalog · orchestrator
     │   │   ├── memory/  store · embeddings · ranking · categorisation
     │   │   ├── knowledge/  extract · chunk · ingest · store
+    │   │   ├── workflows/  engine · triggers · scheduler · catalog
     │   │   ├── tools/   registry · tiers · approvals · system · MCP
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
@@ -166,6 +172,10 @@ transitions all publish to one bus. The live activity feed, observability and
 **Citations are structural.** A locator (`p. 4`, `slide 2`, `Revenue!1:40`) is
 captured at extraction and carried through chunking, so a retrieved passage can
 always be checked against its source rather than merely attributed to a file.
+
+**Suspension is durable.** A workflow waiting on a human is a database row,
+not a coroutine — its cursor and context persist, so a decision can arrive
+tomorrow, in a different process, and the run continues.
 
 **Permissions are data.** Tools declare a blast-radius tier; grants are checked
 at call time. An agent cannot widen its own reach by reasoning about it, and a

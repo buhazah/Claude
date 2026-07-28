@@ -44,6 +44,16 @@ function describe(topic: string, payload: Record<string, unknown>): Omit<Entry, 
       return { label: "model failed", detail: String(payload.provider ?? ""), tone: "danger" };
     case "memory.written":
       return { label: "remembered", detail: String(payload.kind ?? ""), tone: "positive" };
+    case "workflow.started":
+      return { label: "workflow", detail: String(payload.workflow ?? ""), tone: "accent" };
+    case "workflow.suspended":
+      return { label: "workflow paused", detail: String(payload.step ?? ""), tone: "warning" };
+    case "workflow.finished":
+      return {
+        label: String(payload.workflow ?? "workflow"),
+        detail: String(payload.state ?? ""),
+        tone: payload.state === "succeeded" ? "positive" : "danger",
+      };
     case "knowledge.ingested":
       return {
         label: "ingested",

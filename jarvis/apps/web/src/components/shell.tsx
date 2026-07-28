@@ -11,6 +11,7 @@ import {
   Home,
   Library,
   MessageSquare,
+  Workflow as WorkflowIcon,
   Mic,
   Search,
   Wrench,
@@ -25,8 +26,9 @@ const NAV = [
   { href: "/agents", label: "Agents", icon: Bot, key: "3" },
   { href: "/memory", label: "Memory", icon: Brain, key: "4" },
   { href: "/knowledge", label: "Knowledge", icon: Library, key: "5" },
-  { href: "/runs", label: "Runs", icon: Activity, key: "6" },
-  { href: "/tools", label: "Tools", icon: Wrench, key: "7" },
+  { href: "/workflows", label: "Workflows", icon: WorkflowIcon, key: "6" },
+  { href: "/runs", label: "Runs", icon: Activity, key: "7" },
+  { href: "/tools", label: "Tools", icon: Wrench, key: "8" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

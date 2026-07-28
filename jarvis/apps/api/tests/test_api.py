@@ -361,3 +361,86 @@ def test_an_agent_can_search_documents_through_the_tool(client: TestClient) -> N
     # using the text without citing it.
     assert result[0]["reference"].startswith("Finance")
     assert "untrusted_content" in result[0]
+
+
+# ── Workflows ─────────────────────────────────────────────────────────────────
+
+
+def test_starter_workflows_are_seeded(client: TestClient) -> None:
+    workflows = client.get("/v1/workflows").json()
+    assert {w["name"] for w in workflows} >= {"Inbox triage", "Company brief"}
+    assert client.get("/health").json()["workflows"] >= 3
+
+
+def test_a_workflow_can_be_run_from_the_api(client: TestClient) -> None:
+    run = client.post("/v1/workflows/wfl_weekly_review/run", json={"inputs": {}}).json()
+    assert run["state"] in {"succeeded", "awaiting_approval"}
+    assert run["records"]
+
+    listed = client.get("/v1/workflow-runs").json()
+    assert listed[0]["workflow_name"] == "Weekly review"
+
+    detail = client.get(f"/v1/workflow-runs/{run['id']}").json()
+    assert detail["context"]["steps"]
+
+
+def test_running_an_unknown_workflow_is_404(client: TestClient) -> None:
+    assert client.post("/v1/workflows/wfl_nope/run", json={"inputs": {}}).status_code == 404
+
+
+def test_an_invalid_graph_is_rejected_with_every_problem(client: TestClient) -> None:
+    response = client.post(
+        "/v1/workflows",
+        json={
+            "id": "wfl_bad",
+            "name": "Bad",
+            "steps": [{"id": "a", "kind": "agent", "next": "nowhere"}],
+        },
+    )
+    assert response.status_code == 422
+    problems = response.json()["detail"]["problems"]
+    assert any("nowhere" in p for p in problems)
+    assert any("no agent" in p for p in problems)
+
+
+def test_a_workflow_can_be_saved_and_deleted(client: TestClient) -> None:
+    created = client.post(
+        "/v1/workflows",
+        json={
+            "id": "wfl_custom",
+            "name": "Custom",
+            "steps": [{"id": "note", "kind": "note", "label": "hello"}],
+        },
+    )
+    assert created.status_code == 201
+    assert client.delete("/v1/workflows/wfl_custom").status_code == 204
+    assert client.delete("/v1/workflows/wfl_custom").status_code == 404
+
+
+def test_triggers_can_be_created_and_removed(client: TestClient) -> None:
+    created = client.post(
+        "/v1/triggers",
+        json={"workflow_id": "wfl_weekly_review", "kind": "schedule", "interval_seconds": 86400},
+    )
+    assert created.status_code == 201
+    trigger_id = created.json()["id"]
+
+    assert len(client.get("/v1/triggers").json()) == 1
+    assert client.delete(f"/v1/triggers/{trigger_id}").status_code == 204
+
+
+def test_a_trigger_for_an_unknown_workflow_is_refused(client: TestClient) -> None:
+    response = client.post("/v1/triggers", json={"workflow_id": "wfl_nope", "kind": "manual"})
+    assert response.status_code == 404
+
+
+def test_an_approval_workflow_suspends_and_is_listed(client: TestClient) -> None:
+    """The suspended run is visible and decidable through the ordinary surface."""
+    run = client.post("/v1/workflows/wfl_inbox_triage/run", json={"inputs": {"body": "hi"}}).json()
+
+    if run["state"] == "awaiting_approval":
+        pending = client.get("/v1/approvals", params={"pending_only": True}).json()
+        assert pending and pending[0]["arguments"]["step"] == "approve"
+
+        decided = client.post(f"/v1/approvals/{pending[0]['id']}", json={"approved": False})
+        assert decided.json()["state"] == "denied"

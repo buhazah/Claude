@@ -16,7 +16,14 @@ def clock() -> FrozenClock:
 @pytest.fixture
 def settings() -> Settings:
     # No keys: the system must be fully exercisable offline.
-    return Settings(environment="test", use_llm_arbiter=False, log_level="WARNING")
+    # The scheduler is off: time is frozen in tests, and a background loop
+    # would fire triggers nobody asked for while assertions are running.
+    return Settings(
+        environment="test",
+        use_llm_arbiter=False,
+        log_level="WARNING",
+        enable_scheduler=False,
+    )
 
 
 @pytest.fixture

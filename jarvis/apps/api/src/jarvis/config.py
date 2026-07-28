@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     # [{"name":"github","command":["npx","-y","@modelcontextprotocol/server-github"]}]
     mcp_servers: str = ""
 
+    # Workflows. The scheduler is off in tests, where time is frozen and a
+    # background loop would fire triggers nobody asked for.
+    enable_scheduler: bool = True
+
     # Routing
     default_policy: str = "balanced"
     use_llm_arbiter: bool = True

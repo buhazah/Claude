@@ -195,6 +195,53 @@ class ChunkRow(Base):
     embedding: Mapped[list[float] | None] = mapped_column(EmbeddingVector)
 
 
+class WorkflowRow(Base):
+    """A workflow definition, stored whole.
+
+    The graph lives in one JSON column rather than normalised tables: it is
+    always read and written as a unit, it is versioned as a unit, and a
+    relational shape would buy nothing but joins.
+    """
+
+    __tablename__ = "workflows"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JsonColumn, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class WorkflowRunRow(Base):
+    """A run's complete state — this is what makes suspension durable."""
+
+    __tablename__ = "workflow_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workflow_id: Mapped[str] = mapped_column(String(64), index=True)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # The program counter. A suspended run resumes from here.
+    cursor: Mapped[str | None] = mapped_column(String(64))
+    awaiting_approval_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JsonColumn, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, index=True
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TriggerRow(Base):
+    __tablename__ = "workflow_triggers"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workflow_id: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JsonColumn, default=dict)
+    last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class AgentMetricsRow(Base):
     """Per-agent performance, durable across restarts so routing keeps learning."""
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import contextvars
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
@@ -34,6 +35,15 @@ log = structlog.get_logger(__name__)
 DEFAULT_QUEUE_SIZE = 512
 
 
+# Set while a workflow is driving. Because a ContextVar propagates into every
+# coroutine and task a workflow awaits, any event published *because of* that
+# workflow is stamped with its run id — which is what lets an event trigger
+# tell "something happened" from "something I caused".
+CAUSING_WORKFLOW: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "causing_workflow", default=None
+)
+
+
 @dataclass(slots=True)
 class Event:
     """An immutable fact about something that happened."""
@@ -43,6 +53,8 @@ class Event:
     id: str = field(default_factory=lambda: new_id("evt"))
     timestamp: str = ""
     run_id: str | None = None
+    # The workflow run this event is a consequence of, if any.
+    caused_by: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -50,6 +62,7 @@ class Event:
             "topic": self.topic,
             "timestamp": self.timestamp,
             "run_id": self.run_id,
+            "caused_by": self.caused_by,
             "payload": self.payload,
         }
 
@@ -162,6 +175,7 @@ class EventBus:
             payload=payload or {},
             timestamp=self._clock.now().isoformat(),
             run_id=run_id,
+            caused_by=CAUSING_WORKFLOW.get(),
         )
         self._deliver_local(event)
         return event

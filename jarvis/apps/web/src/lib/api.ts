@@ -131,6 +131,48 @@ export type IngestResult = {
   unchanged: string[];
 };
 
+export type WorkflowStep = {
+  id: string;
+  kind: "agent" | "tool" | "approval" | "branch" | "parallel" | "wait" | "note";
+  label: string;
+  agent?: string | null;
+  tool?: string | null;
+  if_true?: string | null;
+  if_false?: string | null;
+  steps: string[];
+};
+
+export type WorkflowDef = {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  inputs: string[];
+  steps: WorkflowStep[];
+};
+
+export type WorkflowRunSummary = {
+  id: string;
+  workflow_id: string;
+  workflow_name: string;
+  state: "pending" | "running" | "awaiting_approval" | "succeeded" | "failed" | "cancelled";
+  trigger: string;
+  steps: number;
+  cost_usd: number;
+  created_at: string | null;
+  error: string | null;
+};
+
+export type WorkflowTrigger = {
+  id: string;
+  workflow_id: string;
+  kind: "manual" | "schedule" | "event";
+  enabled: boolean;
+  interval_seconds: number;
+  topic: string;
+  last_fired_at: string | null;
+};
+
 export type Tool = {
   name: string;
   namespace: string;
@@ -173,6 +215,19 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ approved, reason: reason ?? null }),
     }),
+
+  workflows: () => get<WorkflowDef[]>("/v1/workflows"),
+
+  workflowRuns: (limit = 25) => get<WorkflowRunSummary[]>(`/v1/workflow-runs?limit=${limit}`),
+
+  runWorkflow: (id: string, inputs: Record<string, string> = {}) =>
+    get<{ id: string; state: string }>(`/v1/workflows/${id}/run`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ inputs }),
+    }),
+
+  triggers: () => get<WorkflowTrigger[]>("/v1/triggers"),
 
   documents: (limit = 100) => get<KnowledgeDoc[]>(`/v1/knowledge?limit=${limit}`),
 
@@ -294,6 +349,9 @@ export const TRACKED_TOPICS = [
   "llm.failed",
   "memory.written",
   "knowledge.ingested",
+  "workflow.started",
+  "workflow.suspended",
+  "workflow.finished",
   "knowledge.removed",
   "memory.recalled",
   "tool.called",

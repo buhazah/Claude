@@ -39,6 +39,10 @@ from jarvis.tools.builtins import register_builtins
 from jarvis.tools.mcp import MCPManager, MCPServerConfig
 from jarvis.tools.registry import Grant, Permission, ToolRegistry
 from jarvis.tools.system import Workspace, register_system_tools
+from jarvis.workflows.catalog import starter_workflows
+from jarvis.workflows.engine import WorkflowEngine
+from jarvis.workflows.store import InMemoryWorkflowStore, SqlWorkflowStore, WorkflowStore
+from jarvis.workflows.triggers import Scheduler
 
 log = structlog.get_logger(__name__)
 
@@ -109,6 +113,9 @@ class Jarvis:
     orchestrator: Orchestrator
     knowledge: KnowledgeStore
     ingestor: Ingestor
+    workflows: WorkflowStore
+    engine: WorkflowEngine
+    scheduler: Scheduler
     approvals: ApprovalBroker
     audit: AuditLog
     workspace: Workspace
@@ -134,7 +141,16 @@ class Jarvis:
         for config in parse_mcp_servers(self.settings.mcp_servers):
             await self.mcp.add(config)
 
+        # Seed the starter workflows once, so the builder opens onto something
+        # real. They are ordinary rows afterwards — editable and deletable.
+        if not await self.workflows.all():
+            for workflow in starter_workflows():
+                await self.workflows.save(workflow)
+        if self.settings.enable_scheduler:
+            await self.scheduler.start()
+
     async def stop(self) -> None:
+        await self.scheduler.stop()
         await self.mcp.stop_all()
         if isinstance(self.bus, RedisEventBus):
             await self.bus.stop()
@@ -175,6 +191,9 @@ def build(
         runs = RunStore(clock=clock)
         knowledge = InMemoryKnowledgeStore(embedder=embedder, bus=bus, clock=clock)
     ingestor = Ingestor(knowledge)
+    workflows: WorkflowStore = (
+        SqlWorkflowStore(database, clock=clock) if database else InMemoryWorkflowStore(clock=clock)
+    )
     audit: AuditLog = SqlAuditLog(database, clock=clock) if database else NullAuditLog()
     approvals = ApprovalBroker(bus=bus, clock=clock, timeout_s=settings.approval_timeout_s)
     tools = ToolRegistry(
@@ -213,6 +232,18 @@ def build(
         use_arbiter=settings.use_llm_arbiter,
     )
 
+    engine = WorkflowEngine(
+        store=workflows,
+        orchestrator=orchestrator,
+        runtime=runtime,
+        agents=agents,
+        tools=tools,
+        approvals=approvals,
+        bus=bus,
+        clock=clock,
+    )
+    scheduler = Scheduler(store=workflows, engine=engine, bus=bus, clock=clock)
+
     log.info(
         "jarvis_built",
         providers=sorted(router.providers),
@@ -235,6 +266,9 @@ def build(
         orchestrator=orchestrator,
         knowledge=knowledge,
         ingestor=ingestor,
+        workflows=workflows,
+        engine=engine,
+        scheduler=scheduler,
         approvals=approvals,
         audit=audit,
         workspace=workspace,

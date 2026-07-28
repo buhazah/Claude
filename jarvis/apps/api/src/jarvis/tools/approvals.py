@@ -96,6 +96,36 @@ class ApprovalBroker:
         except KeyError:
             raise NotFoundError(f"unknown approval: {approval_id}") from None
 
+    def create(
+        self,
+        *,
+        tool: str,
+        arguments: dict[str, Any],
+        run_id: str | None = None,
+        agent_id: str | None = None,
+    ) -> Approval:
+        """Register a pending approval without waiting on it.
+
+        This is what a workflow uses. A workflow may wait overnight for a
+        decision, so it records what it needs and *returns* — nothing is held
+        open, and the decision can arrive in a different process tomorrow.
+        ``request`` below is the interactive variant, for a chat turn where
+        somebody is watching the stream.
+        """
+        approval = Approval(
+            id=new_id("apr"),
+            tool=tool,
+            arguments=arguments,
+            run_id=run_id,
+            agent_id=agent_id,
+            requested_at=self._clock.now().isoformat(),
+        )
+        self._approvals[approval.id] = approval
+        if self._bus:
+            self._bus.publish("approval.requested", approval.to_dict(), run_id=run_id)
+        log.info("approval_requested", approval=approval.id, tool=tool)
+        return approval
+
     async def request(
         self,
         *,
@@ -106,20 +136,7 @@ class ApprovalBroker:
         timeout_s: float | None = None,
     ) -> Approval:
         """Park until a human decides, or the request expires."""
-        approval = Approval(
-            id=new_id("apr"),
-            tool=tool,
-            arguments=arguments,
-            run_id=run_id,
-            agent_id=agent_id,
-            requested_at=self._clock.now().isoformat(),
-        )
-        self._approvals[approval.id] = approval
-
-        if self._bus:
-            self._bus.publish("approval.requested", approval.to_dict(), run_id=run_id)
-        log.info("approval_requested", approval=approval.id, tool=tool)
-
+        approval = self.create(tool=tool, arguments=arguments, run_id=run_id, agent_id=agent_id)
         try:
             await asyncio.wait_for(approval._gate.wait(), timeout=timeout_s or self._timeout_s)
         except TimeoutError:

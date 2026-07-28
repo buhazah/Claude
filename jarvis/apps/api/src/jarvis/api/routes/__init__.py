@@ -23,6 +23,7 @@ from jarvis.api.schemas import (
     RememberRequest,
     RouteRequest,
     ToolInvocation,
+    WorkflowRunRequest,
 )
 from jarvis.api.sse import HEADERS, frame
 from jarvis.kernel.container import Jarvis
@@ -53,6 +54,8 @@ async def health(request: Request) -> dict[str, Any]:
         "tools": len(jarvis.tools.all()),
         "memories": await jarvis.memory.count(),
         "documents": await jarvis.knowledge.count(),
+        "workflows": len(await jarvis.workflows.all()),
+        "scheduler": jarvis.scheduler.running,
         "events_published": jarvis.bus.published_count,
         "storage": jarvis.storage,
         "pending_approvals": len(jarvis.approvals.pending()),
@@ -224,6 +227,106 @@ async def remember(body: RememberRequest, request: Request) -> dict[str, Any]:
 async def forget(memory_id: str, request: Request) -> None:
     if not await _jarvis(request).memory.forget(memory_id):
         raise HTTPException(status_code=404, detail=f"unknown memory: {memory_id}")
+
+
+@router.get("/v1/workflows")
+async def list_workflows(request: Request) -> list[dict[str, Any]]:
+    return [w.model_dump(mode="json") for w in await _jarvis(request).workflows.all()]
+
+
+@router.post("/v1/workflows", status_code=201)
+async def save_workflow(body: dict[str, Any], request: Request) -> dict[str, Any]:
+    """Create or update a workflow. Rejects a graph that cannot execute."""
+    from jarvis.workflows.models import Workflow
+
+    try:
+        workflow = Workflow.model_validate(body)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if problems := workflow.validate_graph():
+        # Every problem at once: fixing one typo per save is a miserable loop.
+        raise HTTPException(status_code=422, detail={"problems": problems})
+
+    saved = await _jarvis(request).workflows.save(workflow)
+    return saved.model_dump(mode="json")
+
+
+@router.delete("/v1/workflows/{workflow_id}", status_code=204)
+async def delete_workflow(workflow_id: str, request: Request) -> None:
+    if not await _jarvis(request).workflows.remove(workflow_id):
+        raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
+
+
+@router.post("/v1/workflows/{workflow_id}/run")
+async def run_workflow(
+    workflow_id: str, body: WorkflowRunRequest, request: Request
+) -> dict[str, Any]:
+    """Start a run. Returns as soon as it finishes *or* suspends."""
+    jarvis = _jarvis(request)
+    workflow = await jarvis.workflows.get(workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=404, detail=f"unknown workflow: {workflow_id}")
+    try:
+        run = await jarvis.engine.start(workflow, inputs=body.inputs, trigger="manual")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return run.model_dump(mode="json")
+
+
+@router.get("/v1/workflow-runs")
+async def list_workflow_runs(
+    request: Request, workflow_id: str | None = None, limit: int = 25
+) -> list[dict[str, Any]]:
+    runs = await _jarvis(request).workflows.runs(workflow_id=workflow_id, limit=limit)
+    return [
+        {
+            "id": r.id,
+            "workflow_id": r.workflow_id,
+            "workflow_name": r.workflow_name,
+            "state": r.state.value,
+            "trigger": r.trigger,
+            "steps": len(r.records),
+            "cost_usd": r.cost_usd,
+            "created_at": r.created_at,
+            "error": r.error,
+        }
+        for r in runs
+    ]
+
+
+@router.get("/v1/workflow-runs/{run_id}")
+async def get_workflow_run(run_id: str, request: Request) -> dict[str, Any]:
+    run = await _jarvis(request).workflows.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"unknown workflow run: {run_id}")
+    return {**run.model_dump(mode="json"), "cost_usd": run.cost_usd}
+
+
+@router.get("/v1/triggers")
+async def list_triggers(request: Request) -> list[dict[str, Any]]:
+    return [t.model_dump(mode="json") for t in await _jarvis(request).workflows.triggers()]
+
+
+@router.post("/v1/triggers", status_code=201)
+async def save_trigger(body: dict[str, Any], request: Request) -> dict[str, Any]:
+    from jarvis.workflows.models import Trigger
+
+    try:
+        trigger = Trigger.model_validate(body)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    jarvis = _jarvis(request)
+    if await jarvis.workflows.get(trigger.workflow_id) is None:
+        raise HTTPException(status_code=404, detail=f"unknown workflow: {trigger.workflow_id}")
+    return (await jarvis.workflows.save_trigger(trigger)).model_dump(mode="json")
+
+
+@router.delete("/v1/triggers/{trigger_id}", status_code=204)
+async def delete_trigger(trigger_id: str, request: Request) -> None:
+    if not await _jarvis(request).workflows.remove_trigger(trigger_id):
+        raise HTTPException(status_code=404, detail=f"unknown trigger: {trigger_id}")
 
 
 @router.get("/v1/knowledge")

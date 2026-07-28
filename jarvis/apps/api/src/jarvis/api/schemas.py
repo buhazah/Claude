@@ -37,6 +37,10 @@ class IngestRequest(BaseModel):
     scope: str = "global"
 
 
+class WorkflowRunRequest(BaseModel):
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
 class ToolInvocation(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
