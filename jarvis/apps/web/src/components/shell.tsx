@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Workflow as WorkflowIcon,
   Mic,
+  MonitorSmartphone,
   Search,
   Wrench,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const NAV = [
   { href: "/workflows", label: "Workflows", icon: WorkflowIcon, key: "6" },
   { href: "/runs", label: "Runs", icon: Activity, key: "7" },
   { href: "/tools", label: "Tools", icon: Wrench, key: "8" },
+  { href: "/computer", label: "Computer", icon: MonitorSmartphone, key: "9" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

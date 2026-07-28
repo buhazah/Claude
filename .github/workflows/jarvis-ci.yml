@@ -35,6 +35,9 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - run: uv venv --python 3.11
       - run: uv pip install -e ".[dev]"
+      # Computer control drives a real browser, so CI exercises the driver
+      # rather than skipping past it.
+      - run: .venv/bin/playwright install --with-deps chromium
       - run: .venv/bin/ruff check .
       - run: .venv/bin/ruff format --check .
       - run: .venv/bin/mypy

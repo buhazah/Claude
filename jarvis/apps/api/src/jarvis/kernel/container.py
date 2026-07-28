@@ -16,6 +16,10 @@ import structlog
 from jarvis.agents.orchestrator import Orchestrator
 from jarvis.agents.registry import AgentRegistry
 from jarvis.agents.runtime import AgentRuntime
+from jarvis.computer.policy import ComputerPolicy
+from jarvis.computer.ports import Computer, UnavailableComputer
+from jarvis.computer.session import ComputerSession
+from jarvis.computer.tools import register_computer_tools
 from jarvis.config import Settings, get_settings
 from jarvis.kernel.bus import EventBus
 from jarvis.kernel.clock import SYSTEM_CLOCK, Clock
@@ -91,6 +95,26 @@ def parse_mcp_servers(raw: str) -> list[MCPServerConfig]:
     return servers
 
 
+def build_computer(settings: Settings) -> Computer:
+    """The browser driver, or one that refuses loudly.
+
+    Refusing beats degrading: an agent told "no browser is available" reports
+    that, where one handed a silently blank page describes what it imagines.
+    """
+    if not settings.enable_computer:
+        return UnavailableComputer()
+    from jarvis.computer.browser import PlaywrightComputer
+
+    driver = PlaywrightComputer(
+        headless=settings.browser_headless,
+        executable_path=settings.browser_executable or None,
+    )
+    if not driver.is_available():
+        log.warning("computer_driver_missing", reason="playwright is not installed")
+        return UnavailableComputer()
+    return driver
+
+
 def build_embedder(settings: Settings) -> Embedder:
     """Hosted embeddings when a key is configured, deterministic local ones otherwise."""
     if settings.embedding_api_key:
@@ -126,6 +150,7 @@ class Jarvis:
     audit: AuditLog
     workspace: Workspace
     mcp: MCPManager
+    computer: ComputerSession
     database: Database | None = None
 
     @property
@@ -172,6 +197,7 @@ class Jarvis:
     async def stop(self) -> None:
         await self.scheduler.stop()
         await self.mcp.stop_all()
+        await self.computer.stop()
         if isinstance(self.bus, RedisEventBus):
             await self.bus.stop()
         if self.database is not None:
@@ -183,6 +209,7 @@ def build(
     *,
     providers: list[LLMProvider] | None = None,
     clock: Clock = SYSTEM_CLOCK,
+    computer_driver: Computer | None = None,
 ) -> Jarvis:
     settings = settings or get_settings()
 
@@ -233,6 +260,25 @@ def build(
     register_builtins(tools, memory, knowledge)
     register_system_tools(tools, workspace)
     mcp = MCPManager(tools)
+
+    # Computer control is opt-in, and the wall is built here rather than in the
+    # session so the same policy object is what the UI reports and what the
+    # session enforces — a wall described in one place and enforced in another
+    # is a wall nobody can check.
+    computer = ComputerSession(
+        computer=computer_driver or build_computer(settings),
+        policy=ComputerPolicy(
+            allowed_hosts=tuple(settings.browser_allowed_hosts),
+            blocked_hosts=tuple(settings.browser_blocked_hosts),
+        ),
+        bus=bus,
+        approvals=approvals,
+        audit=audit,
+        max_steps=settings.browser_max_steps,
+        max_seconds=settings.browser_max_seconds,
+    )
+    if settings.enable_computer:
+        register_computer_tools(tools, computer)
 
     runtime = AgentRuntime(
         router=router,
@@ -311,5 +357,6 @@ def build(
         audit=audit,
         workspace=workspace,
         mcp=mcp,
+        computer=computer,
         database=database,
     )

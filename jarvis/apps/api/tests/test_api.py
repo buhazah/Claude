@@ -490,3 +490,61 @@ def test_a_partial_transcript_over_the_socket_is_not_answered(client: TestClient
         socket.send_json({"type": "transcript", "text": "what is", "final": False})
         assert socket.receive_json() == {"type": "partial", "text": "what is"}
         socket.send_json({"type": "end"})
+
+
+# ── Computer control ──────────────────────────────────────────────────────────
+
+
+def test_health_reports_the_browsers_reach(client: TestClient) -> None:
+    """A capability nobody can see the boundary of is a capability nobody trusts."""
+    body = client.get("/health").json()
+    assert body["computer"] == {
+        "driver": "none",
+        "available": False,
+        "allowed_hosts": [],
+        "blocked_hosts": [],
+    }
+
+
+def test_computer_status_shows_the_policy_and_the_budget(client: TestClient) -> None:
+    body = client.get("/v1/computer").json()
+    assert body["available"] is False
+    assert body["budget"]["max_steps"] > 0
+    assert body["steps"] == []
+
+
+def test_the_screen_is_404_before_anything_is_observed(client: TestClient) -> None:
+    assert client.get("/v1/computer/screen").status_code == 404
+
+
+def test_a_driven_browser_reports_its_screen_and_history(
+    settings: Settings, clock: FrozenClock
+) -> None:
+    from jarvis.computer.policy import ComputerPolicy
+    from jarvis.computer.ports import Page, ScriptedComputer
+
+    driver = ScriptedComputer(
+        {"https://ok.example.com/": Page(url="https://ok.example.com/", title="Fine")},
+        start_url="https://ok.example.com/",
+    )
+    system = container.build(
+        settings, providers=[EchoProvider()], clock=clock, computer_driver=driver
+    )
+    system.computer.policy = ComputerPolicy(allowed_hosts=("ok.example.com",))
+
+    with TestClient(create_app(settings, jarvis=system)) as client:
+        asyncio.run(_drive(system))
+        body = client.get("/v1/computer").json()
+        assert body["page"]["url"] == "https://ok.example.com/"
+        assert [s["description"] for s in body["steps"]] == ["scroll down on ok.example.com"]
+
+        screen = client.get("/v1/computer/screen")
+        assert screen.status_code == 200
+        assert screen.headers["content-type"] == "image/png"
+
+
+async def _drive(system: container.Jarvis) -> None:
+    from jarvis.computer.models import Action, ActionKind
+
+    await system.computer.start()
+    await system.computer.act(Action(kind=ActionKind.SCROLL, amount=600))

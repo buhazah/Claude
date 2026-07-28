@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from jarvis.api.schemas import (
     AgentSummary,
@@ -57,6 +57,12 @@ async def health(request: Request) -> dict[str, Any]:
         "documents": await jarvis.knowledge.count(),
         "workflows": len(await jarvis.workflows.all()),
         "scheduler": jarvis.scheduler.running,
+        "computer": {
+            "driver": jarvis.computer.computer.name,
+            "available": jarvis.computer.computer.is_available(),
+            "allowed_hosts": list(jarvis.computer.policy.allowed_hosts),
+            "blocked_hosts": list(jarvis.computer.policy.blocked_hosts),
+        },
         "voice": {
             "speaker": jarvis.speaker.name,
             "transcription": jarvis.transcriber.is_available(),
@@ -286,6 +292,40 @@ async def voice(websocket: WebSocket) -> None:
             await pumping
         with contextlib.suppress(Exception):
             await websocket.close()
+
+
+@router.get("/v1/computer")
+async def computer_status(request: Request) -> dict[str, Any]:
+    """What the browser is looking at, and everything it has done."""
+    session = _jarvis(request).computer
+    return {
+        "driver": session.computer.name,
+        "available": session.computer.is_available(),
+        "policy": {
+            "allowed_hosts": list(session.policy.allowed_hosts),
+            "blocked_hosts": list(session.policy.blocked_hosts),
+        },
+        "budget": {
+            "steps": len(session.steps),
+            "max_steps": session.max_steps,
+            "max_seconds": session.max_seconds,
+        },
+        "page": session.snapshot.to_dict(),
+        "steps": [s.to_dict() for s in session.steps[-50:]],
+    }
+
+
+@router.get("/v1/computer/screen")
+async def computer_screen(request: Request) -> Response:
+    """The current screenshot.
+
+    Served as an image rather than base64 in JSON: the evidence for a decision
+    should be as cheap to look at as possible.
+    """
+    session = _jarvis(request).computer
+    if session.snapshot.screenshot is None:
+        raise HTTPException(status_code=404, detail="nothing has been observed yet")
+    return Response(content=session.snapshot.screenshot, media_type="image/png")
 
 
 @router.post("/v1/voice/transcribe")

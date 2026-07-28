@@ -31,12 +31,18 @@ postgres = [
 redis = [
     "redis>=5.2",
 ]
+# Computer control. Optional for the same reason: without it the driver reports
+# itself unavailable and the rest of Jarvis is unaffected.
+computer = [
+    "playwright>=1.49",
+]
 dev = [
     "asyncpg>=0.30",
     "pgvector>=0.3",
     # Alembic runs migrations synchronously; the async driver cannot serve it.
     "psycopg2-binary>=2.9",
     "redis>=5.2",
+    "playwright>=1.49",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.7",

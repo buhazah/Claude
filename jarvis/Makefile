@@ -40,6 +40,13 @@ check: lint types test
 e2e:
 	cd $(WEB) && pnpm e2e:all
 
+# Computer control is off by default, so its suite needs an API started with it
+# on and a throwaway origin allowlisted:
+#   JARVIS_ENABLE_COMPUTER=true JARVIS_BROWSER_ALLOWED_HOSTS='["127.0.0.1"]' \
+#     uvicorn jarvis.main:app
+e2e-computer:
+	cd $(WEB) && pnpm e2e:computer
+
 run-api:
 	cd $(API) && .venv/bin/uvicorn jarvis.main:app --reload
 

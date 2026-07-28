@@ -182,6 +182,35 @@ export type VoiceEvent = {
   truncated?: boolean;
 };
 
+export type ComputerStep = {
+  action: { id: string; kind: string; ref: string; text: string; url: string };
+  verdict: "allow" | "approve" | "refuse";
+  description: string;
+  reason: string;
+  ok: boolean;
+  detail: string;
+  url: string;
+  has_screenshot: boolean;
+};
+
+export type ComputerElement = {
+  ref: string;
+  role: string;
+  name: string;
+  value: string;
+  enabled: boolean;
+  secret: boolean;
+};
+
+export type ComputerStatus = {
+  driver: string;
+  available: boolean;
+  policy: { allowed_hosts: string[]; blocked_hosts: string[] };
+  budget: { steps: number; max_steps: number; max_seconds: number };
+  page: { url: string; title: string; text: string; has_screenshot: boolean; elements: ComputerElement[] };
+  steps: ComputerStep[];
+};
+
 export type Tool = {
   name: string;
   namespace: string;
@@ -212,6 +241,7 @@ export const api = {
   agents: () => get<Agent[]>("/v1/agents"),
   models: () => get<Model[]>("/v1/models"),
   tools: () => get<Tool[]>("/v1/tools"),
+  computer: () => get<ComputerStatus>("/v1/computer"),
   runs: (limit = 25) => get<Run[]>(`/v1/runs?limit=${limit}`),
 
   approvals: (pendingOnly = false) =>
@@ -420,6 +450,9 @@ export const TRACKED_TOPICS = [
   "routing.decided",
   "routing.arbitrated",
   "system.started",
+  "computer.started",
+  "computer.acted",
+  "computer.stopped",
   "voice.state",
   "voice.wake",
   "voice.interrupted",

@@ -12,7 +12,7 @@ begins before the previous one's suite is green.
 | **M5** | **Knowledge** | Ingestion (PDF/DOCX/PPTX/XLSX/CSV/HTML/URLs/code/folders), locator-preserving chunking, hybrid retrieval, structural citations | ✅ **done** |
 | **M6** | **Workflows** | Graph engine with durable suspension, structured conditions, schedule/event triggers, scheduler with boot recovery, workflow UI | ✅ **done** |
 | **M7** | **Voice** | Streaming STT, TTS, barge-in/interruption, wake word | ✅ **done** |
-| **M8** | **Computer control** | Sandboxed desktop/browser control with screenshot loop and a hard permission wall | |
+| **M8** | **Computer control** | Sandboxed desktop/browser control with screenshot loop and a hard permission wall | ✅ **done** |
 | **M9** | **Modes** | Business / Coding (Claude Code integration) / Research mode surfaces + document generation | |
 | **M10** | **Hardening** | Vault, audit chain, cost governance, CI/CD, load + chaos tests, packaging | |
 
@@ -208,6 +208,38 @@ reached the bus.
 **Found by testing** — the offline speaker was unpaced, so a turn completed in
 milliseconds and no human could ever interrupt it. Pacing is now on by default
 and disabled only in the unit suite.
+
+## Milestone 8 — delivered
+
+**Built**
+- **A browser behind the computer port**, perceived as an *element index* built
+  from the DOM — ref, role, accessible name, enabled, secret — rather than as
+  pixels the model must squint at (ADR 0009). Screenshots are still captured,
+  as evidence rather than as the action space.
+- **A permission wall that grades the target, not the verb**, in one place
+  called from one choke point: navigation off the allowlist escalates,
+  credential and payment fields are refused outright with no approval path,
+  committing clicks escalate quoting the page's own words, and a ref that is
+  not in the current snapshot is refused as acting blind.
+- **Budgets** — step ceiling, wall-clock deadline, and loop detection, because
+  an agent driving a browser can burn an afternoon without ever failing.
+- **Evidence and containment** — screenshots kept with each step and its
+  ruling, page text handed to the model inside an explicit untrusted envelope,
+  and the whole capability off unless `enable_computer` is set.
+- Research and shopping agents can now browse; `GET /v1/computer`,
+  `GET /v1/computer/screen`, and a Computer page showing the live screen, the
+  wall, and every action as the sentence a human would have approved.
+
+**Verification** — 477 tests with backends live, including five against real
+Chromium, plus a browser suite that drives the kernel's browser through the
+kernel's own API and asserts the wall holds: a credential field refused with no
+approval offered, a committing click parked in the approval gate quoting the
+page, and the denied click on the record as denied.
+
+**Found by testing** — secret-field detection was substring-based, so "Keep
+shopping" matched the `pin` hint and an ordinary link was classified as a
+credential field. Only the real-browser test surfaced it; the scripted site had
+no such text. Matching is now per token.
 
 ## Definition of done (every milestone)
 

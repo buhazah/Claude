@@ -125,6 +125,20 @@ playback together, so cancelling stops both; the turn records what was
 model marked `[interrupted here]`. A sentence segmenter releases each complete
 thought as it forms, so speech starts before generation ends.
 
+### 3.8 Computer control (`jarvis.computer`)
+A real browser behind a narrow port, perceived as an **element index** — ref,
+role, accessible name, enabled, secret — built from the DOM rather than from
+pixels (ADR 0009). Every action names an element, so it also has a sentence:
+*click button «Place order — £2,480» on checkout.example.com*. That sentence is
+the approval prompt, the audit entry and the UI row.
+
+The wall grades the *target*, not the verb, because for a browser the verb
+carries almost no information. Navigation off the allowlist escalates,
+credential and payment fields are refused with no approval path, committing
+clicks escalate quoting the page, and a ref absent from the current snapshot is
+refused as acting blind. Budgets — steps, wall clock, and loop detection — are
+part of the boundary, not a nicety.
+
 ## 4. Technology decisions
 
 | Choice | Why | Rejected alternative |

@@ -13,7 +13,7 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 
 ## Status
 
-**Milestones 1 through 7 are complete.**
+**Milestones 1 through 8 are complete.**
 
 *M1 — kernel*: event bus, model router with fallback and circuit breaking,
 30-agent catalog with a spec-driven runtime, tiered memory with hybrid recall,
@@ -52,7 +52,13 @@ before generation finishes, and a wake word summons Jarvis without answering
 every mention of the name.
 426 tests, including barge-in driven through a real browser.
 
-Milestone 8 (computer control) is next.
+*M8 — computer control*: a real browser behind a permission wall that grades
+what an action touches rather than what it is called — off-allowlist navigation
+asks first, committing clicks quote the page, and credential fields are refused
+outright with no approval to click through.
+477 tests, including five against real Chromium.
+
+Milestone 9 (business, coding and research modes) is next.
 
 ## Run it
 
@@ -70,6 +76,20 @@ cd apps/web && pnpm install && pnpm dev
 ```
 
 Open http://localhost:3000 and press ⌘K — or ⌘⇧V to talk to it.
+
+## Computer control
+
+Off by default. Enabled, Jarvis drives a real browser — and every action it
+takes is a sentence you can read before you approve it.
+
+```bash
+export JARVIS_ENABLE_COMPUTER=true
+export JARVIS_BROWSER_ALLOWED_HOSTS='["github.com","docs.python.org"]'
+```
+
+Anywhere else asks first. Clicks that commit something — pay, delete, send —
+quote the page's own words in the approval prompt. Password and payment fields
+are refused outright: that one is not an approval you can click through.
 
 ## Voice
 
@@ -163,15 +183,19 @@ jarvis/
     │   │   ├── knowledge/  extract · chunk · ingest · store
     │   │   ├── workflows/  engine · triggers · scheduler · catalog
     │   │   ├── tools/   registry · tiers · approvals · system · MCP
+    │   │   ├── voice/   session · segmenter · wake word · speech ports
+    │   │   ├── computer/  element index · permission wall · browser driver
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
     │   │   └── api/     routes · schemas · SSE
     │   └── tests/
     └── web/             Next.js client
-        ├── src/app/      dashboard · chat · agents · memory · runs · tools
+        ├── src/app/      dashboard · chat · agents · memory · knowledge ·
+        │                 workflows · runs · tools · computer
         ├── src/components/  shell · command palette · activity rail · ui
         ├── src/lib/      typed API client · incremental SSE parser
-        └── e2e/          Playwright smoke test
+        └── e2e/          Playwright: smoke · approval · knowledge ·
+                          workflows · voice · computer
 ```
 
 ## Design notes

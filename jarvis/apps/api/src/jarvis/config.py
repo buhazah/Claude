@@ -65,6 +65,19 @@ class Settings(BaseSettings):
     # that only care about the transcript turn this off to stay fast.
     realtime_speech: bool = True
 
+    # Computer control. Off unless asked for: a browser Jarvis can drive is a
+    # capability, and capabilities should be opted into rather than discovered.
+    enable_computer: bool = False
+    browser_headless: bool = True
+    browser_executable: str = ""
+    # Hosts Jarvis may open unattended. Everything else is escalated to an
+    # approval rather than blocked — an agent doing research legitimately needs
+    # somewhere new, and that is also exactly what an injection asks for.
+    browser_allowed_hosts: list[str] = []
+    browser_blocked_hosts: list[str] = []
+    browser_max_steps: int = 40
+    browser_max_seconds: float = 300.0
+
     # Routing
     default_policy: str = "balanced"
     use_llm_arbiter: bool = True
