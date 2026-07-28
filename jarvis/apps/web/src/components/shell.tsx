@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { CommandPalette } from "./command-palette";
 import { ActivityRail } from "./activity-rail";
+import { ApprovalGate } from "./approvals";
 
 const NAV = [
   { href: "/", label: "Home", icon: Home, key: "1" },
@@ -96,6 +97,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <ActivityRail />
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ApprovalGate />
     </div>
   );
 }

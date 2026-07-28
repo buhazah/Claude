@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_base_url: str = "https://api.openai.com/v1"
 
+    # Tools. The workspace is the boundary filesystem and shell tools operate
+    # inside; approvals expire into denial, never into consent.
+    workspace_dir: str = "~/.jarvis/workspace"
+    approval_timeout_s: float = 300.0
+    # JSON list of MCP servers, e.g.
+    # [{"name":"github","command":["npx","-y","@modelcontextprotocol/server-github"]}]
+    mcp_servers: str = ""
+
     # Routing
     default_policy: str = "balanced"
     use_llm_arbiter: bool = True

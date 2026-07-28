@@ -30,7 +30,13 @@ Alembic migrations with an HNSW index, a Redis-backed bus for multi-process
 fan-out, and hosted embeddings — all behind the M1 ports, all opt-in.
 192 tests, including a contract suite run against every backend.
 
-Milestone 4 (tools and connectors) is next.
+*M4 — tools*: the agentic loop that actually executes tool calls, filesystem/
+shell/HTTP tools inside a workspace boundary, an MCP client that mounts any
+connector as a tool namespace, human approval for irreversible actions, and a
+hash-chained audit log.
+262 tests, including a browser-driven approval flow.
+
+Milestone 5 (knowledge ingestion) is next.
 
 ## Run it
 
@@ -125,7 +131,7 @@ jarvis/
     │   │   ├── llm/     provider port · router · adapters
     │   │   ├── agents/  spec · runtime · registry · catalog · orchestrator
     │   │   ├── memory/  store · embeddings · categorisation
-    │   │   ├── tools/   registry · permission tiers · builtins
+    │   │   ├── tools/   registry · tiers · approvals · system · MCP
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
     │   │   └── api/     routes · schemas · SSE
@@ -152,4 +158,10 @@ transitions all publish to one bus. The live activity feed, observability and
 (later) workflow triggers are subscribers, not instrumentation.
 
 **Permissions are data.** Tools declare a blast-radius tier; grants are checked
-at call time. An agent cannot widen its own reach by reasoning about it.
+at call time. An agent cannot widen its own reach by reasoning about it, and a
+`dangerous` tool suspends for a human rather than failing or proceeding.
+
+**Connectors are MCP servers.** Rather than a hand-written adapter per SaaS
+product, Jarvis speaks Model Context Protocol and mounts each server as a tool
+namespace — so `Grant("github.*", SENSITIVE)` governs a whole server, and a
+remote server never gets to choose its own blast radius.

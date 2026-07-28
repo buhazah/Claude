@@ -26,6 +26,8 @@ import structlog
 from jarvis.kernel.bus import EventBus
 from jarvis.kernel.errors import ApprovalRequiredError, NotFoundError, PermissionDeniedError
 from jarvis.llm.base import ToolSchema
+from jarvis.observability.audit import AuditLog
+from jarvis.tools.approvals import ApprovalBroker, ApprovalState
 
 log = structlog.get_logger(__name__)
 
@@ -72,10 +74,19 @@ class Grant:
 
 
 class ToolRegistry:
-    def __init__(self, *, bus: EventBus | None = None, grants: list[Grant] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        bus: EventBus | None = None,
+        grants: list[Grant] | None = None,
+        approvals: ApprovalBroker | None = None,
+        audit: AuditLog | None = None,
+    ) -> None:
         self._tools: dict[str, Tool] = {}
         self._bus = bus
         self._grants = grants if grants is not None else [Grant("*", Permission.SAFE)]
+        self._approvals = approvals
+        self._audit = audit
 
     def register(
         self,
@@ -133,11 +144,64 @@ class ToolRegistry:
             )
         return best
 
+    async def authorise(
+        self,
+        tool: Tool,
+        arguments: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        agent_id: str | None = None,
+    ) -> None:
+        """Check the grant, and park for a human decision when one is required.
+
+        ``check`` answers "is this allowed by policy"; this answers "is it
+        allowed *now*". Splitting them keeps the synchronous policy question
+        usable on its own — the UI calls it to show what an agent could do
+        without triggering an approval request.
+        """
+        try:
+            self.check(tool)
+            return
+        except ApprovalRequiredError:
+            if self._approvals is None:
+                raise  # no broker configured: refuse rather than assume consent
+
+        approval = await self._approvals.request(
+            tool=tool.name, arguments=arguments, run_id=run_id, agent_id=agent_id
+        )
+        if approval.state is not ApprovalState.APPROVED:
+            if self._audit:
+                await self._audit.record(
+                    "tool.refused",
+                    {"tool": tool.name, "arguments": arguments, "state": approval.state.value},
+                    run_id=run_id,
+                    approved=False,
+                )
+            raise PermissionDeniedError(
+                f"tool '{tool.name}' was {approval.state.value}"
+                + (f": {approval.reason}" if approval.reason else "")
+            )
+
     async def invoke(
-        self, name: str, arguments: dict[str, Any], *, run_id: str | None = None
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        agent_id: str | None = None,
     ) -> Any:
         tool = self.get(name)
-        self.check(tool)
+        await self.authorise(tool, arguments, run_id=run_id, agent_id=agent_id)
+
+        if self._audit and tool.permission >= Permission.SENSITIVE:
+            # Recorded *before* execution, so the log can never hold an action
+            # whose authorisation is missing.
+            await self._audit.record(
+                "tool.invoked",
+                {"tool": name, "arguments": arguments, "permission": tool.permission.name},
+                run_id=run_id,
+                approved=True,
+            )
         if self._bus:
             self._bus.publish(
                 "tool.called",

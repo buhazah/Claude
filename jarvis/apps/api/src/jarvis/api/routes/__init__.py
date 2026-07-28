@@ -16,14 +16,21 @@ from fastapi.responses import StreamingResponse
 
 from jarvis.api.schemas import (
     AgentSummary,
+    ApprovalDecision,
     ChatRequest,
     ModelSummary,
     RememberRequest,
     RouteRequest,
+    ToolInvocation,
 )
 from jarvis.api.sse import HEADERS, frame
 from jarvis.kernel.container import Jarvis
-from jarvis.kernel.errors import JarvisError, NotFoundError
+from jarvis.kernel.errors import (
+    ApprovalRequiredError,
+    JarvisError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from jarvis.memory.models import MemoryKind
 
 router = APIRouter()
@@ -46,6 +53,8 @@ async def health(request: Request) -> dict[str, Any]:
         "memories": await jarvis.memory.count(),
         "events_published": jarvis.bus.published_count,
         "storage": jarvis.storage,
+        "pending_approvals": len(jarvis.approvals.pending()),
+        "mcp_servers": sorted(jarvis.mcp.servers),
         "database_healthy": await jarvis.database.healthy() if jarvis.database else None,
     }
 
@@ -213,6 +222,58 @@ async def remember(body: RememberRequest, request: Request) -> dict[str, Any]:
 async def forget(memory_id: str, request: Request) -> None:
     if not await _jarvis(request).memory.forget(memory_id):
         raise HTTPException(status_code=404, detail=f"unknown memory: {memory_id}")
+
+
+@router.post("/v1/tools/{name}/invoke")
+async def invoke_tool(name: str, body: ToolInvocation, request: Request) -> dict[str, Any]:
+    """Run a tool directly.
+
+    Goes through exactly the same permission wall as an agent's call — a
+    dangerous tool parks here too, waiting for the approval gate. That is the
+    point: there is no path to a tool that bypasses the wall.
+    """
+    jarvis = _jarvis(request)
+    try:
+        result = await jarvis.tools.invoke(name, body.arguments, agent_id="user")
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (PermissionDeniedError, ApprovalRequiredError) as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return {"tool": name, "result": result}
+
+
+@router.get("/v1/approvals")
+async def list_approvals(request: Request, pending_only: bool = False) -> list[dict[str, Any]]:
+    """Approvals waiting on a human, plus recent decisions."""
+    broker = _jarvis(request).approvals
+    approvals = broker.pending() if pending_only else broker.all()
+    return [a.to_dict() for a in approvals]
+
+
+@router.post("/v1/approvals/{approval_id}")
+async def decide_approval(
+    approval_id: str, body: ApprovalDecision, request: Request
+) -> dict[str, Any]:
+    """Approve or deny a suspended tool call, releasing the waiting run."""
+    try:
+        approval = _jarvis(request).approvals.resolve(
+            approval_id, approved=body.approved, reason=body.reason
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return approval.to_dict()
+
+
+@router.get("/v1/audit")
+async def list_audit(request: Request, limit: int = 50) -> dict[str, Any]:
+    """The audit trail, with the integrity of its hash chain."""
+    jarvis = _jarvis(request)
+    intact, broken_at = await jarvis.audit.verify()
+    return {
+        "intact": intact,
+        "broken_at": broken_at,
+        "entries": await jarvis.audit.entries(limit=limit),
+    }
 
 
 @router.get("/v1/tools")

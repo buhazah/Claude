@@ -7,10 +7,13 @@ import { ArrowUp, Square } from "lucide-react";
 import { streamChat, type AgentMatch } from "@/lib/api";
 import { Chip } from "@/components/ui";
 
+type ToolEvent = { name: string; arguments?: Record<string, unknown>; ok?: boolean; result?: string };
+
 type Turn = {
   id: string;
   role: "user" | "assistant";
   text: string;
+  tools?: ToolEvent[];
   agent?: string;
   candidates?: AgentMatch[];
   memories?: number;
@@ -64,6 +67,38 @@ function ChatView() {
               current.map((turn) =>
                 turn.id === replyId ? { ...turn, text: turn.text + event.text } : turn,
               ),
+            );
+            break;
+          case "tool":
+            setTurns((current) =>
+              current.map((turn) =>
+                turn.id === replyId
+                  ? {
+                      ...turn,
+                      tools: [
+                        ...(turn.tools ?? []),
+                        { name: event.name ?? "tool", arguments: event.arguments },
+                      ],
+                    }
+                  : turn,
+              ),
+            );
+            break;
+          case "tool_result":
+            // Attach to the matching call rather than appending, so a tool
+            // shows as one line that resolves, not two unrelated ones.
+            setTurns((current) =>
+              current.map((turn) => {
+                if (turn.id !== replyId || !turn.tools?.length) return turn;
+                const tools = [...turn.tools];
+                for (let i = tools.length - 1; i >= 0; i -= 1) {
+                  if (tools[i].name === event.name && tools[i].ok === undefined) {
+                    tools[i] = { ...tools[i], ok: event.ok, result: event.result };
+                    break;
+                  }
+                }
+                return { ...turn, tools };
+              }),
             );
             break;
           case "done":
@@ -152,6 +187,31 @@ function ChatView() {
                         ) : null}
                       </div>
                     )}
+
+                    {turn.tools?.map((tool, index) => (
+                      <div
+                        key={`${tool.name}-${index}`}
+                        className="mb-2 flex items-center gap-2 rounded-control border border-hairline bg-surface px-2.5 py-1.5 font-mono text-[11.5px]"
+                      >
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{
+                            background:
+                              tool.ok === undefined
+                                ? "var(--color-accent)"
+                                : tool.ok
+                                  ? "var(--color-positive)"
+                                  : "var(--color-danger)",
+                          }}
+                        />
+                        <span className="text-ink-2">{tool.name}</span>
+                        <span className="truncate text-ink-3">
+                          {tool.ok === undefined
+                            ? JSON.stringify(tool.arguments ?? {})
+                            : (tool.result ?? "")}
+                        </span>
+                      </div>
+                    ))}
 
                     {turn.error ? (
                       <p className="text-[14px] text-danger">{turn.error}</p>

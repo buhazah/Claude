@@ -21,6 +21,7 @@ from jarvis.llm.base import (
     ModelSpec,
     Privacy,
     Role,
+    ToolCall,
     ToolSchema,
     Usage,
 )
@@ -84,11 +85,36 @@ class AnthropicProvider:
     def _payload(
         self, request: CompletionRequest, model: ModelSpec, tools: list[ToolSchema] | None
     ) -> dict[str, Any]:
-        messages = [
-            {"role": m.role.value, "content": m.content}
-            for m in request.messages
-            if m.role is not Role.SYSTEM
-        ]
+        messages: list[dict[str, Any]] = []
+        for m in request.messages:
+            if m.role is Role.SYSTEM:
+                continue
+            if m.role is Role.TOOL:
+                # Anthropic carries tool results as a user turn holding
+                # tool_result blocks, not as a distinct role.
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": m.tool_call_id,
+                                "content": m.content,
+                            }
+                        ],
+                    }
+                )
+            elif m.tool_calls:
+                blocks: list[dict[str, Any]] = []
+                if m.content:
+                    blocks.append({"type": "text", "text": m.content})
+                blocks += [
+                    {"type": "tool_use", "id": c.id, "name": c.name, "input": c.arguments}
+                    for c in m.tool_calls
+                ]
+                messages.append({"role": "assistant", "content": blocks})
+            else:
+                messages.append({"role": m.role.value, "content": m.content})
         payload: dict[str, Any] = {
             "model": model.id,
             "messages": messages,
@@ -126,6 +152,9 @@ class AnthropicProvider:
         client = self._client or httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0))
         owns_client = self._client is None
         usage = Usage()
+        # Tool arguments arrive as JSON string fragments spread over many
+        # events, keyed by content-block index. Assemble, then emit once whole.
+        pending: dict[int, dict[str, Any]] = {}
         try:
             async with client.stream(
                 "POST", API_URL, headers=headers, json=self._payload(request, model, tools)
@@ -148,12 +177,21 @@ class AnthropicProvider:
                         delta = event.get("delta", {})
                         if text := delta.get("text"):
                             yield Chunk(text=text)
+                        elif fragment := delta.get("partial_json"):
+                            index = event.get("index", 0)
+                            if index in pending:
+                                pending[index]["json"] += fragment
                     elif kind == "content_block_start":
                         block = event.get("content_block", {})
                         if block.get("type") == "tool_use":
-                            yield Chunk(
-                                tool_call={"id": block.get("id"), "name": block.get("name")}
-                            )
+                            pending[event.get("index", 0)] = {
+                                "id": block.get("id", ""),
+                                "name": block.get("name", ""),
+                                "json": "",
+                            }
+                    elif kind == "content_block_stop":
+                        if call := pending.pop(event.get("index", -1), None):
+                            yield Chunk(tool_call=_assemble(call))
                     elif kind == "message_start":
                         stats = event.get("message", {}).get("usage", {})
                         usage.input_tokens = stats.get("input_tokens", 0)
@@ -167,3 +205,17 @@ class AnthropicProvider:
 
         usage.cost_usd = model.cost_for(usage.input_tokens, usage.output_tokens)
         yield Chunk(done=True, usage=usage)
+
+
+def _assemble(call: dict[str, Any]) -> ToolCall:
+    """Turn accumulated fragments into a tool call.
+
+    Unparseable arguments become an empty object rather than an exception: the
+    runtime reports the tool failure back to the model, which can retry, and
+    that is far better than killing the stream.
+    """
+    try:
+        arguments = json.loads(call["json"]) if call["json"].strip() else {}
+    except json.JSONDecodeError:
+        arguments = {}
+    return ToolCall(id=call["id"], name=call["name"], arguments=arguments)

@@ -23,6 +23,7 @@ from jarvis.llm.base import (
     ModelSpec,
     Privacy,
     Role,
+    ToolCall,
     ToolSchema,
     Usage,
 )
@@ -103,6 +104,15 @@ class OpenAICompatibleProvider:
             entry: dict[str, Any] = {"role": m.role.value, "content": m.content}
             if m.role is Role.TOOL and m.tool_call_id:
                 entry["tool_call_id"] = m.tool_call_id
+            if m.tool_calls:
+                entry["tool_calls"] = [
+                    {
+                        "id": c.id,
+                        "type": "function",
+                        "function": {"name": c.name, "arguments": json.dumps(c.arguments)},
+                    }
+                    for c in m.tool_calls
+                ]
             messages.append(entry)
 
         payload: dict[str, Any] = {
@@ -143,6 +153,9 @@ class OpenAICompatibleProvider:
         client = self._client or httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0))
         owns_client = self._client is None
         usage = Usage()
+        # Tool calls stream as fragments keyed by index; assemble them and emit
+        # only once the model signals it has finished asking.
+        pending: dict[int, dict[str, str]] = {}
         try:
             async with client.stream(
                 "POST",
@@ -172,8 +185,20 @@ class OpenAICompatibleProvider:
                         delta = choice.get("delta", {})
                         if text := delta.get("content"):
                             yield Chunk(text=text)
-                        for call in delta.get("tool_calls", []) or []:
-                            yield Chunk(tool_call=call)
+                        for fragment in delta.get("tool_calls", []) or []:
+                            slot = pending.setdefault(
+                                fragment.get("index", 0), {"id": "", "name": "", "json": ""}
+                            )
+                            if identifier := fragment.get("id"):
+                                slot["id"] = identifier
+                            function = fragment.get("function", {})
+                            if name := function.get("name"):
+                                slot["name"] = name
+                            slot["json"] += function.get("arguments", "") or ""
+                        if choice.get("finish_reason") == "tool_calls":
+                            for slot in pending.values():
+                                yield Chunk(tool_call=_assemble(slot))
+                            pending.clear()
         except httpx.HTTPError as exc:
             raise ProviderError(f"{self.name} transport: {exc}", provider=self.name) from exc
         finally:
@@ -184,6 +209,20 @@ class OpenAICompatibleProvider:
             usage.input_tokens = request.token_estimate()
         usage.cost_usd = model.cost_for(usage.input_tokens, usage.output_tokens)
         yield Chunk(done=True, usage=usage)
+
+
+def _assemble(slot: dict[str, str]) -> ToolCall:
+    """Turn accumulated fragments into a tool call.
+
+    Unparseable arguments become an empty object rather than an exception: the
+    runtime reports the tool failure back to the model, which can retry, and
+    that is far better than killing the stream.
+    """
+    try:
+        arguments = json.loads(slot["json"]) if slot["json"].strip() else {}
+    except json.JSONDecodeError:
+        arguments = {}
+    return ToolCall(id=slot["id"], name=slot["name"], arguments=arguments)
 
 
 def OpenAIProvider(

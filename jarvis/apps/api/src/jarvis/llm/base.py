@@ -23,11 +23,28 @@ class Role(StrEnum):
     TOOL = "tool"
 
 
+class ToolCall(BaseModel):
+    """A model's request to invoke a tool, fully assembled.
+
+    Providers stream tool arguments as JSON fragments across many events;
+    adapters accumulate those and emit this only once it is complete. Partial
+    tool calls never leave an adapter — a half-parsed argument object is worse
+    than no tool call at all.
+    """
+
+    id: str
+    name: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
 class Message(BaseModel):
     role: Role
-    content: str
+    content: str = ""
     name: str | None = None
     tool_call_id: str | None = None
+    # Set on assistant turns that requested tools, so the next request can
+    # replay the exchange the provider expects.
+    tool_calls: list[ToolCall] = Field(default_factory=list)
 
 
 class Privacy(int, Enum):
@@ -127,7 +144,7 @@ class Chunk:
     """One streamed increment."""
 
     text: str = ""
-    tool_call: dict[str, Any] | None = None
+    tool_call: ToolCall | None = None
     done: bool = False
     usage: Usage | None = None
     model_id: str | None = None  # stamped by the router, not by adapters
@@ -139,7 +156,7 @@ class Completion:
     model_id: str
     provider: str
     usage: Usage = field(default_factory=Usage)
-    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    tool_calls: list[ToolCall] = field(default_factory=list)
     fallbacks_used: int = 0
 
 

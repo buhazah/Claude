@@ -34,6 +34,7 @@ from jarvis.llm.base import (
     CompletionRequest,
     LLMProvider,
     ModelSpec,
+    ToolCall,
     ToolSchema,
     Usage,
 )
@@ -261,7 +262,7 @@ class ModelRouter:
     ) -> Completion:
         """Collect a full completion. Convenience over :meth:`stream`."""
         parts: list[str] = []
-        tool_calls: list[dict[str, object]] = []
+        tool_calls: list[ToolCall] = []
         usage = Usage()
         used_model = self.select(request).id
         async for chunk in self.stream(request, tools=tools, run_id=run_id):

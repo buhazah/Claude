@@ -79,6 +79,29 @@ export type Memory = {
   signals?: { lexical: number; semantic: number; recency: number };
 };
 
+export type Approval = {
+  id: string;
+  tool: string;
+  arguments: Record<string, unknown>;
+  run_id: string | null;
+  agent_id: string | null;
+  state: "pending" | "approved" | "denied" | "expired";
+  reason: string | null;
+  requested_at: string;
+  decided_at: string | null;
+};
+
+export type AuditEntry = {
+  id: string;
+  at: string;
+  topic: string;
+  run_id: string | null;
+  actor: string;
+  approved: boolean;
+  payload: Record<string, unknown>;
+  hash: string | null;
+};
+
 export type Tool = {
   name: string;
   namespace: string;
@@ -111,6 +134,22 @@ export const api = {
   tools: () => get<Tool[]>("/v1/tools"),
   runs: (limit = 25) => get<Run[]>(`/v1/runs?limit=${limit}`),
 
+  approvals: (pendingOnly = false) =>
+    get<Approval[]>(`/v1/approvals?pending_only=${pendingOnly}`),
+
+  /** Approve or deny a suspended tool call, releasing the waiting run. */
+  decide: (id: string, approved: boolean, reason?: string) =>
+    get<Approval>(`/v1/approvals/${id}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ approved, reason: reason ?? null }),
+    }),
+
+  audit: (limit = 50) =>
+    get<{ intact: boolean; broken_at: string | null; entries: AuditEntry[] }>(
+      `/v1/audit?limit=${limit}`,
+    ),
+
   memories: (query = "", limit = 30) =>
     get<Memory[]>(`/v1/memory?q=${encodeURIComponent(query)}&limit=${limit}`),
 
@@ -134,7 +173,8 @@ export type ChatEvent =
   | { type: "routing"; run_id: string; chosen: string; candidates: AgentMatch[] }
   | { type: "context"; memories: number }
   | { type: "token"; text: string }
-  | { type: "tool"; name?: string }
+  | { type: "tool"; name?: string; arguments?: Record<string, unknown> }
+  | { type: "tool_result"; name?: string; ok?: boolean; result?: string }
   | { type: "done"; run_id: string; agent: string; cost_usd: number; tokens: number; latency_ms: number }
   | { type: "error"; message: string };
 
@@ -211,6 +251,10 @@ export const TRACKED_TOPICS = [
   "memory.written",
   "memory.recalled",
   "tool.called",
+  "approval.requested",
+  "approval.approved",
+  "approval.denied",
+  "approval.expired",
   "tool.succeeded",
   "tool.failed",
   "routing.decided",

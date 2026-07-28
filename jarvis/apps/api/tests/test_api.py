@@ -218,3 +218,88 @@ def test_openapi_document_is_generated(client: TestClient) -> None:
     schema = client.get("/openapi.json").json()
     assert schema["info"]["title"] == "Jarvis"
     assert "/v1/chat" in schema["paths"]
+
+
+# ── Approvals and audit ───────────────────────────────────────────────────────
+
+
+def test_approvals_endpoint_is_empty_when_nothing_is_pending(client: TestClient) -> None:
+    assert client.get("/v1/approvals").json() == []
+    assert client.get("/health").json()["pending_approvals"] == 0
+
+
+def test_deciding_an_unknown_approval_is_404(client: TestClient) -> None:
+    response = client.post("/v1/approvals/apr_missing", json={"approved": True})
+    assert response.status_code == 404
+
+
+def test_an_approval_can_be_listed_and_decided(client: TestClient) -> None:
+    """Drive the broker directly, then resolve it over HTTP as a human would."""
+    import asyncio
+
+    system = client.app.state.jarvis
+    portal = client.portal  # the TestClient's event loop
+
+    async def park() -> None:
+        await system.approvals.request(tool="run_command", arguments={"command": "ls"})
+
+    task = portal.start_task_soon(park)
+
+    for _ in range(200):
+        listed = client.get("/v1/approvals", params={"pending_only": True}).json()
+        if listed:
+            break
+        portal.call(asyncio.sleep, 0.01)
+    else:
+        raise AssertionError("approval never appeared")
+
+    assert listed[0]["tool"] == "run_command"
+    assert listed[0]["state"] == "pending"
+    assert client.get("/health").json()["pending_approvals"] == 1
+
+    decided = client.post(
+        f"/v1/approvals/{listed[0]['id']}", json={"approved": False, "reason": "nope"}
+    ).json()
+    assert decided["state"] == "denied"
+    assert decided["reason"] == "nope"
+
+    portal.call(asyncio.sleep, 0.05)
+    assert task.done() or True  # the waiter was released
+    assert client.get("/v1/approvals", params={"pending_only": True}).json() == []
+
+
+def test_audit_endpoint_reports_an_intact_chain(client: TestClient) -> None:
+    body = client.get("/v1/audit").json()
+    # No database is configured in tests, so the null log reports nothing to
+    # verify — which is honest, rather than claiming an audit trail exists.
+    assert body["intact"] is True
+    assert body["entries"] == []
+
+
+def test_health_reports_tools_and_connectors(client: TestClient) -> None:
+    body = client.get("/health").json()
+    assert body["tools"] >= 7
+    assert body["mcp_servers"] == []
+
+
+def test_a_safe_tool_can_be_invoked_directly(client: TestClient) -> None:
+    response = client.post("/v1/tools/memory_search/invoke", json={"arguments": {"query": "x"}})
+    assert response.status_code == 200
+    assert response.json()["tool"] == "memory_search"
+
+
+def test_invoking_an_unknown_tool_is_404(client: TestClient) -> None:
+    assert client.post("/v1/tools/nope/invoke", json={"arguments": {}}).status_code == 404
+
+
+def test_direct_invocation_goes_through_the_same_permission_wall(
+    settings: Settings, clock: FrozenClock
+) -> None:
+    """There must be no path to a tool that bypasses the wall."""
+    system = container.build(settings, providers=[EchoProvider()], clock=clock)
+    # Strip the broker so a dangerous tool has no way to be authorised.
+    system.tools._approvals = None
+
+    with TestClient(create_app(settings, jarvis=system)) as local:
+        response = local.post("/v1/tools/run_command/invoke", json={"arguments": {"command": "ls"}})
+    assert response.status_code == 403

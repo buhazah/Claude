@@ -9,7 +9,7 @@ type Entry = {
   topic: string;
   label: string;
   detail: string;
-  tone: "neutral" | "accent" | "positive" | "danger";
+  tone: "neutral" | "accent" | "positive" | "warning" | "danger";
   at: string;
 };
 
@@ -50,6 +50,14 @@ function describe(topic: string, payload: Record<string, unknown>): Omit<Entry, 
       return { label: "tool", detail: String(payload.tool ?? ""), tone: "accent" };
     case "tool.failed":
       return { label: "tool failed", detail: String(payload.tool ?? ""), tone: "danger" };
+    case "approval.requested":
+      return { label: "needs approval", detail: String(payload.tool ?? ""), tone: "warning" };
+    case "approval.approved":
+      return { label: "approved", detail: String(payload.tool ?? ""), tone: "positive" };
+    case "approval.denied":
+      return { label: "denied", detail: String(payload.tool ?? ""), tone: "danger" };
+    case "approval.expired":
+      return { label: "approval expired", detail: String(payload.tool ?? ""), tone: "danger" };
     default:
       return { label: topic, detail: "", tone: "neutral" };
   }
@@ -59,6 +67,7 @@ const TONE: Record<Entry["tone"], string> = {
   neutral: "var(--color-ink-3)",
   accent: "var(--color-accent)",
   positive: "var(--color-positive)",
+  warning: "var(--color-warning)",
   danger: "var(--color-danger)",
 };
 

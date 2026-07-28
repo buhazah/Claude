@@ -119,7 +119,7 @@ CATALOG: list[AgentSpec] = [
             "Produce briefs and reports with a stated confidence",
         ],
         capabilities=(C.RESEARCH, C.ANALYSIS),
-        tools=("web_search", "browser", "fetch_url"),
+        tools=("fetch_url", "read_file", "write_file"),
         keywords=(
             "research",
             "find out",
@@ -147,7 +147,7 @@ CATALOG: list[AgentSpec] = [
             "Review pull requests and generate documentation",
         ],
         capabilities=(C.CODING, C.ANALYSIS),
-        tools=("terminal", "filesystem", "github", "claude_code"),
+        tools=("run_command", "read_file", "write_file", "list_files", "fetch_url"),
         keywords=(
             "code",
             "bug",
@@ -357,7 +357,7 @@ CATALOG: list[AgentSpec] = [
             "Rebooking when plans break",
         ],
         capabilities=(C.TRAVEL, C.SCHEDULING),
-        tools=("web_search", "browser", "calendar"),
+        tools=("fetch_url", "calendar"),
         keywords=(
             "travel",
             "flight",
@@ -384,7 +384,7 @@ CATALOG: list[AgentSpec] = [
             "Purchase execution with approval",
         ],
         capabilities=(C.SHOPPING, C.RESEARCH),
-        tools=("web_search", "browser"),
+        tools=("fetch_url",),
         keywords=("buy", "purchase", "product", "price", "compare", "best", "order", "shopping"),
         policy=P.CHEAP,
     ),
@@ -468,7 +468,7 @@ CATALOG: list[AgentSpec] = [
             "Monitor and repair broken automations",
         ],
         capabilities=(C.AUTOMATION, C.OPERATIONS, C.CODING),
-        tools=("workflow", "webhook", "terminal", "mcp"),
+        tools=("run_command", "read_file", "write_file", "fetch_url"),
         keywords=(
             "automate",
             "workflow",

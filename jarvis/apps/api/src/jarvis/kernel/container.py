@@ -8,6 +8,7 @@ provider and you have the real system, deterministically.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 import structlog
@@ -27,11 +28,15 @@ from jarvis.llm.router import ModelRouter
 from jarvis.memory.embeddings import Embedder, HashingEmbedder, HostedEmbedder
 from jarvis.memory.sql_store import SqlMemoryStore
 from jarvis.memory.store import InMemoryStore, MemoryStore
+from jarvis.observability.audit import AuditLog, NullAuditLog, SqlAuditLog
 from jarvis.persistence.db import Database
 from jarvis.runs.models import RunStore
 from jarvis.runs.sql_store import SqlRunStore
+from jarvis.tools.approvals import ApprovalBroker
 from jarvis.tools.builtins import register_builtins
+from jarvis.tools.mcp import MCPManager, MCPServerConfig
 from jarvis.tools.registry import Grant, Permission, ToolRegistry
+from jarvis.tools.system import Workspace, register_system_tools
 
 log = structlog.get_logger(__name__)
 
@@ -47,6 +52,33 @@ def build_providers(settings: Settings) -> list[LLMProvider]:
         providers.append(LocalProvider(settings.local_llm_base_url))
     providers.append(EchoProvider())
     return providers
+
+
+def parse_mcp_servers(raw: str) -> list[MCPServerConfig]:
+    """Parse the MCP server list. Malformed config disables connectors, not Jarvis."""
+    if not raw.strip():
+        return []
+    try:
+        entries = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        log.warning("mcp_config_invalid", error=str(exc))
+        return []
+
+    servers: list[MCPServerConfig] = []
+    for entry in entries if isinstance(entries, list) else []:
+        try:
+            servers.append(
+                MCPServerConfig(
+                    name=entry["name"],
+                    command=list(entry["command"]),
+                    env=dict(entry.get("env", {})),
+                    permission=Permission[entry.get("permission", "SENSITIVE").upper()],
+                    enabled=bool(entry.get("enabled", True)),
+                )
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            log.warning("mcp_server_skipped", entry=entry, error=str(exc))
+    return servers
 
 
 def build_embedder(settings: Settings) -> Embedder:
@@ -73,6 +105,10 @@ class Jarvis:
     tools: ToolRegistry
     runtime: AgentRuntime
     orchestrator: Orchestrator
+    approvals: ApprovalBroker
+    audit: AuditLog
+    workspace: Workspace
+    mcp: MCPManager
     database: Database | None = None
 
     @property
@@ -84,15 +120,18 @@ class Jarvis:
         return self.database.dialect if self.database else "memory"
 
     async def start(self) -> None:
-        """Open connections and prepare storage. Idempotent."""
+        """Open connections, prepare storage, mount connectors. Idempotent."""
         # SQLite is created in place; Postgres schema is owned by Alembic, so a
         # server deployment must be migrated before it is started.
         if self.database is not None and not self.database.is_postgres:
             await self.database.create_all()
         if isinstance(self.bus, RedisEventBus):
             await self.bus.start()
+        for config in parse_mcp_servers(self.settings.mcp_servers):
+            await self.mcp.add(config)
 
     async def stop(self) -> None:
+        await self.mcp.stop_all()
         if isinstance(self.bus, RedisEventBus):
             await self.bus.stop()
         if self.database is not None:
@@ -128,13 +167,25 @@ def build(
     else:
         memory = InMemoryStore(embedder=embedder, bus=bus, clock=clock)
         runs = RunStore(clock=clock)
+    audit: AuditLog = SqlAuditLog(database, clock=clock) if database else NullAuditLog()
+    approvals = ApprovalBroker(bus=bus, clock=clock, timeout_s=settings.approval_timeout_s)
     tools = ToolRegistry(
         bus=bus,
         # Default posture: safe tools run freely, sensitive ones are permitted
-        # and audited, dangerous ones need an explicit per-tool grant.
-        grants=[Grant("*", Permission.SENSITIVE)],
+        # and audited, dangerous ones suspend for an explicit human decision.
+        #
+        # The ceiling must be DANGEROUS, not SENSITIVE: max_permission is what
+        # may be *requested*, and auto_approve is what may happen *without
+        # asking*. Capping at SENSITIVE would flatly deny dangerous tools and
+        # make the approval gate unreachable.
+        grants=[Grant("*", Permission.DANGEROUS, auto_approve=False)],
+        approvals=approvals,
+        audit=audit,
     )
+    workspace = Workspace(settings.workspace_dir)
     register_builtins(tools, memory)
+    register_system_tools(tools, workspace)
+    mcp = MCPManager(tools)
 
     runtime = AgentRuntime(
         router=router,
@@ -174,5 +225,9 @@ def build(
         tools=tools,
         runtime=runtime,
         orchestrator=orchestrator,
+        approvals=approvals,
+        audit=audit,
+        workspace=workspace,
+        mcp=mcp,
         database=database,
     )

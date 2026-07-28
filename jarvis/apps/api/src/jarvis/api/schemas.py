@@ -21,6 +21,15 @@ class RouteRequest(BaseModel):
     message: str = Field(min_length=1, max_length=32_000)
 
 
+class ApprovalDecision(BaseModel):
+    approved: bool
+    reason: str | None = None
+
+
+class ToolInvocation(BaseModel):
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
 class RememberRequest(BaseModel):
     content: str = Field(min_length=1)
     kind: str | None = None

@@ -8,7 +8,7 @@ begins before the previous one's suite is green.
 | **M1** | **Kernel** | Config, structured logging, event bus, model router + provider adapters (Anthropic/OpenAI/Echo), agent spec + runtime + registry + 30-agent catalog, memory store + embeddings + categorizer, run store, tool registry, FastAPI surface with SSE streaming | ✅ **done** |
 | **M2** | **Client** | Next.js app, design system, command palette with routing preview, dashboard, streaming chat, agent/memory/run/tool browsers, live activity rail off the event firehose | ✅ **done** |
 | **M3** | **Persistence** | Postgres + pgvector, Alembic migrations, hosted embeddings, Redis-backed bus, docker-compose | ✅ **done** |
-| **M4** | **Tools & connectors** | MCP client, browser tool, terminal tool, filesystem, GitHub, Gmail, Calendar, Slack, Notion, Stripe; permission tiers + approval UI | |
+| **M4** | **Tools & connectors** | Agentic tool loop, filesystem/shell/HTTP tools, MCP client for every connector, approval gate, hash-chained audit log | ✅ **done** |
 | **M5** | **Knowledge** | Ingestion pipeline (PDF/DOCX/PPTX/XLSX/images/audio/repos/URLs), chunking, hybrid retrieval, citations |  |
 | **M6** | **Workflows** | Graph engine, triggers, scheduler, approvals, workflow builder UI | |
 | **M7** | **Voice** | Streaming STT, TTS, barge-in/interruption, wake word | |
@@ -95,6 +95,36 @@ created, and runs, steps and memories all survived a process restart.
 
 Storage stays opt-in — with no `JARVIS_DATABASE_URL` the system is fully
 in-process, and the offline suite (174 tests) still runs with no server.
+
+## Milestone 4 — delivered
+
+**Built**
+- **The agentic loop.** Until now tools were advertised to models and never
+  run. The runtime now executes requested calls, feeds results back, and loops
+  until the model stops asking or hits a ceiling — with a stated cutoff rather
+  than a silently truncated answer.
+- **Provider tool-call assembly.** Both adapters accumulate the JSON fragments
+  providers stream and emit only complete calls; each also replays a tool
+  exchange in its own wire shape (Anthropic's `tool_result` user turns,
+  OpenAI's `tool_calls` array).
+- **Approvals (ADR 0005).** Dangerous tools suspend for a human decision, with
+  timeout-as-denial and refusal reported to the model as information. A global
+  gate shows the exact call being authorised.
+- **System tools** — filesystem, shell and HTTP, contained by a workspace root
+  that is checked after symlink resolution, with argv execution (no shell) so
+  metacharacters cannot chain a second command.
+- **MCP client.** Servers mount as tool namespaces over JSON-RPC/stdio, which
+  is how GitHub, Slack, Notion, Stripe and the rest arrive without a bespoke
+  adapter each. Imported tools do not choose their own permission tier.
+- **Hash-chained audit log**, written before execution, with tamper detection.
+- Direct tool invocation over HTTP, through the same permission wall.
+
+**Verification** — 262 tests, including the loop's shape, approval grant/deny/
+expiry, workspace escape via `../` *and* symlink, shell metacharacter
+injection, audit tamper and deletion detection, and an MCP client driven
+against a real JSON-RPC server subprocess. Plus a Playwright run that parks a
+real dangerous call, sees the gate render the exact command, approves it, and
+confirms a denied command never ran.
 
 ## Definition of done (every milestone)
 
