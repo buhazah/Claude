@@ -13,7 +13,7 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 
 ## Status
 
-**Milestones 1 and 2 are complete.**
+**Milestones 1 through 7 are complete.**
 
 *M1 — kernel*: event bus, model router with fallback and circuit breaking,
 30-agent catalog with a spec-driven runtime, tiered memory with hybrid recall,
@@ -46,7 +46,13 @@ structured conditions, schedule and event triggers, and a scheduler that
 recovers parked work on boot.
 381 tests, including finishing a workflow on a different engine than started it.
 
-Milestone 7 (voice) is next.
+*M7 — voice*: a session state machine where interrupting cancels generation as
+well as playback, history records what was actually *heard*, speech starts
+before generation finishes, and a wake word summons Jarvis without answering
+every mention of the name.
+426 tests, including barge-in driven through a real browser.
+
+Milestone 8 (computer control) is next.
 
 ## Run it
 
@@ -63,7 +69,20 @@ uv pip install -e ".[dev]" && uvicorn jarvis.main:app --reload
 cd apps/web && pnpm install && pnpm dev
 ```
 
-Open http://localhost:3000 and press ⌘K.
+Open http://localhost:3000 and press ⌘K — or ⌘⇧V to talk to it.
+
+## Voice
+
+Recognition runs in the browser, so no audio leaves the machine by default and
+interruptions are instant — the moment you start speaking, Jarvis stops
+speaking *and* stops generating. Set a speech key to use hosted transcription
+and a real voice instead:
+
+```bash
+export JARVIS_SPEECH_API_KEY=...
+export JARVIS_TTS_VOICE=alloy
+export JARVIS_REQUIRE_WAKE_WORD=true   # only answer after "Jarvis"
+```
 
 ```bash
 curl localhost:8000/health

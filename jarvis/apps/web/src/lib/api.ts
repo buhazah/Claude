@@ -173,6 +173,15 @@ export type WorkflowTrigger = {
   last_fired_at: string | null;
 };
 
+export type VoiceEvent = {
+  type:
+    | "state" | "partial" | "transcript" | "token" | "speech"
+    | "interrupted" | "wake" | "done" | "error";
+  text?: string;
+  state?: string;
+  truncated?: boolean;
+};
+
 export type Tool = {
   name: string;
   namespace: string;
@@ -339,6 +348,53 @@ export function subscribeToEvents(
   return () => source.close();
 }
 
+/**
+ * Open a duplex voice session.
+ *
+ * A WebSocket rather than SSE, because voice is the one interaction where the
+ * user talks *while* Jarvis does — barge-in needs speech going up at the same
+ * moment audio comes down.
+ */
+export function openVoiceSocket(
+  onEvent: (event: VoiceEvent) => void,
+  onClose?: () => void,
+): {
+  say: (text: string, final?: boolean) => void;
+  interrupt: () => void;
+  close: () => void;
+} {
+  const url = API_BASE.replace(/^http/, "ws") + "/v1/voice";
+  const socket = new WebSocket(url);
+  const queued: string[] = [];
+
+  const send = (payload: object) => {
+    const body = JSON.stringify(payload);
+    if (socket.readyState === WebSocket.OPEN) socket.send(body);
+    else queued.push(body);
+  };
+
+  socket.onopen = () => {
+    for (const body of queued.splice(0)) socket.send(body);
+  };
+  socket.onmessage = (raw) => {
+    try {
+      onEvent(JSON.parse(raw.data));
+    } catch {
+      /* a malformed frame must not tear down the session */
+    }
+  };
+  socket.onclose = () => onClose?.();
+
+  return {
+    say: (text, final = true) => send({ type: "transcript", text, final }),
+    interrupt: () => send({ type: "interrupt" }),
+    close: () => {
+      send({ type: "end" });
+      socket.close();
+    },
+  };
+}
+
 /** Topics the activity rail renders. Named explicitly because SSE requires it. */
 export const TRACKED_TOPICS = [
   "agent.started",
@@ -364,4 +420,7 @@ export const TRACKED_TOPICS = [
   "routing.decided",
   "routing.arbitrated",
   "system.started",
+  "voice.state",
+  "voice.wake",
+  "voice.interrupted",
 ] as const;

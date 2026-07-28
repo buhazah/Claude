@@ -444,3 +444,49 @@ def test_an_approval_workflow_suspends_and_is_listed(client: TestClient) -> None
 
         decided = client.post(f"/v1/approvals/{pending[0]['id']}", json={"approved": False})
         assert decided.json()["state"] == "denied"
+
+
+# ── Voice ─────────────────────────────────────────────────────────────────────
+
+
+def test_health_reports_the_voice_configuration(client: TestClient) -> None:
+    voice = client.get("/health").json()["voice"]
+    assert voice["speaker"] == "silent"  # no key configured in tests
+    assert voice["transcription"] is False
+    assert voice["wake_word"] == "jarvis"
+
+
+def test_transcription_without_a_key_says_so(client: TestClient) -> None:
+    """Better an explicit 503 than a silent empty transcript."""
+    response = client.post("/v1/voice/transcribe", content=b"audio")
+    assert response.status_code == 503
+    assert "browser" in response.json()["detail"]
+
+
+def test_the_voice_socket_streams_a_turn(client: TestClient) -> None:
+    with client.websocket_connect("/v1/voice") as socket:
+        socket.send_json({"type": "transcript", "text": "what is on today", "final": True})
+
+        seen: list[dict] = []
+        for _ in range(60):
+            event = socket.receive_json()
+            seen.append(event)
+            if event["type"] == "done":
+                break
+
+        kinds = [e["type"] for e in seen]
+        assert "transcript" in kinds
+        assert "token" in kinds
+        assert "speech" in kinds
+        assert kinds[-1] == "done"
+
+        states = [e["state"] for e in seen if e["type"] == "state"]
+        assert "thinking" in states and "speaking" in states
+        socket.send_json({"type": "end"})
+
+
+def test_a_partial_transcript_over_the_socket_is_not_answered(client: TestClient) -> None:
+    with client.websocket_connect("/v1/voice") as socket:
+        socket.send_json({"type": "transcript", "text": "what is", "final": False})
+        assert socket.receive_json() == {"type": "partial", "text": "what is"}
+        socket.send_json({"type": "end"})

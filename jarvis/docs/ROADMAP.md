@@ -11,7 +11,7 @@ begins before the previous one's suite is green.
 | **M4** | **Tools & connectors** | Agentic tool loop, filesystem/shell/HTTP tools, MCP client for every connector, approval gate, hash-chained audit log | ✅ **done** |
 | **M5** | **Knowledge** | Ingestion (PDF/DOCX/PPTX/XLSX/CSV/HTML/URLs/code/folders), locator-preserving chunking, hybrid retrieval, structural citations | ✅ **done** |
 | **M6** | **Workflows** | Graph engine with durable suspension, structured conditions, schedule/event triggers, scheduler with boot recovery, workflow UI | ✅ **done** |
-| **M7** | **Voice** | Streaming STT, TTS, barge-in/interruption, wake word | |
+| **M7** | **Voice** | Streaming STT, TTS, barge-in/interruption, wake word | ✅ **done** |
 | **M8** | **Computer control** | Sandboxed desktop/browser control with screenshot loop and a hard permission wall | |
 | **M9** | **Modes** | Business / Coding (Claude Code integration) / Research mode surfaces + document generation | |
 | **M10** | **Hardening** | Vault, audit chain, cost governance, CI/CD, load + chaos tests, packaging | |
@@ -176,6 +176,38 @@ reference, and confirms a forgotten document stops being retrievable.
 **Verification** — 381 tests with backends live. Includes a test that starts a
 workflow on one engine and database connection, disposes it, and finishes the
 run on a *new* engine — the restart property the milestone exists for.
+
+## Milestone 7 — delivered
+
+**Built**
+- **A voice session state machine** — idle → waiting-for-wake → listening →
+  thinking → speaking — driven by transcripts rather than audio, so the same
+  logic serves browser recognition and hosted transcription unchanged.
+- **Barge-in that cancels generation as well as playback** (ADR 0008), with
+  history recording what was *spoken*, not what was generated, marked
+  `[interrupted here]` when truncated. A partial transcript interrupts; only a
+  final one is answered.
+- **A sentence segmenter** that releases a unit as soon as it is a complete
+  thought — so speech starts before generation finishes — and refuses to split
+  on abbreviations or decimals, because a fragment spoken aloud cannot be
+  un-said.
+- **Wake-word detection** within one edit, at the start of an utterance only,
+  keeping the request that followed it: "Jarvis, what's on today" is one turn.
+- **Speech ports with offline implementations** and hosted Whisper/TTS adapters
+  behind them, both degrading to a silent turn rather than a crash.
+- `WS /v1/voice`, `POST /v1/voice/transcribe`, and a ⌘⇧V overlay that drives
+  browser recognition, interrupts on the first sign of speech, and takes typing
+  where there is no recogniser.
+
+**Verification** — 426 tests with backends live, plus a browser suite that
+stubs only `SpeechRecognition` and drives the real socket, session, segmenter
+and speaker. Its central assertion: after an interruption the surviving reply
+is a strict *prefix* of what had been generated, and `voice.interrupted`
+reached the bus.
+
+**Found by testing** — the offline speaker was unpaced, so a turn completed in
+milliseconds and no human could ever interrupt it. Pacing is now on by default
+and disabled only in the unit suite.
 
 ## Definition of done (every milestone)
 

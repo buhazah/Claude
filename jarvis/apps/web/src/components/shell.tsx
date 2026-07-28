@@ -19,6 +19,7 @@ import {
 import { CommandPalette } from "./command-palette";
 import { ActivityRail } from "./activity-rail";
 import { ApprovalGate } from "./approvals";
+import { VoiceMode } from "./voice";
 
 const NAV = [
   { href: "/", label: "Home", icon: Home, key: "1" },
@@ -34,13 +35,22 @@ const NAV = [
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      const chord = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (chord && key === "k") {
         event.preventDefault();
         setPaletteOpen((open) => !open);
       }
+      // ⌘⇧V. Shift is required so a plain ⌘V still pastes.
+      if (chord && event.shiftKey && key === "v") {
+        event.preventDefault();
+        setVoiceOpen((open) => !open);
+      }
+      if (key === "escape") setVoiceOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -89,7 +99,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           })}
         </div>
 
-        <button className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-[13px] text-ink-3 transition-colors hover:text-ink-2">
+        <button
+          onClick={() => setVoiceOpen(true)}
+          data-testid="voice-button"
+          className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-[13px] text-ink-3 transition-colors hover:text-ink-2"
+        >
           <Mic size={15} />
           <span>Voice</span>
           <kbd className="ml-auto font-mono text-[10px]">⌘⇧V</kbd>
@@ -101,6 +115,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <ActivityRail />
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <VoiceMode open={voiceOpen} onClose={() => setVoiceOpen(false)} />
       <ApprovalGate />
     </div>
   );

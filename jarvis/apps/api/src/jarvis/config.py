@@ -50,6 +50,21 @@ class Settings(BaseSettings):
     # background loop would fire triggers nobody asked for.
     enable_scheduler: bool = True
 
+    # Voice. Without a key, speech recognition happens in the browser and
+    # synthesis is silent — the session logic is identical either way.
+    speech_api_key: str | None = None
+    speech_base_url: str = "https://api.openai.com/v1"
+    stt_model: str = "whisper-1"
+    tts_model: str = "tts-1"
+    tts_voice: str = "alloy"
+    wake_word: str = "jarvis"
+    require_wake_word: bool = False
+    # The offline speaker plays silence, but it plays it *at speaking pace*.
+    # Without that a turn finishes in milliseconds and nobody — user or test —
+    # can ever talk over Jarvis, which is the whole point of voice mode. Tests
+    # that only care about the transcript turn this off to stay fast.
+    realtime_speech: bool = True
+
     # Routing
     default_policy: str = "balanced"
     use_llm_arbiter: bool = True

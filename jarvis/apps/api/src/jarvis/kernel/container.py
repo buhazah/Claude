@@ -39,6 +39,10 @@ from jarvis.tools.builtins import register_builtins
 from jarvis.tools.mcp import MCPManager, MCPServerConfig
 from jarvis.tools.registry import Grant, Permission, ToolRegistry
 from jarvis.tools.system import Workspace, register_system_tools
+from jarvis.voice.ports import SilentSpeaker, Speaker
+from jarvis.voice.providers.hosted import HostedSpeaker, HostedTranscriber
+from jarvis.voice.session import VoiceSession
+from jarvis.voice.wake import WakeWordDetector
 from jarvis.workflows.catalog import starter_workflows
 from jarvis.workflows.engine import WorkflowEngine
 from jarvis.workflows.store import InMemoryWorkflowStore, SqlWorkflowStore, WorkflowStore
@@ -116,6 +120,8 @@ class Jarvis:
     workflows: WorkflowStore
     engine: WorkflowEngine
     scheduler: Scheduler
+    speaker: Speaker
+    transcriber: HostedTranscriber
     approvals: ApprovalBroker
     audit: AuditLog
     workspace: Workspace
@@ -125,6 +131,20 @@ class Jarvis:
     @property
     def provider_names(self) -> list[str]:
         return sorted(self.router.providers)
+
+    def voice_session(self, *, require_wake_word: bool | None = None) -> VoiceSession:
+        """A fresh voice conversation. One per connected client."""
+        return VoiceSession(
+            orchestrator=self.orchestrator,
+            runtime=self.runtime,
+            agents=self.agents,
+            speaker=self.speaker,
+            bus=self.bus,
+            require_wake_word=(
+                self.settings.require_wake_word if require_wake_word is None else require_wake_word
+            ),
+            wake=WakeWordDetector((self.settings.wake_word, f"hey {self.settings.wake_word}")),
+        )
 
     @property
     def storage(self) -> str:
@@ -244,6 +264,22 @@ def build(
     )
     scheduler = Scheduler(store=workflows, engine=engine, bus=bus, clock=clock)
 
+    # Hosted speech when a key is configured; otherwise recognition happens in
+    # the browser and synthesis is silent. The session is identical either way.
+    speaker: Speaker = (
+        HostedSpeaker(
+            settings.speech_api_key,
+            model=settings.tts_model,
+            voice=settings.tts_voice,
+            base_url=settings.speech_base_url,
+        )
+        if settings.speech_api_key
+        else SilentSpeaker(realtime=settings.realtime_speech)
+    )
+    transcriber = HostedTranscriber(
+        settings.speech_api_key, model=settings.stt_model, base_url=settings.speech_base_url
+    )
+
     log.info(
         "jarvis_built",
         providers=sorted(router.providers),
@@ -269,6 +305,8 @@ def build(
         workflows=workflows,
         engine=engine,
         scheduler=scheduler,
+        speaker=speaker,
+        transcriber=transcriber,
         approvals=approvals,
         audit=audit,
         workspace=workspace,

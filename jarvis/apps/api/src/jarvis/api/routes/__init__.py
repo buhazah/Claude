@@ -8,10 +8,11 @@ contain no business logic.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
 from jarvis.api.schemas import (
@@ -56,6 +57,11 @@ async def health(request: Request) -> dict[str, Any]:
         "documents": await jarvis.knowledge.count(),
         "workflows": len(await jarvis.workflows.all()),
         "scheduler": jarvis.scheduler.running,
+        "voice": {
+            "speaker": jarvis.speaker.name,
+            "transcription": jarvis.transcriber.is_available(),
+            "wake_word": jarvis.settings.wake_word,
+        },
         "events_published": jarvis.bus.published_count,
         "storage": jarvis.storage,
         "pending_approvals": len(jarvis.approvals.pending()),
@@ -227,6 +233,73 @@ async def remember(body: RememberRequest, request: Request) -> dict[str, Any]:
 async def forget(memory_id: str, request: Request) -> None:
     if not await _jarvis(request).memory.forget(memory_id):
         raise HTTPException(status_code=404, detail=f"unknown memory: {memory_id}")
+
+
+@router.websocket("/v1/voice")
+async def voice(websocket: WebSocket) -> None:
+    """Duplex voice.
+
+    A WebSocket rather than SSE, because voice is the one interaction where the
+    user talks *while* Jarvis does — barge-in needs a channel that carries
+    speech up at the same moment audio is going down.
+
+    The client sends recognised text (browser recognition is the default) or an
+    explicit interrupt; the server streams state, tokens and speech back.
+    """
+    await websocket.accept()
+    jarvis: Jarvis = websocket.app.state.jarvis
+    session = jarvis.voice_session()
+
+    async def pump() -> None:
+        """Forward session events to the client until the session ends.
+
+        A client that walks away mid-sentence is ordinary, not exceptional —
+        the send simply fails and the pump stops.
+        """
+        with contextlib.suppress(WebSocketDisconnect, RuntimeError):
+            async for event in session.events():
+                await websocket.send_json(event.to_dict())
+
+    pumping = asyncio.create_task(pump())
+    try:
+        while True:
+            message = await websocket.receive_json()
+            kind = message.get("type")
+
+            if kind == "transcript":
+                await session.hear(
+                    str(message.get("text", "")), final=bool(message.get("final", True))
+                )
+            elif kind == "interrupt":
+                await session.interrupt()
+            elif kind == "end":
+                break
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        with contextlib.suppress(Exception):
+            await websocket.send_json({"type": "error", "text": str(exc)})
+    finally:
+        await session.close()
+        pumping.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await pumping
+        with contextlib.suppress(Exception):
+            await websocket.close()
+
+
+@router.post("/v1/voice/transcribe")
+async def transcribe(request: Request) -> dict[str, Any]:
+    """Transcribe an uploaded utterance, when the browser cannot recognise."""
+    jarvis = _jarvis(request)
+    if not jarvis.transcriber.is_available():
+        raise HTTPException(
+            status_code=503,
+            detail="no speech key configured — recognise in the browser instead",
+        )
+    audio = await request.body()
+    segment = await jarvis.transcriber.transcribe(audio)
+    return {"text": segment.text, "confidence": segment.confidence}
 
 
 @router.get("/v1/workflows")

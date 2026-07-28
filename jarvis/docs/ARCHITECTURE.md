@@ -113,6 +113,18 @@ timeline, cost ledger, and terminal state. Workflows are graphs of steps
 runtime, which is why "when email arrives → summarize → draft → approve →
 send" needs no new execution machinery.
 
+### 3.7 Voice (`jarvis.voice`)
+A session state machine over *transcripts*, not audio: recognition happens in
+the browser by default, so no audio leaves the machine and barge-in fires
+without a server round trip. Hosted STT/TTS sit behind the same two ports for
+clients that need them.
+
+The design constraint is interruption (ADR 0008). One task owns generation and
+playback together, so cancelling stops both; the turn records what was
+*spoken*, frame by frame as each frame finishes playing, and replays it to the
+model marked `[interrupted here]`. A sentence segmenter releases each complete
+thought as it forms, so speech starts before generation ends.
+
 ## 4. Technology decisions
 
 | Choice | Why | Rejected alternative |

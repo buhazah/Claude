@@ -38,7 +38,7 @@ check: lint types test
 
 # Requires both servers running: `make run-api` and `make run-web` in separate shells.
 e2e:
-	cd $(WEB) && pnpm e2e
+	cd $(WEB) && pnpm e2e:all
 
 run-api:
 	cd $(API) && .venv/bin/uvicorn jarvis.main:app --reload

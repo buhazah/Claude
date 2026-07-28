@@ -10,7 +10,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "e2e": "node e2e/smoke.mjs"
+    "e2e": "node e2e/smoke.mjs",
+    "e2e:approval": "node e2e/approval.mjs",
+    "e2e:knowledge": "node e2e/knowledge.mjs",
+    "e2e:workflows": "node e2e/workflows.mjs",
+    "e2e:voice": "node e2e/voice.mjs",
+    "e2e:all": "node e2e/smoke.mjs && node e2e/approval.mjs && node e2e/knowledge.mjs && node e2e/workflows.mjs && node e2e/voice.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.42.2",
