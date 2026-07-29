@@ -19,7 +19,10 @@ from jarvis.kernel.errors import NotFoundError
 _WORD_RE = re.compile(r"[a-z0-9']+")
 
 # Below this, stage one is not trusted and the orchestrator escalates.
-AMBIGUITY_THRESHOLD = 0.35
+# Raised from 0.35 after measuring against real models: one or two keyword
+# hits scores 0.4-0.5, and every homonym failure sat in that band looking
+# confident. Two hits is not evidence; it is a coincidence waiting to happen.
+AMBIGUITY_THRESHOLD = 0.55
 
 
 def _tokens(text: str) -> list[str]:

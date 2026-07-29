@@ -23,6 +23,12 @@ from jarvis.runs.models import RunStore, StepKind
 
 log = structlog.get_logger(__name__)
 
+# Below this many candidates, arbitrating between them is close to arbitrating
+# between one option and itself, so the whole catalog is offered instead.
+MIN_ARBITER_SLATE = 3
+# The confidence the registry assigns when nothing matched at all.
+FALLBACK_CONFIDENCE = 0.2
+
 ARBITER_PROMPT = (
     "You route requests to specialist agents inside Jarvis.\n"
     "Given the request and the candidate agents, reply with ONLY the id of the "
@@ -49,9 +55,26 @@ class Orchestrator:
         self._use_arbiter = use_arbiter
 
     async def _arbitrate(self, request: str, candidates: list[AgentMatch]) -> AgentMatch:
-        """Ask a cheap, fast model to break a tie between close candidates."""
+        """Ask a cheap, fast model to decide when lexical scoring cannot.
+
+        Not a tie-breaker. Measured against real models, every routing failure
+        came from a case stage one produced *one* answer for — a homonym it
+        matched confidently and wrongly ("our security deposit is due" → the
+        security agent), or nothing at all, falling through to chief_of_staff.
+        A tie-breaker is blind to both, which is why the slate is widened when
+        stage one is thin: arbitrating between one candidate and itself cannot
+        change an answer.
+        """
+        slate = list(candidates)
+        if len(slate) < MIN_ARBITER_SLATE or candidates[0].confidence <= FALLBACK_CONFIDENCE:
+            named = {m.agent_id for m in slate}
+            slate += [
+                AgentMatch(agent_id=spec.id, confidence=0.0, reasons=["offered to the arbiter"])
+                for spec in self._registry.all()
+                if spec.id not in named
+            ]
         options = "\n".join(
-            f"- {m.agent_id}: {self._registry.get(m.agent_id).tagline}" for m in candidates
+            f"- {m.agent_id}: {self._registry.get(m.agent_id).tagline}" for m in slate
         )
         prompt = f"Request: {request}\n\nCandidates:\n{options}\n\nBest agent id:"
         try:
@@ -72,7 +95,7 @@ class Orchestrator:
         # any id anywhere in the text would let a model that restated the
         # request ("research competitors...") masquerade as a decision.
         answer = re.sub(r"[^a-z_]", "", completion.text.strip().lower())
-        chosen = next((c for c in candidates if c.agent_id == answer), None)
+        chosen = next((c for c in slate if c.agent_id == answer), None)
         if chosen is None:
             log.debug("arbiter_unparsed", reply=completion.text[:80])
             return candidates[0]
@@ -85,7 +108,10 @@ class Orchestrator:
     async def plan(self, request: str) -> list[AgentMatch]:
         """Decide which agents should handle a request, best first."""
         matches = self._registry.route(request)
-        if self._use_arbiter and self._registry.is_ambiguous(matches) and len(matches) > 1:
+        # No `len(matches) > 1` condition. That gate conflated "there is a tie
+        # to break" with "arbitration is needed", and blocked the arbiter on
+        # every failure the evaluation found — all of which were single-match.
+        if self._use_arbiter and self._registry.is_ambiguous(matches):
             best = await self._arbitrate(request, matches)
             others = [m for m in matches if m.agent_id != best.agent_id]
             matches = [best, *others]
