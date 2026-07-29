@@ -27,6 +27,29 @@ def render(report: Report) -> str:
     if report.aborted:
         out += ["", f"> **Run aborted** — {report.aborted}", ""]
 
+    # Loudest thing on the page when it applies. The fallback chain means a
+    # broken key produces a full, plausible-looking report of echo output, and
+    # a reader skimming for content will not notice the $0.00.
+    if not report.reached_a_real_provider:
+        out += [
+            "",
+            "> # ⚠ NOTHING IN THIS REPORT CAME FROM A REAL MODEL",
+            ">",
+            "> Total spend is $0.00. Every call fell through to the offline "
+            "`echo` provider, so the transcripts below are echoes of their own "
+            "prompts and the routing score is stage-one lexical scoring only — "
+            "the arbiter never ran.",
+            ">",
+            "> **This is a configuration failure, not a result.** The usual "
+            "cause is a key that carries a stray newline from copy-paste, which "
+            "the transport rejects as an illegal header value.",
+            "",
+        ]
+        if report.failures:
+            out += ["**What actually failed:**", "", "```"]
+            out += report.failures[:5]
+            out += ["```", ""]
+
     # ── Routing ───────────────────────────────────────────────────────────────
     out += [
         "",

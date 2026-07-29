@@ -82,6 +82,24 @@ class Report:
     spend: dict[str, Any] = field(default_factory=dict)
     aborted: str = ""
     seconds: float = 0.0
+    # Errors seen on any capture. Collected because the fallback chain is good
+    # at hiding them: the first call fails loudly, the circuit opens, and every
+    # call after that degrades to echo in silence.
+    failures: list[str] = field(default_factory=list)
+
+    @property
+    def reached_a_real_provider(self) -> bool:
+        """Whether anything actually hit a paid model.
+
+        Zero spend across dozens of calls with a real provider configured means
+        the run measured the echo provider — which is precisely what this
+        harness exists to get past. A report that does not say so at the top is
+        worse than no report, because it reads as a result.
+        """
+        if self.providers == ["echo"]:
+            return False
+        total = self.spend.get("spend", {}).get("total", {})
+        return float(total.get("spent_usd", 0.0)) > 0.0
 
     @property
     def routing_score(self) -> tuple[int, int, int]:
@@ -187,6 +205,8 @@ class Evaluation:
                     extra={"looking_for": probe.looking_for},
                 )
             )
+            if text.startswith("[error]"):
+                self.report.failures.append(f"{probe.agent_id}: {text[:300]}")
 
     async def _modes(self) -> None:
         for probe in MODE_PROBES:

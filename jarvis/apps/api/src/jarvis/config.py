@@ -3,14 +3,41 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Fields whose value goes into an HTTP header or an auth exchange. A key
+# carrying a stray newline is the single most common way a correct key fails,
+# because the shell that set it kept the trailing character from a copy-paste.
+CREDENTIAL_FIELDS = (
+    "anthropic_api_key",
+    "openai_api_key",
+    "embedding_api_key",
+    "speech_api_key",
+    "vault_key",
+)
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="JARVIS_", env_file=".env", extra="ignore", case_sensitive=False
     )
+
+    @field_validator(*CREDENTIAL_FIELDS, mode="before")
+    @classmethod
+    def _strip_credential(cls, value: Any) -> Any:
+        """Trim whitespace from anything used as a credential.
+
+        httpx rejects a header value containing a newline with "Illegal header
+        value", which names the symptom and not the cause — so the user sees a
+        transport error and reasonably concludes their key is wrong. Stripping
+        here fixes it once for every provider rather than in each adapter, and
+        an API key with meaningful leading or trailing whitespace does not
+        exist.
+        """
+        return value.strip() if isinstance(value, str) else value
 
     environment: str = "development"
     log_level: str = "INFO"
