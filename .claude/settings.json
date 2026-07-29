@@ -3,6 +3,13 @@
     "nanobanana": {
       "command": "npx",
       "args": ["-y", "@ycse/nanobanana-mcp"]
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "env": {
+        "PERPLEXITY_API_KEY": ""
+      }
     }
   }
 }
