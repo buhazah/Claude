@@ -290,3 +290,37 @@ async def test_deleting_a_document_removes_it_once() -> None:
     assert await store.delete(document.id) is False
     assert await store.get(document.id) is None
     assert await store.list() == []
+
+
+async def test_composing_a_document_does_not_touch_the_filesystem(settings, clock) -> None:
+    """Found against a real model: the research agent used its `write_file`
+    grant to save each section, so composing two documents left three stray
+    files in the workspace and the next tool probe found them."""
+    system = container.build(settings, providers=[EchoProvider()], clock=clock)
+    used: list[str] = []
+
+    async def spy(**kwargs: object) -> str:
+        used.append("write_file")
+        return "written"
+
+    system.tools.register("write_file", "Write a file.", spy)
+
+    finals = [
+        d
+        async for event, d, _ in system.composer.compose("Brief on Q3", agent_id="research")
+        if event == "done"
+    ]
+
+    assert finals, "composition must still complete"
+    assert used == [], "a section writer has no business touching the filesystem"
+
+
+async def test_the_composer_does_not_widen_the_agent_it_borrows(settings, clock) -> None:
+    """Narrowing is per-call, the same as a mode: the catalog is untouched."""
+    system = container.build(settings, providers=[EchoProvider()], clock=clock)
+    before = system.agents.get("research").tools
+
+    async for _ in system.composer.compose("Brief", agent_id="research"):
+        pass
+
+    assert system.agents.get("research").tools == before

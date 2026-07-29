@@ -60,6 +60,12 @@ OUTLINE_PROMPT = (
 SECTION_PROMPT = (
     "You are writing one section of a larger document. Write only this section's "
     "prose — no heading, no preamble, no meta-commentary about what you are doing.\n\n"
+    "Your first word is the first word of the section. Not 'I'll write', not "
+    "'I appreciate', not a note about what you were asked. If the section cannot "
+    "honestly be written from what you have, write the section anyway and say "
+    "inside it what is unsupported — offering the user a menu of options is "
+    "meta-commentary too, and nobody is reading this to hear about your "
+    "process.\n\n"
     "Where source passages are provided, ground your claims in them and cite inline "
     "as [1], [2] matching the numbering given. Do not cite a passage you did not "
     "use. Where no passage supports a claim, either drop the claim or mark it "
@@ -216,8 +222,15 @@ class DocumentComposer:
             )
 
             parts: list[str] = []
+            # No tools. A section writer produces prose that the composer
+            # assembles; it has no business touching the filesystem. Measured
+            # against a real model, the research agent used its `write_file`
+            # grant to save each section to the workspace, so composing two
+            # documents left three stray files behind and the tool-loop probe
+            # then found them. Narrowing the spec is the same mechanism a mode
+            # uses, and it can only subtract.
             async for delta in self._runtime.stream(
-                spec,
+                spec.model_copy(update={"tools": ()}),
                 brief,
                 remember=False,
                 system_override=SECTION_PROMPT,

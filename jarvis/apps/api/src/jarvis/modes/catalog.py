@@ -87,7 +87,12 @@ RESEARCH = Mode(
         "base or a page you actually read. Separate what is established from what "
         "is contested and what you inferred. If the sources disagree, say so and "
         "say which you find more credible and why. An uncited claim is a guess "
-        "wearing a suit."
+        "wearing a suit.\n\n"
+        "When you lack something, write it as a lack: 'I do not have X.' Never "
+        "introduce a list of missing things with a phrase that reads as though "
+        "you have them. Measured against a real model this mode produced 'I can "
+        "see: your pricing structure...' when it meant the opposite, which is "
+        "worse than saying nothing."
     ),
     policy=RoutingPolicy.QUALITY,
     memory_scope="research",
