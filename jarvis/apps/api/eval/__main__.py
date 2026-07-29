@@ -78,7 +78,9 @@ def main() -> int:
 
     if args.out:
         args.out.write_text(rendered, encoding="utf-8")
-        print(f"Written to {args.out}", file=sys.stderr)
+        # Resolved, not as given: a relative path leaves the reader to work out
+        # where it landed, and on Windows they will guess wrong.
+        print(f"\nReport written to:\n  {args.out.resolve()}\n", file=sys.stderr)
     print(rendered)
 
     accepted, wrong, count = report.routing_score
