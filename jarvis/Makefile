@@ -40,15 +40,20 @@ check: lint types test
 e2e:
 	cd $(WEB) && pnpm e2e:all
 
-# Computer control is off by default, so its suite needs an API started with it
-# on and a throwaway origin allowlisted:
-#   JARVIS_ENABLE_COMPUTER=true JARVIS_BROWSER_ALLOWED_HOSTS='["127.0.0.1"]' \
-#     uvicorn jarvis.main:app
+# All eight suites against one API started with everything they need. This is
+# what CI runs. `JARVIS_BROWSER_EXECUTABLE` is only needed where a preinstalled
+# Chromium does not match the version playwright expects — on a clean install,
+# `playwright install chromium` puts one where it will be found and the setting
+# can be left empty.
+e2e-serve:
+	cd $(API) && JARVIS_VAULT_KEY="$$(.venv/bin/python -m jarvis.security.keygen)" \
+		JARVIS_ENABLE_COMPUTER=true JARVIS_BROWSER_ALLOWED_HOSTS='["127.0.0.1"]' \
+		JARVIS_BROWSER_EXECUTABLE="$${CHROMIUM_PATH}" \
+		.venv/bin/uvicorn jarvis.main:app
+
 e2e-computer:
 	cd $(WEB) && pnpm e2e:computer
 
-# The vault suite needs an API started with a key:
-#   JARVIS_VAULT_KEY=$$(python -m jarvis.security.keygen) uvicorn jarvis.main:app
 e2e-settings:
 	cd $(WEB) && pnpm e2e:settings
 

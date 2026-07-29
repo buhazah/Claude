@@ -71,3 +71,82 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  # The e2e suites drive both servers through a real browser, and they have
+  # caught more genuine bugs in this project than any other check — the unpaced
+  # speaker that made barge-in impossible, the secret-field false positive, the
+  # approval gate that was unreachable dead code. They ran only on a developer
+  # machine until now.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+      # The `computer` extra, not the bare package: the computer-control suite
+      # drives a real browser from the kernel, and without playwright the
+      # driver reports itself unavailable and that suite fails at its first
+      # assertion.
+      - name: Install the kernel
+        working-directory: jarvis/apps/api
+        run: |
+          uv venv --python 3.11
+          uv pip install -e ".[computer]"
+          .venv/bin/playwright install --with-deps chromium
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: jarvis/apps/web/pnpm-lock.yaml
+      - name: Install and build the client
+        working-directory: jarvis/apps/web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+          pnpm build
+
+      # One API serves every suite. Computer control and the vault are additive
+      # — the suites that ignore them are unaffected — so this avoids starting
+      # three servers to run eight files.
+      - name: Start both servers
+        working-directory: jarvis
+        env:
+          JARVIS_ENABLE_COMPUTER: "true"
+          JARVIS_BROWSER_ALLOWED_HOSTS: '["127.0.0.1"]'
+          JARVIS_LOG_LEVEL: WARNING
+        run: |
+          export JARVIS_VAULT_KEY="$(apps/api/.venv/bin/python -m jarvis.security.keygen)"
+          apps/api/.venv/bin/uvicorn jarvis.main:app --host 127.0.0.1 --port 8000 \
+            > /tmp/api.log 2>&1 &
+          (cd apps/web && pnpm start > /tmp/web.log 2>&1 &)
+
+      - name: Run every suite
+        working-directory: jarvis/apps/web
+        run: |
+          node e2e/wait.mjs
+          node e2e/smoke.mjs
+          node e2e/approval.mjs
+          node e2e/knowledge.mjs
+          node e2e/workflows.mjs
+          node e2e/voice.mjs
+          node e2e/modes.mjs
+          node e2e/computer.mjs
+          node e2e/settings.mjs
+
+      # A browser failure is almost always visual, and the screenshot each suite
+      # takes is the fastest way to see it without reproducing locally.
+      - name: Collect evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure
+          path: |
+            /tmp/shot-*.png
+            /tmp/api.log
+            /tmp/web.log
+          if-no-files-found: ignore

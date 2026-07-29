@@ -10,19 +10,18 @@
  *   JARVIS_VAULT_KEY=$(python -m jarvis.security.keygen) uvicorn jarvis.main:app
  */
 
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 import assert from "node:assert/strict";
 
 const WEB = process.env.WEB_URL ?? "http://localhost:3000";
 const API = process.env.API_URL ?? "http://localhost:8000";
-const BROWSER = process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium";
 // Deliberately not shaped like any real provider's key: a realistic-looking
 // fixture trips secret scanners on the way out, which is a fair complaint
 // about a file that is committed. It only needs to be long enough to be
 // redactable and to produce a checkable hint.
 const SECRET = "NOT-A-REAL-KEY-vault-fixture-4821";
 
-const browser = await chromium.launch({ executablePath: BROWSER });
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const consoleErrors = [];
 page.on("pageerror", (e) => consoleErrors.push(String(e)));

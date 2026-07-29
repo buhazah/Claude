@@ -13,13 +13,12 @@
  *   - the site is off the allowlist, so even opening it asks first
  */
 
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 
 const WEB = process.env.WEB_URL ?? "http://localhost:3000";
 const API = process.env.API_URL ?? "http://localhost:8000";
-const BROWSER = process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium";
 
 const PAGE = `<!doctype html><html><body>
   <h1>Checkout</h1>
@@ -40,7 +39,7 @@ const site = createServer((_, response) => {
 await new Promise((resolve) => site.listen(8123, "127.0.0.1", resolve));
 const SITE = "http://127.0.0.1:8123/";
 
-const browser = await chromium.launch({ executablePath: BROWSER });
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const consoleErrors = [];
 page.on("pageerror", (e) => consoleErrors.push(String(e)));

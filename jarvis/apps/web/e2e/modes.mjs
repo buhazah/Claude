@@ -8,14 +8,13 @@
  * straight at the API to prove the client is not the only thing holding it.
  */
 
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 import assert from "node:assert/strict";
 
 const WEB = process.env.WEB_URL ?? "http://localhost:3000";
 const API = process.env.API_URL ?? "http://localhost:8000";
-const BROWSER = process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium";
 
-const browser = await chromium.launch({ executablePath: BROWSER });
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const consoleErrors = [];
 page.on("pageerror", (e) => consoleErrors.push(String(e)));

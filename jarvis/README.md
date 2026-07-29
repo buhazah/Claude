@@ -232,7 +232,8 @@ make test     # pytest + vitest
 make lint     # ruff + eslint
 make types    # mypy --strict + tsc
 make check    # everything
-make e2e      # Playwright, against both servers running
+make e2e-serve  # one API with everything the suites need (separate shell)
+make e2e        # all 8 Playwright suites — what CI runs
 make eval-plan  # what an evaluation would cost — spends nothing
 make eval       # evaluate the prompts against a real model
 ```
