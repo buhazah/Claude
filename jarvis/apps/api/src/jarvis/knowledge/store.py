@@ -354,7 +354,7 @@ class SqlKnowledgeStore:
                         )
                     ).all()
                 )
-                terms = [t for t in ranking.tokenize(query) if len(t) > 2][:8]
+                terms = [t for t in ranking.content_tokens(query) if len(t) > 2][:8]
                 if terms:
                     rows += list(
                         (

@@ -1,4 +1,4 @@
-.PHONY: install test lint format types check e2e eval eval-plan run clean
+.PHONY: install test lint format types check e2e eval eval-plan eval-free eval-baseline eval-sample run clean
 
 API := apps/api
 WEB := apps/web
@@ -57,13 +57,31 @@ e2e-computer:
 e2e-settings:
 	cd $(WEB) && pnpm e2e:settings
 
-# Evaluate the prompts against a real model. Needs a provider key in the
-# environment; --dry-run needs nothing and spends nothing.
+# Evaluate the intelligence layer. `eval-free` needs no key and spends nothing:
+# routing is scored on stage one alone and memory recall runs against the store,
+# which is most of the corpus and is what CI runs on every push.
 eval-plan:
 	cd $(API) && .venv/bin/python -m eval --dry-run
 
+eval-free:
+	cd $(API) && .venv/bin/python -m eval --free --no-probes \
+		--baseline eval/baseline.json --out ../../eval-results.md
+
+# Rewrite the committed floor. Only after reading what moved and agreeing with it.
+eval-baseline:
+	cd $(API) && .venv/bin/python -m eval --free --no-probes \
+		--scorecard eval/baseline.json --note "$(note)"
+
+# The whole corpus against a real model. Needs a provider key in the environment.
 eval:
-	cd $(API) && .venv/bin/python -m eval --budget $(or $(budget),5) --out ../../eval-results.md
+	cd $(API) && .venv/bin/python -m eval --budget $(or $(budget),5) \
+		--out ../../eval-results.md --scorecard ../../eval-scorecard.json \
+		$(if $(baseline),--baseline $(baseline),) $(if $(note),--note "$(note)",)
+
+# A cheap representative pass: at most N cases per suite, spread across each.
+eval-sample:
+	cd $(API) && .venv/bin/python -m eval --budget $(or $(budget),2) \
+		--sample $(or $(n),8) --out ../../eval-results.md
 
 run-api:
 	cd $(API) && .venv/bin/uvicorn jarvis.main:app --reload

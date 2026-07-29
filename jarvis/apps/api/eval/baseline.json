@@ -1,0 +1,1079 @@
+{
+  "version": 1,
+  "generated": "2026-07-29T15:51:13+00:00",
+  "note": "M11.2 baseline: stage-one routing and offline recall, before any prompt change",
+  "totals": {
+    "cases": 208,
+    "fatal": 6,
+    "passed": 136,
+    "cost_usd": 0.0
+  },
+  "suites": {
+    "memory": {
+      "suite": "memory",
+      "cases": 10,
+      "scored": 10,
+      "passed": 8,
+      "fatal": 0,
+      "skipped_checks": 0,
+      "mean_score": 0.8,
+      "weighted_score": 0.88,
+      "mean_confidence": 0.75,
+      "cost_usd": 0.0
+    },
+    "routing": {
+      "suite": "routing",
+      "cases": 198,
+      "scored": 198,
+      "passed": 128,
+      "fatal": 6,
+      "skipped_checks": 0,
+      "mean_score": 0.649,
+      "weighted_score": 0.6718,
+      "mean_confidence": 0.817,
+      "cost_usd": 0.0
+    }
+  },
+  "cases": {
+    "route-001": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-002": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "planner"
+    },
+    "route-003": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "research"
+    },
+    "route-004": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "coding"
+    },
+    "route-005": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-006": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "product_manager"
+    },
+    "route-007": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "marketing"
+    },
+    "route-008": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "sales"
+    },
+    "route-009": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "route-010": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "route-011": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "legal"
+    },
+    "route-012": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "travel"
+    },
+    "route-013": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "shopping"
+    },
+    "route-014": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-015": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "health"
+    },
+    "route-016": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "learning"
+    },
+    "route-017": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "automation"
+    },
+    "route-018": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "data_analyst"
+    },
+    "route-019": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "creative_director"
+    },
+    "route-020": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "designer"
+    },
+    "route-021": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "route-022": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "support"
+    },
+    "route-023": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "email"
+    },
+    "route-024": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "calendar"
+    },
+    "route-025": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "meeting"
+    },
+    "route-026": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "memory"
+    },
+    "route-027": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "security"
+    },
+    "route-028": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "vision"
+    },
+    "route-029": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-030": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "route-031": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-032": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "route-033": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "coding"
+    },
+    "route-034": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "route-035": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "route-036": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-037": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-038": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-039": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "route-040": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "research"
+    },
+    "route-041": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "email"
+    },
+    "route-042": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-043": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "route-044": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-045": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "route-046": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "route-047": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-048": {
+      "score": 0.0,
+      "fatal": true,
+      "agent": "designer"
+    },
+    "route-049": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "route-050": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "health"
+    },
+    "route-051": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-052": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "sales"
+    },
+    "route-053": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "route-054": {
+      "score": 0.0,
+      "fatal": true,
+      "agent": "coding"
+    },
+    "route-055": {
+      "score": 0.0,
+      "fatal": true,
+      "agent": "creative_director"
+    },
+    "route-056": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "legal"
+    },
+    "route-057": {
+      "score": 0.0,
+      "fatal": true,
+      "agent": "coding"
+    },
+    "route-058": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "route-059": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-060": {
+      "score": 0.0,
+      "fatal": true,
+      "agent": "sales"
+    },
+    "route-061": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-062": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "vision"
+    },
+    "route-063": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "calendar"
+    },
+    "route-064": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "voice"
+    },
+    "route-065": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-066": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-067": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-068": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-069": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-070": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-071": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-072": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-073": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-074": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-075": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-076": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-077": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "route-078": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "life_coach"
+    },
+    "route-079": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "calendar"
+    },
+    "route-080": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "travel"
+    },
+    "route-081": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "legal"
+    },
+    "route-082": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "memory"
+    },
+    "route-083": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "route-084": {
+      "score": 0.5,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "route-085": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "everyday-001": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-002": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-003": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-004": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "memory"
+    },
+    "everyday-005": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-006": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-007": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-008": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-009": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-010": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-011": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-012": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-013": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-014": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-015": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-016": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "health"
+    },
+    "everyday-017": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-018": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-019": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "life_coach"
+    },
+    "everyday-020": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "voice"
+    },
+    "everyday-021": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-022": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "everyday-023": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "coding"
+    },
+    "everyday-024": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "coding"
+    },
+    "everyday-025": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-026": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-027": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "data_analyst"
+    },
+    "everyday-028": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-029": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "learning"
+    },
+    "everyday-030": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-031": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-032": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-033": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-034": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "everyday-035": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-036": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "everyday-037": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-038": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "learning"
+    },
+    "everyday-039": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-040": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "marketing"
+    },
+    "everyday-041": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "sales"
+    },
+    "everyday-042": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-043": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "email"
+    },
+    "everyday-044": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "marketing"
+    },
+    "everyday-045": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "everyday-046": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "everyday-047": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "planner"
+    },
+    "everyday-048": {
+      "score": 0.0,
+      "fatal": true,
+      "agent": "coding"
+    },
+    "everyday-049": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-050": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "marketing"
+    },
+    "everyday-051": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-052": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "product_manager"
+    },
+    "everyday-053": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "voice"
+    },
+    "everyday-054": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "everyday-055": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-056": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "email"
+    },
+    "everyday-057": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-058": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-059": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "everyday-060": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "calendar"
+    },
+    "everyday-061": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-062": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "calendar"
+    },
+    "everyday-063": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-064": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "everyday-065": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "everyday-066": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "legal"
+    },
+    "everyday-067": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-068": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-069": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "ceo"
+    },
+    "everyday-070": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-071": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-072": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "creative_director"
+    },
+    "everyday-073": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-074": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-075": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "learning"
+    },
+    "everyday-076": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "everyday-077": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "architect"
+    },
+    "everyday-078": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-079": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "creative_director"
+    },
+    "everyday-080": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-081": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-082": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "creative_director"
+    },
+    "everyday-083": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "copywriter"
+    },
+    "everyday-084": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-085": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-086": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "travel"
+    },
+    "everyday-087": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "travel"
+    },
+    "everyday-088": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "travel"
+    },
+    "everyday-089": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "planner"
+    },
+    "everyday-090": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "sales"
+    },
+    "everyday-091": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-092": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "research"
+    },
+    "everyday-093": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-094": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "shopping"
+    },
+    "everyday-095": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "memory"
+    },
+    "everyday-096": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "financial_analyst"
+    },
+    "everyday-097": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-098": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "memory"
+    },
+    "everyday-099": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "life_coach"
+    },
+    "everyday-100": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-101": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "security"
+    },
+    "everyday-102": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "email"
+    },
+    "everyday-103": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "data_analyst"
+    },
+    "everyday-104": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-105": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-106": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "data_analyst"
+    },
+    "everyday-107": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-108": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "designer"
+    },
+    "everyday-109": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-110": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-111": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-112": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "everyday-113": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": "chief_of_staff"
+    },
+    "memory-001": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-002": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-003": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-004": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-005": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-006": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-007": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-008": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-009": {
+      "score": 0.0,
+      "fatal": false,
+      "agent": ""
+    },
+    "memory-010": {
+      "score": 1.0,
+      "fatal": false,
+      "agent": ""
+    }
+  }
+}

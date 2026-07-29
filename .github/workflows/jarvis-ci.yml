@@ -50,6 +50,11 @@ jobs:
         env:
           JARVIS_TEST_POSTGRES_URL: postgresql+asyncpg://jarvis:jarvis@localhost:5432/jarvis
           JARVIS_TEST_REDIS_URL: redis://localhost:6379/0
+      # The free half of the intelligence corpus: routing scored on stage one
+      # alone, and memory recall against the store. No key, no network, nothing
+      # spent — and it fails the build if the router got worse, which is the
+      # regression that otherwise shows up only as latency and spend.
+      - run: .venv/bin/python -m eval --free --no-probes --baseline eval/baseline.json
 
   web:
     runs-on: ubuntu-latest

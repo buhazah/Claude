@@ -210,7 +210,7 @@ class SqlMemoryStore:
                     .all()
                 )
 
-                terms = [term for term in ranking.tokenize(query) if len(term) > 2][:8]
+                terms = [term for term in ranking.content_tokens(query) if len(term) > 2][:8]
                 lexical_hits: list[MemoryRow] = []
                 if terms:
                     lexical_hits = list(

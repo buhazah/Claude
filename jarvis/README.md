@@ -9,6 +9,8 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 - [Architecture](docs/ARCHITECTURE.md) — components, ports, decisions
 - [Roadmap](docs/ROADMAP.md) — milestones and what each one delivers
 - [Interface design](docs/UI-DESIGN.md) — the design language and frames
+- [Evaluation](docs/EVALUATION.md) — how intelligence is measured rather than guessed
+- [Intelligence audit](docs/INTELLIGENCE-AUDIT.md) — what the prompts and router got wrong
 - [Decisions](docs/adr/) — architecture decision records
 
 ## Status
@@ -179,23 +181,36 @@ export JARVIS_OPENAI_API_KEY=...
 export JARVIS_ENABLE_LOCAL_LLM=true    # any Ollama-compatible endpoint
 ```
 
-## Evaluating the prompts
+## Evaluating the intelligence
 
 Everything above is tested against a deterministic offline provider, which
-proves the machinery and says nothing about whether the prompts are any good.
-`eval/` closes that gap: a fixed corpus of routing cases with *defensible* and
-*actively wrong* answer sets, one turn per agent archetype, the same request in
-every mode, two documents, and a real tool loop.
+proves the machinery and says nothing about whether the prompts are any good —
+a router that confidently sends every request to the wrong agent passes 600
+tests. [`eval/`](docs/EVALUATION.md) closes that gap: 288 cases across routing,
+planning, tool selection, memory, research, execution, workflows, documents,
+coding and business.
 
 ```bash
-make eval-plan                              # the plan and a worst-case cost
+make eval-free                              # two-thirds of it, no key, no network
+make eval-plan                              # what a full run would cost
 export JARVIS_ANTHROPIC_API_KEY=...
 make eval budget=5                          # aborts rather than exceed $5
 ```
 
-Routing is scored, because there is a right answer. Everything else is captured
-for a human to read, because "is this prompt good" is not a boolean. The report
-is written to `eval-results.md` with anything key-shaped scrubbed out.
+Each case says what good looks like, which agents are defensible, which would be
+actively *wrong*, which tools it should reach for, and how much its author
+trusts the check to mean anything — so the report can show a weighted score
+next to a raw one and never let a proxy pass for a measurement.
+
+Most of the corpus never touches a model, which is what makes it something CI
+runs on every push: routing is scored on stage one alone, and recall runs
+against the store. A run writes a scorecard small enough to commit, so the next
+one can say *what moved* — eleven cases improved, two broke — rather than
+offering an average that hides both.
+
+Whether an answer reasons *well* is not a keyword question, so ten probes run
+with no verdict at all and their transcripts are printed for a human. Anything
+key-shaped is scrubbed on the way out.
 
 ## Persistence
 
@@ -234,8 +249,9 @@ make types    # mypy --strict + tsc
 make check    # everything
 make e2e-serve  # one API with everything the suites need (separate shell)
 make e2e        # all 8 Playwright suites — what CI runs
-make eval-plan  # what an evaluation would cost — spends nothing
-make eval       # evaluate the prompts against a real model
+make eval-free  # the free two-thirds of the corpus — no key, no network
+make eval-plan  # what a full evaluation would cost — spends nothing
+make eval       # the whole corpus against a real model
 ```
 
 ## Layout

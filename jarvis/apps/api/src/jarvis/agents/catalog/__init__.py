@@ -344,6 +344,12 @@ CATALOG: list[AgentSpec] = [
             # rather than a confident mis-route to the Security Agent.
             "price",
             "deposit",
+            # A financial audit is unambiguously this agent's, and leaving the
+            # word to the Security Agent alone meant "audit what my
+            # subscriptions cost" routed to it uncontested. Same omission as
+            # "deposit": the second plausible reading was not represented, so
+            # nothing could contest the first (ADR 0012).
+            "audit",
             "margin",
             "cash flow",
             "valuation",
