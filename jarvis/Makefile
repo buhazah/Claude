@@ -1,4 +1,4 @@
-.PHONY: install test lint format types check e2e run clean
+.PHONY: install test lint format types check e2e eval eval-plan run clean
 
 API := apps/api
 WEB := apps/web
@@ -51,6 +51,14 @@ e2e-computer:
 #   JARVIS_VAULT_KEY=$$(python -m jarvis.security.keygen) uvicorn jarvis.main:app
 e2e-settings:
 	cd $(WEB) && pnpm e2e:settings
+
+# Evaluate the prompts against a real model. Needs a provider key in the
+# environment; --dry-run needs nothing and spends nothing.
+eval-plan:
+	cd $(API) && .venv/bin/python -m eval --dry-run
+
+eval:
+	cd $(API) && .venv/bin/python -m eval --budget $(or $(budget),5) --out ../../eval-results.md
 
 run-api:
 	cd $(API) && .venv/bin/uvicorn jarvis.main:app --reload

@@ -85,7 +85,7 @@ ignore_missing_imports = true
 
 [tool.mypy]
 python_version = "3.11"
-packages = ["jarvis"]
+packages = ["jarvis", "eval"]
 mypy_path = "src"
 strict = true
 warn_return_any = false

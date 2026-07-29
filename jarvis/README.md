@@ -179,6 +179,24 @@ export JARVIS_OPENAI_API_KEY=...
 export JARVIS_ENABLE_LOCAL_LLM=true    # any Ollama-compatible endpoint
 ```
 
+## Evaluating the prompts
+
+Everything above is tested against a deterministic offline provider, which
+proves the machinery and says nothing about whether the prompts are any good.
+`eval/` closes that gap: a fixed corpus of routing cases with *defensible* and
+*actively wrong* answer sets, one turn per agent archetype, the same request in
+every mode, two documents, and a real tool loop.
+
+```bash
+make eval-plan                              # the plan and a worst-case cost
+export JARVIS_ANTHROPIC_API_KEY=...
+make eval budget=5                          # aborts rather than exceed $5
+```
+
+Routing is scored, because there is a right answer. Everything else is captured
+for a human to read, because "is this prompt good" is not a boolean. The report
+is written to `eval-results.md` with anything key-shaped scrubbed out.
+
 ## Persistence
 
 Nothing is stored by default — the system runs entirely in-process. Point it at
@@ -215,6 +233,8 @@ make lint     # ruff + eslint
 make types    # mypy --strict + tsc
 make check    # everything
 make e2e      # Playwright, against both servers running
+make eval-plan  # what an evaluation would cost — spends nothing
+make eval       # evaluate the prompts against a real model
 ```
 
 ## Layout
