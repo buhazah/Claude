@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Jarvis design tokens.
+
+   Dark-first. Depth comes from layered surfaces and shadow, not borders —
+   hairlines exist only where two interactive regions meet. One accent,
+   reserved for live state and focus, so "something is happening" is always
+   legible at a glance.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  --color-canvas: #08090b;
+  --color-surface: #0e1014;
+  --color-surface-2: #14171d;
+  --color-surface-3: #1b1f27;
+  --color-hairline: #23272f;
+
+  --color-ink: #f2f4f8;
+  --color-ink-2: #a3abb9;
+  --color-ink-3: #6b7382;
+
+  --color-accent: #5ee7ff;
+  --color-accent-dim: #2a7f8f;
+  --color-positive: #5ee6a8;
+  --color-warning: #ffcb6b;
+  --color-danger: #ff7a85;
+
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --radius-float: 20px;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings run tight; body stays comfortable. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.022em;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 30%, transparent);
+}
+
+/* Slim scrollbars — the content is the interface, not the chrome. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 999px;
+}
+
+@utility glass {
+  background: color-mix(in oklab, var(--color-surface-2) 78%, transparent);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid color-mix(in oklab, white 8%, transparent);
+  box-shadow:
+    0 24px 60px -12px rgb(0 0 0 / 0.7),
+    inset 0 1px 0 0 color-mix(in oklab, white 6%, transparent);
+}
+
+@utility card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+}
+
+/* The one motion that says "Jarvis is working". */
+@keyframes pulse-live {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+@utility live-dot {
+  animation: pulse-live 1.6s ease-in-out infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@utility stream-caret {
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

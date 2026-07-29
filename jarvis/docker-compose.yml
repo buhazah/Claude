@@ -1,0 +1,48 @@
+# Server deployment. The local-first install needs none of this — Jarvis runs
+# on SQLite with an in-process bus by default.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: jarvis
+      POSTGRES_DB: jarvis
+    ports: ["5432:5432"]
+    volumes: [jarvis-pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./apps/api
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    environment:
+      JARVIS_DATABASE_URL: postgresql://jarvis:jarvis@postgres:5432/jarvis
+      JARVIS_REDIS_URL: redis://redis:6379/0
+      JARVIS_ENVIRONMENT: production
+      JARVIS_LOG_JSON: "true"
+      JARVIS_ANTHROPIC_API_KEY: ${JARVIS_ANTHROPIC_API_KEY:-}
+      JARVIS_OPENAI_API_KEY: ${JARVIS_OPENAI_API_KEY:-}
+      JARVIS_EMBEDDING_API_KEY: ${JARVIS_EMBEDDING_API_KEY:-}
+    ports: ["8000:8000"]
+    # Postgres schema is owned by Alembic, so migrate before serving.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn jarvis.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  jarvis-pgdata:
