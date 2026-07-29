@@ -13,6 +13,10 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     "alembic>=1.14",
     "aiosqlite>=0.20",
+    # The vault is imported by the composition root and the tool registry, so
+    # this is a hard runtime dependency rather than an extra: without it the
+    # kernel cannot be imported at all.
+    "cryptography>=44",
     # Document extraction. Each is small, pure-python and lazily imported, so a
     # missing one degrades that one format rather than breaking ingestion.
     "pypdf>=5.0",
