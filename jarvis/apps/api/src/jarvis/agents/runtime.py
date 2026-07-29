@@ -93,7 +93,14 @@ class AgentRuntime:
         step = self._runs.start_step(run, StepKind.TOOL, call.name, arguments=call.arguments)
         try:
             result = await self._tools.invoke(
-                call.name, call.arguments, run_id=run.id, agent_id=spec.id
+                call.name,
+                call.arguments,
+                run_id=run.id,
+                agent_id=spec.id,
+                # The spec's scope, not the agent id — a mode rewrites it, and
+                # a memory tool that ignored it would read across the very
+                # narrowing `_build_context` respects.
+                scope=spec.scope,
             )
         except (PermissionDeniedError, ApprovalRequiredError) as exc:
             self._runs.end_step(step, state=RunState.FAILED, error=str(exc))

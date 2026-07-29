@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from jarvis.agents.catalog import CATALOG, CATALOG_BY_ID, DEFAULT_AGENT_ID
@@ -116,3 +118,93 @@ def test_metrics_latency_window_is_bounded() -> None:
         metrics.record(ok=True, latency_ms=1.0, cost_usd=0.0, tokens=1)
     assert len(metrics.recent_latencies_ms) == 100
     assert metrics.runs == 250
+
+
+# ── The intelligence audit's structural findings (docs/INTELLIGENCE-AUDIT.md) ──
+
+
+def test_every_declared_tool_has_an_implementation(tmp_path: Path) -> None:
+    """F2. Fourteen agents declared tools nothing implemented, for ten
+    milestones, because `schemas_for` skips unknowns and nobody counted.
+
+    The skipping is right; the silence was not. This is the counter.
+    """
+    from jarvis.memory.store import InMemoryStore
+    from jarvis.tools.builtins import register_builtins
+    from jarvis.tools.registry import ToolRegistry
+    from jarvis.tools.system import Workspace, register_system_tools
+
+    tools = ToolRegistry()
+    register_builtins(tools, InMemoryStore(), None)
+    register_system_tools(tools, Workspace(tmp_path))
+
+    # Browser tools are opt-in, so they are legitimately absent here.
+    optional = {n for spec in CATALOG for n in spec.tools if n.startswith("browser_")}
+    # `search_documents` only registers when a knowledge store is configured.
+    optional.add("search_documents")
+
+    unresolved = {
+        spec.id: missing
+        for spec in CATALOG
+        if (missing := [n for n in tools.missing(spec.tools) if n not in optional])
+    }
+    assert not unresolved, f"agents declare tools nothing implements: {unresolved}"
+
+
+def test_the_memory_agent_can_actually_touch_memory() -> None:
+    """F3. Its prompt says 'curate long-term memory'; its tool was `memory`,
+    which does not exist, so it could only ever talk about curating it."""
+    memory_agent = CATALOG_BY_ID["memory"]
+    assert "memory_search" in memory_agent.tools
+    assert "memory_write" in memory_agent.tools
+
+
+def test_an_exclusive_keyword_decides_and_a_shared_one_escalates() -> None:
+    """F1. The whole point of weighting by exclusivity: a word only one agent
+    claims is evidence, a word two agents claim is ambiguity, and the score
+    has to be able to tell them apart or the threshold cannot sit anywhere
+    useful."""
+    from jarvis.agents.registry import AMBIGUITY_THRESHOLD
+
+    registry = AgentRegistry()
+
+    exclusive = registry.route("what's on my calendar tomorrow")
+    assert exclusive[0].agent_id == "calendar"
+    assert exclusive[0].confidence >= AMBIGUITY_THRESHOLD
+    assert not registry.is_ambiguous(exclusive), "a word nobody contests should decide alone"
+
+    # "price" is claimed by both Shopping and the Financial Analyst.
+    shared = registry.route("should we raise prices")
+    assert registry.is_ambiguous(shared), "a word two agents claim is not a decision"
+
+
+def test_exclusivity_is_measured_against_the_registry_not_the_catalog() -> None:
+    """A mode narrows by handing over a smaller registry (ADR 0010). A word
+    three agents contest in the full catalog may be uncontested among the six
+    that survive, and it should score as the evidence it has become."""
+    registry = AgentRegistry()
+    full = registry.route("write me a post")[0].confidence
+
+    narrowed = AgentRegistry([CATALOG_BY_ID["copywriter"], CATALOG_BY_ID["research"]])
+    alone = narrowed.route("write me a post")[0].confidence
+
+    assert alone > full, "with Social Media out of the registry, 'post' is Copywriter's alone"
+
+
+def test_capability_tags_do_not_double_count_their_own_keyword() -> None:
+    """F6. Fifteen agents had a capability whose value was also a keyword, so
+    one word scored twice — and only for agents whose remit is one noun."""
+    registry = AgentRegistry()
+    reasons = registry.route("research the competitor landscape")[0].reasons
+    assert not any("capability" in r for r in reasons)
+
+
+def test_prefix_accidents_are_gone_from_the_keyword_lists() -> None:
+    """F7. Research's 'market' is a prefix of 'marketing' and swallowed every
+    marketing request; Designer's 'screen' did the same to 'screenshot'."""
+    assert "market" not in CATALOG_BY_ID["research"].keywords
+    assert "screen" not in CATALOG_BY_ID["designer"].keywords
+
+    registry = AgentRegistry()
+    assert registry.route("plan our marketing campaign")[0].agent_id == "marketing"
+    assert registry.route("read this screenshot for me")[0].agent_id == "vision"

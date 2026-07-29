@@ -49,6 +49,12 @@ class Tool:
     parameters: dict[str, Any] = field(default_factory=dict)
     permission: Permission = Permission.SAFE
     namespace: str = "core"
+    # This tool reads or writes the caller's memory namespace, so it must be
+    # told which one. The scope is supplied by the runtime from the agent's
+    # spec and is deliberately absent from `parameters`: a model that could
+    # name a scope could name somebody else's, and a mode narrows by rewriting
+    # exactly this value (ADR 0010).
+    scoped: bool = False
 
     def schema(self) -> ToolSchema:
         return ToolSchema(
@@ -100,6 +106,7 @@ class ToolRegistry:
         parameters: dict[str, Any] | None = None,
         permission: Permission = Permission.SAFE,
         namespace: str = "core",
+        scoped: bool = False,
     ) -> Tool:
         tool = Tool(
             name=name,
@@ -108,6 +115,7 @@ class ToolRegistry:
             parameters=parameters or {"type": "object", "properties": {}},
             permission=permission,
             namespace=namespace,
+            scoped=scoped,
         )
         self._tools[name] = tool
         return tool
@@ -129,6 +137,18 @@ class ToolRegistry:
         agent's reach, not break the request.
         """
         return [self._tools[n].schema() for n in names if n in self._tools]
+
+    def missing(self, names: tuple[str, ...] | list[str]) -> list[str]:
+        """Which of these names has no implementation here.
+
+        `schemas_for` skipping unknowns is correct — a spec may name a tool
+        whose connector is not installed, and that should narrow the agent
+        rather than break the request. What was wrong was that nothing ever
+        reported the gap, so fourteen of thirty agents accumulated tools that
+        did not exist and were routed to tool-capable models to use them.
+        Silence is what let that happen; this is how it gets said out loud.
+        """
+        return [n for n in names if n not in self._tools]
 
     def check(self, tool: Tool) -> Grant:
         """Return the grant authorising this call, or raise."""
@@ -192,8 +212,14 @@ class ToolRegistry:
         *,
         run_id: str | None = None,
         agent_id: str | None = None,
+        scope: str | None = None,
     ) -> Any:
         tool = self.get(name)
+        # A scoped tool's namespace is never the model's to choose. Strip any
+        # the model supplied *before* authorisation, so neither the audit entry
+        # nor the approval prompt records an argument that will not be used.
+        if tool.scoped:
+            arguments = {k: v for k, v in arguments.items() if k != "scope"}
         await self.authorise(tool, arguments, run_id=run_id, agent_id=agent_id)
 
         # The model never holds a secret; it names one. References are resolved
@@ -203,6 +229,8 @@ class ToolRegistry:
         call_arguments = arguments
         if self._vault is not None:
             call_arguments = await self._vault.resolve(arguments)
+        if tool.scoped:
+            call_arguments = {**call_arguments, "scope": scope}
 
         if self._audit and tool.permission >= Permission.SENSITIVE:
             # Recorded *before* execution, so the log can never hold an action

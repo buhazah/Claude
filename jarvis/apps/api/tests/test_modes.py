@@ -15,6 +15,7 @@ from jarvis.kernel.errors import NotFoundError
 from jarvis.llm.providers.echo import EchoProvider
 from jarvis.modes.catalog import BUILT_IN, BUSINESS, CODING, PERSONAL, RESEARCH, built_in_modes
 from jarvis.modes.spec import Mode
+from jarvis.tools.registry import Grant, Permission
 
 SPEC = AgentSpec(
     id="marketer",
@@ -196,3 +197,79 @@ def test_pinning_an_excluded_agent_is_not_a_way_around_a_mode(settings, clock) -
 
     assert "life_coach" in system.agents
     assert "life_coach" not in coding.registry
+
+
+@pytest.mark.asyncio
+async def test_a_memory_tool_cannot_read_across_a_mode_narrowing() -> None:
+    """F11 of the intelligence audit.
+
+    `AgentRuntime._build_context` recalls with `scope=spec.scope`, which a mode
+    rewrites — that part was right. The `memory_search` *tool* called
+    `memory.search(query, limit=limit)` with no scope at all, so it read every
+    namespace. An agent in business mode therefore had one path to memory that
+    respected the narrowing and another, reachable by the model on its own
+    initiative, that did not.
+
+    Same shape as the M9 routing fallback that escaped modes by hardcoding an
+    agent id: a narrowing enforced in one place and ignored in another.
+    """
+    from jarvis.memory.store import InMemoryStore
+    from jarvis.tools.builtins import register_builtins
+    from jarvis.tools.registry import ToolRegistry
+
+    memory = InMemoryStore()
+    await memory.remember("the user's partner is called Sam", scope="life_coach")
+    await memory.remember("Acme's renewal is in March", scope="business:sales")
+
+    tools = ToolRegistry()
+    register_builtins(tools, memory, None)
+
+    business = await tools.invoke("memory_search", {"query": "Sam"}, scope="business:sales")
+    assert not any("Sam" in hit["content"] for hit in business), (
+        "a business-mode agent must not recall a personal memory through a tool"
+    )
+
+    personal = await tools.invoke("memory_search", {"query": "Sam"}, scope="life_coach")
+    assert any("Sam" in hit["content"] for hit in personal)
+
+
+@pytest.mark.asyncio
+async def test_a_model_cannot_choose_its_own_memory_scope() -> None:
+    """The scope is the runtime's to supply, never the model's to name. If a
+    model could pass one it could pass somebody else's, and the narrowing
+    would be advisory."""
+    from jarvis.memory.store import InMemoryStore
+    from jarvis.tools.builtins import register_builtins
+    from jarvis.tools.registry import ToolRegistry
+
+    memory = InMemoryStore()
+    await memory.remember("the user's partner is called Sam", scope="life_coach")
+
+    tools = ToolRegistry()
+    register_builtins(tools, memory, None)
+
+    smuggled = await tools.invoke(
+        "memory_search", {"query": "Sam", "scope": "life_coach"}, scope="business:sales"
+    )
+    assert not any("Sam" in hit["content"] for hit in smuggled)
+
+
+@pytest.mark.asyncio
+async def test_a_memory_written_by_a_tool_lands_in_the_callers_namespace() -> None:
+    """The write side of the same hole: `memory_write` defaulted to the global
+    scope, so a note taken in business mode was readable from every mode."""
+    from jarvis.memory.store import InMemoryStore
+    from jarvis.tools.builtins import register_builtins
+    from jarvis.tools.registry import ToolRegistry
+
+    memory = InMemoryStore()
+    tools = ToolRegistry(grants=[Grant("*", Permission.SENSITIVE)])
+    register_builtins(tools, memory, None)
+
+    await tools.invoke(
+        "memory_write", {"content": "Acme wants net-60 terms"}, scope="business:sales"
+    )
+
+    stored = await memory.all(scope="business:sales")
+    assert [m.content for m in stored] == ["Acme wants net-60 terms"]
+    assert not await memory.all(scope="global")

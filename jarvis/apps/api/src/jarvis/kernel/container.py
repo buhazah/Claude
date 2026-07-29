@@ -356,6 +356,16 @@ def build(
     if settings.enable_computer:
         register_computer_tools(tools, computer)
 
+    # Every tool an agent declares but nothing implements. Not fatal — computer
+    # control is opt-in and MCP servers mount later, so a gap here is often
+    # correct — but it is never *silently* correct, which is how twelve agents
+    # ended up advertising capabilities they did not have.
+    unresolved = {
+        spec.id: missing for spec in agents.all() if (missing := tools.missing(spec.tools))
+    }
+    if unresolved:
+        log.warning("agent_tools_unresolved", agents=unresolved)
+
     documents: DocumentStore = (
         SqlDocumentStore(database, clock=clock) if database else InMemoryDocumentStore()
     )

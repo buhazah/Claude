@@ -18,16 +18,29 @@ from jarvis.tools.registry import Permission, ToolRegistry
 def register_builtins(
     registry: ToolRegistry, memory: MemoryStore, knowledge: KnowledgeStore | None = None
 ) -> None:
-    async def memory_search(query: str, limit: int = 5) -> list[dict[str, Any]]:
-        recalls = await memory.search(query, limit=limit)
+    # `scope` on both of these is supplied by the runtime from the calling
+    # agent's spec, never by the model — see `Tool.scoped`. Without it these
+    # read and write the global namespace, which is a hole straight through
+    # a mode's narrowing (ADR 0010): an agent in business mode could recall
+    # personal memories through the tool that `_build_context` scopes
+    # correctly, and write business notes where every mode reads them.
+    async def memory_search(
+        query: str, limit: int = 5, scope: str | None = None
+    ) -> list[dict[str, Any]]:
+        recalls = await memory.search(query, limit=limit, scope=scope)
         return [
             {"content": r.memory.content, "kind": r.memory.kind.value, "score": r.score}
             for r in recalls
         ]
 
-    async def memory_write(content: str, kind: str | None = None) -> dict[str, str]:
+    async def memory_write(
+        content: str, kind: str | None = None, scope: str | None = None
+    ) -> dict[str, str]:
         stored = await memory.remember(
-            content, kind=MemoryKind(kind) if kind else None, source="tool"
+            content,
+            kind=MemoryKind(kind) if kind else None,
+            source="tool",
+            scope=scope or "global",
         )
         return {"id": stored.id, "kind": stored.kind.value}
 
@@ -45,6 +58,7 @@ def register_builtins(
         },
         permission=Permission.SAFE,
         namespace="memory",
+        scoped=True,
     )
 
     if knowledge is not None:
@@ -97,4 +111,5 @@ def register_builtins(
         },
         permission=Permission.SENSITIVE,
         namespace="memory",
+        scoped=True,
     )

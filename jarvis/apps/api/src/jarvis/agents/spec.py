@@ -52,6 +52,11 @@ class AgentSpec(BaseModel):
     id: str
     name: str
     tagline: str
+    # Display only. This never reaches the model — `_spec()` composes the
+    # system prompt from the house rules and the prompt body alone — so an
+    # instruction written here is an instruction nobody is given. That is how
+    # the Copywriter came to return one headline while "produce variants for
+    # testing" sat in this list; behaviour belongs in `system_prompt`.
     responsibilities: list[str] = Field(default_factory=list)
     system_prompt: str
     capabilities: tuple[Capability, ...] = ()

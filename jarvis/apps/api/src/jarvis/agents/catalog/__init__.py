@@ -75,6 +75,7 @@ CATALOG: list[AgentSpec] = [
             "Escalate only genuine decisions to the user",
         ],
         capabilities=(C.PLANNING, C.OPERATIONS, C.COMMUNICATION),
+        tools=("memory_search", "search_documents"),
         keywords=("handle it", "sort out", "organise", "organize", "priorit", "decide", "delegate"),
         policy=P.QUALITY,
         collaborators=("planner", "research", "email", "calendar"),
@@ -93,6 +94,7 @@ CATALOG: list[AgentSpec] = [
             "Re-plan when a step fails",
         ],
         capabilities=(C.PLANNING, C.ANALYSIS),
+        tools=("memory_search",),
         keywords=(
             "plan",
             "roadmap",
@@ -123,6 +125,8 @@ CATALOG: list[AgentSpec] = [
             "fetch_url",
             "read_file",
             "write_file",
+            "search_documents",
+            "memory_search",
             "browser_open",
             "browser_look",
             "browser_click",
@@ -136,7 +140,11 @@ CATALOG: list[AgentSpec] = [
             "investigate",
             "compare",
             "sources",
-            "market",
+            # Not bare "market": it is a prefix of "marketing", so it swallowed
+            # every marketing request before the score weighted by exclusivity,
+            # and would go on paying an arbiter call for the collision after.
+            "market research",
+            "market size",
             "competitor",
             "landscape",
         ),
@@ -190,6 +198,7 @@ CATALOG: list[AgentSpec] = [
             "Architecture decision records",
         ],
         capabilities=(C.CODING, C.PLANNING, C.ANALYSIS),
+        tools=("read_file", "list_files", "search_documents"),
         keywords=(
             "architecture",
             "design system",
@@ -215,6 +224,7 @@ CATALOG: list[AgentSpec] = [
             "Define success metrics",
         ],
         capabilities=(C.PLANNING, C.WRITING, C.ANALYSIS),
+        tools=("search_documents", "memory_search"),
         keywords=("prd", "product", "feature", "requirement", "user story", "backlog", "spec"),
         collaborators=("architect", "designer"),
     ),
@@ -231,7 +241,7 @@ CATALOG: list[AgentSpec] = [
             "SEO and content plans",
         ],
         capabilities=(C.MARKETING, C.WRITING, C.ANALYSIS),
-        tools=("web_search", "analytics"),
+        tools=("fetch_url", "search_documents"),
         keywords=(
             "marketing",
             "campaign",
@@ -258,7 +268,7 @@ CATALOG: list[AgentSpec] = [
             "Pipeline hygiene and deal strategy",
         ],
         capabilities=(C.SALES, C.COMMUNICATION),
-        tools=("web_search", "email", "crm"),
+        tools=("fetch_url", "memory_search"),
         keywords=(
             "sales",
             "lead",
@@ -292,6 +302,7 @@ CATALOG: list[AgentSpec] = [
             "Produce variants for testing",
         ],
         capabilities=(C.WRITING, C.MARKETING),
+        tools=("memory_search",),
         keywords=(
             "write",
             "copy",
@@ -317,7 +328,7 @@ CATALOG: list[AgentSpec] = [
             "Invoices, pricing and cash-flow review",
         ],
         capabilities=(C.FINANCE, C.ANALYSIS),
-        tools=("spreadsheet", "stripe"),
+        tools=("read_file", "search_documents"),
         keywords=(
             "financial",
             "revenue",
@@ -325,6 +336,14 @@ CATALOG: list[AgentSpec] = [
             "budget",
             "invoice",
             "pricing",
+            # Core financial vocabulary this agent should always have owned.
+            # "price" is not a prefix of "pricing" — they diverge at the fifth
+            # character — so pricing questions were scoring for Shopping alone
+            # and nobody noticed. "deposit" is the same omission, and it is
+            # what makes "our security deposit is due" a contested request
+            # rather than a confident mis-route to the Security Agent.
+            "price",
+            "deposit",
             "margin",
             "cash flow",
             "valuation",
@@ -346,6 +365,7 @@ CATALOG: list[AgentSpec] = [
             "Track obligations and renewal dates",
         ],
         capabilities=(C.LEGAL, C.WRITING),
+        tools=("read_file", "search_documents"),
         keywords=(
             "contract",
             "legal",
@@ -372,7 +392,7 @@ CATALOG: list[AgentSpec] = [
             "Rebooking when plans break",
         ],
         capabilities=(C.TRAVEL, C.SCHEDULING),
-        tools=("fetch_url", "calendar"),
+        tools=("fetch_url",),
         keywords=(
             "travel",
             "flight",
@@ -427,6 +447,7 @@ CATALOG: list[AgentSpec] = [
             "Notice patterns across time",
         ],
         capabilities=(C.PERSONAL, C.PLANNING),
+        tools=("memory_search", "memory_write"),
         keywords=("goal", "habit", "motivation", "stuck", "balance", "review my week", "accountab"),
         privacy=Privacy.TRUSTED_CLOUD,
         temperature=0.8,
@@ -444,6 +465,7 @@ CATALOG: list[AgentSpec] = [
             "Flag anything needing clinical advice",
         ],
         capabilities=(C.HEALTH, C.PLANNING),
+        tools=("memory_search",),
         keywords=(
             "health",
             "workout",
@@ -470,6 +492,7 @@ CATALOG: list[AgentSpec] = [
             "Track progress and adjust difficulty",
         ],
         capabilities=(C.LEARNING, C.RESEARCH),
+        tools=("search_documents", "memory_search"),
         keywords=(
             "learn",
             "study",
@@ -519,7 +542,7 @@ CATALOG: list[AgentSpec] = [
             "Statistical checks and anomaly detection",
         ],
         capabilities=(C.ANALYSIS,),
-        tools=("database", "spreadsheet", "analytics"),
+        tools=("read_file", "list_files", "search_documents"),
         keywords=(
             "analyz",
             "analys",
@@ -578,7 +601,9 @@ CATALOG: list[AgentSpec] = [
             "ui",
             "ux",
             "interface",
-            "screen",
+            # No bare "screen": it is a prefix of Vision's "screenshot", so it
+            # took a hit on every screenshot request. Designer loses nothing —
+            # "design this screen" still matches "design", which it owns alone.
             "layout",
             "component",
             "mockup",
@@ -601,7 +626,6 @@ CATALOG: list[AgentSpec] = [
             "Performance review and iteration",
         ],
         capabilities=(C.MARKETING, C.WRITING),
-        tools=("social", "analytics"),
         keywords=(
             "social",
             "twitter",
@@ -628,7 +652,7 @@ CATALOG: list[AgentSpec] = [
             "Surface recurring root causes",
         ],
         capabilities=(C.SUPPORT, C.COMMUNICATION),
-        tools=("email", "crm", "knowledge_base"),
+        tools=("search_documents",),
         keywords=(
             "support",
             "ticket",
@@ -653,7 +677,6 @@ CATALOG: list[AgentSpec] = [
             "Follow-up tracking",
         ],
         capabilities=(C.COMMUNICATION,),
-        tools=("gmail", "outlook", "email"),
         keywords=(
             "email",
             "inbox",
@@ -680,7 +703,6 @@ CATALOG: list[AgentSpec] = [
             "Timezone and travel-time reasoning",
         ],
         capabilities=(C.SCHEDULING,),
-        tools=("calendar", "email"),
         keywords=(
             "calendar",
             "schedule",
@@ -707,7 +729,7 @@ CATALOG: list[AgentSpec] = [
             "Distribute follow-ups",
         ],
         capabilities=(C.COMMUNICATION, C.SCHEDULING),
-        tools=("calendar", "transcription", "email"),
+        tools=("search_documents", "memory_write"),
         keywords=(
             "meeting notes",
             "minutes",
@@ -731,7 +753,7 @@ CATALOG: list[AgentSpec] = [
             "Answer natural-language memory queries",
         ],
         capabilities=(C.MEMORY,),
-        tools=("memory",),
+        tools=("memory_search", "memory_write"),
         keywords=(
             "remember",
             "recall",
@@ -759,7 +781,6 @@ CATALOG: list[AgentSpec] = [
             "Detect prompt injection and exfiltration attempts",
         ],
         capabilities=(C.SECURITY, C.ANALYSIS),
-        tools=("audit", "vault"),
         keywords=(
             "security",
             "permission",
@@ -787,7 +808,6 @@ CATALOG: list[AgentSpec] = [
             "Visual QA and diff review",
         ],
         capabilities=(C.VISION, C.ANALYSIS),
-        tools=("screenshot", "ocr"),
         keywords=("image", "screenshot", "photo", "video", "look at", "ocr", "diagram", "see this"),
     ),
     _spec(
@@ -803,7 +823,6 @@ CATALOG: list[AgentSpec] = [
             "Conversational compression for audio",
         ],
         capabilities=(C.VOICE, C.COMMUNICATION),
-        tools=("stt", "tts"),
         keywords=("voice", "speak", "say", "listen", "talk to me", "audio", "read aloud"),
         policy=P.FAST,
         max_output_tokens=400,
@@ -821,6 +840,7 @@ CATALOG: list[AgentSpec] = [
             "Hiring and org decisions",
         ],
         capabilities=(C.PLANNING, C.ANALYSIS, C.FINANCE),
+        tools=("search_documents", "memory_search"),
         keywords=(
             "business",
             "company",
