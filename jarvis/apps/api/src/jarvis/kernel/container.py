@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import Any
 
 import structlog
 
@@ -168,7 +169,12 @@ class Jarvis:
     composer: DocumentComposer
     vault: Vault
     governor: CostGovernor
+    clock: Clock = SYSTEM_CLOCK
     database: Database | None = None
+    # Present only when a vault is configured. Typed loosely on purpose: the
+    # kernel dataclass must not import the adapter, or the one-way dependency
+    # this whole integration rests on would run backwards.
+    obsidian: Any = None
 
     @property
     def provider_names(self) -> list[str]:
@@ -238,11 +244,21 @@ class Jarvis:
         await self.approvals.restore()
         await self.agents.restore()
 
+        if self.obsidian is not None:
+            # Mirroring follows the bus rather than wrapping the store, so a
+            # vault on a slow or absent network drive cannot make an agent turn
+            # wait on a file write.
+            await self.obsidian.start()
+            # Then read back whatever the user changed while Jarvis was off.
+            await self.obsidian.pull()
+
         if self.settings.enable_scheduler:
             await self.scheduler.start()
 
     async def stop(self) -> None:
         await self.scheduler.stop()
+        if self.obsidian is not None:
+            await self.obsidian.stop()
         await self.mcp.stop_all()
         await self.computer.stop()
         if isinstance(self.bus, RedisEventBus):
@@ -283,6 +299,32 @@ def build(
         memory = InMemoryStore(embedder=embedder, bus=bus, clock=clock)
         runs = RunStore(clock=clock)
         knowledge = InMemoryKnowledgeStore(embedder=embedder, bus=bus, clock=clock)
+
+    # A vault is the one adapter the kernel is not allowed to know about, so
+    # this is the only place `jarvis.obsidian` is imported — the composition
+    # root's whole job. Lazily, so an unconfigured install never pays for it.
+    obsidian: MemorySynchronizer | None = None
+    if settings.obsidian_vault:
+        from jarvis.obsidian import MemorySynchronizer, ObsidianStore, VaultManager
+
+        files = ObsidianStore(
+            VaultManager(settings.obsidian_vault),
+            embedder=embedder,
+            bus=bus,
+            clock=clock,
+            link=settings.obsidian_link_notes,
+        )
+        obsidian = MemorySynchronizer(
+            vault=files,
+            # As the primary store there is nothing to reconcile against: the
+            # files are the only copy, so there is no second opinion to lose.
+            primary=None if settings.obsidian_primary else memory,
+            bus=bus,
+            clock=clock,
+        )
+        if settings.obsidian_primary:
+            memory = files
+
     ingestor = Ingestor(knowledge)
     workflows: WorkflowStore = (
         SqlWorkflowStore(database, clock=clock) if database else InMemoryWorkflowStore(clock=clock)
@@ -464,5 +506,7 @@ def build(
         composer=composer,
         vault=vault,
         governor=governor,
+        clock=clock,
         database=database,
+        obsidian=obsidian,
     )

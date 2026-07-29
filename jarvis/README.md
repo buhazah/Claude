@@ -10,6 +10,7 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 - [Roadmap](docs/ROADMAP.md) — milestones and what each one delivers
 - [Interface design](docs/UI-DESIGN.md) — the design language and frames
 - [Evaluation](docs/EVALUATION.md) — how intelligence is measured rather than guessed
+- [Obsidian](docs/OBSIDIAN.md) — the vault as long-term memory you own
 - [Intelligence audit](docs/INTELLIGENCE-AUDIT.md) — what the prompts and router got wrong
 - [Decisions](docs/adr/) — architecture decision records
 
@@ -211,6 +212,29 @@ offering an average that hides both.
 Whether an answer reasons *well* is not a keyword question, so ten probes run
 with no verdict at all and their transcripts are printed for a human. Anything
 key-shaped is scrubbed on the way out.
+
+## Memory you own
+
+Point Jarvis at an Obsidian vault and its memory becomes markdown files:
+
+```bash
+export JARVIS_OBSIDIAN_VAULT=~/Documents/Vault
+```
+
+Each fact is a line with an Obsidian block reference, filed by tag into
+`Projects/`, `People/`, `Meetings/`, `Research/` and `Business/`, with a dated
+journal of what happened. Every completed task leaves something behind — not
+via a special hook, but because the runtime has written a memory after every
+run since M1 and this is where memories now live.
+
+The rule the whole thing rests on: **when your edit and Jarvis's record
+disagree, you are right.** Fix a number, delete a line — Jarvis reads what is
+there now. There is no shadow database to overwrite you, which is the
+difference between this and a markdown export.
+
+`GET /v1/vault` reports the shape of what you know rather than its content:
+what has gone cold, what is connected to nothing, which links Jarvis should
+have made and did not.
 
 ## Persistence
 

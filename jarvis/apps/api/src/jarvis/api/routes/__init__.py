@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -69,6 +70,14 @@ async def health(request: Request) -> dict[str, Any]:
             "locked": jarvis.vault.locked,
             "secrets": len(await jarvis.vault.names()),
         },
+        "obsidian": (
+            {
+                "root": str(jarvis.obsidian.vault_manager.root),
+                "primary": jarvis.settings.obsidian_primary,
+            }
+            if jarvis.obsidian is not None
+            else None
+        ),
         "budget": jarvis.governor.snapshot(),
         "computer": {
             "driver": jarvis.computer.computer.name,
@@ -297,6 +306,50 @@ async def remember(body: RememberRequest, request: Request) -> dict[str, Any]:
 async def forget(memory_id: str, request: Request) -> None:
     if not await _jarvis(request).memory.forget(memory_id):
         raise HTTPException(status_code=404, detail=f"unknown memory: {memory_id}")
+
+
+@router.get("/v1/vault")
+async def vault_status(request: Request) -> dict[str, Any]:
+    """What the vault holds and where it is neglected.
+
+    The graph half of this is what makes proactive work possible: recall can
+    only tell you about what you asked for, while orphans and cold notes are
+    how Jarvis knows about the project nobody has touched in five weeks.
+    """
+    jarvis = _jarvis(request)
+    if jarvis.obsidian is None:
+        raise HTTPException(status_code=404, detail="no Obsidian vault is configured")
+
+    index = jarvis.obsidian.index()
+    return {
+        "root": str(jarvis.obsidian.vault_manager.root),
+        "primary": jarvis.settings.obsidian_primary,
+        "notes": len(index.notes),
+        "memories": index.total_blocks,
+        "tags": index.tags.most_common(20),
+        "orphans": [note.path for note in index.orphans()[:20]],
+        "cold": [
+            {"path": note.path, "updated": note.updated.isoformat() if note.updated else None}
+            for note in index.cold(now=jarvis.clock.now())[:20]
+        ],
+        "unlinked_mentions": index.unlinked_mentions()[:20],
+        "busiest": [{"path": n.path, "memories": n.blocks} for n in index.busiest(10)],
+    }
+
+
+@router.post("/v1/vault/sync")
+async def vault_sync(request: Request) -> dict[str, Any]:
+    """Read the vault and take on whatever the user changed by hand.
+
+    Runs on start too. Exposed because the interesting moment is right after
+    someone has finished editing, and waiting for a restart to be believed is
+    not a memory system anybody trusts.
+    """
+    jarvis = _jarvis(request)
+    if jarvis.obsidian is None:
+        raise HTTPException(status_code=404, detail="no Obsidian vault is configured")
+    jarvis.obsidian.forget_cache()
+    return dataclasses.asdict(await jarvis.obsidian.pull())
 
 
 @router.websocket("/v1/voice")

@@ -65,6 +65,18 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_base_url: str = "https://api.openai.com/v1"
 
+    # Obsidian. Empty means no vault, and Jarvis remembers into whichever store
+    # the database switch selected — the integration is entirely opt-in and
+    # nothing in the kernel knows it exists.
+    #
+    # `primary` decides which way the truth flows. As the primary store the
+    # files *are* the memory, with no database behind them; otherwise the vault
+    # is a readable mirror that the user can still correct, and their edits win
+    # on the next sync either way.
+    obsidian_vault: str = ""
+    obsidian_primary: bool = True
+    obsidian_link_notes: bool = True
+
     # Tools. The workspace is the boundary filesystem and shell tools operate
     # inside; approvals expire into denial, never into consent.
     workspace_dir: str = "~/.jarvis/workspace"
