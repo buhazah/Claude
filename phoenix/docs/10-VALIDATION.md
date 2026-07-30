@@ -2,6 +2,9 @@
 
 The design phase is over. This document replaces it.
 
+Read [`../CHARTER.md`](../CHARTER.md) first — it defines the company this is
+validating. Where the two conflict, the charter wins.
+
 ---
 
 ## 1. The decision

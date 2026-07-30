@@ -30,6 +30,15 @@ disagreeing with before code exists rather than after.
 
 ## Start here
 
+**[`CHARTER.md`](CHARTER.md)** — what this company is, independent of how it is
+built. Who we serve, what we refuse, what must remain true when the technology
+changes completely. Everything in `docs/` is an implementation and will be wrong
+eventually; the charter should not be. **It outranks every document below it.**
+
+> The test for any proposal, permanently: *does it make us more useful, more
+> checkable, or more accountable to the person paying us? If it only makes us
+> more capable, it is not yet a reason to build it.*
+
 **[`docs/10-VALIDATION.md`](docs/10-VALIDATION.md)** — what happens now: the
 freeze, six hypotheses about why anyone would keep paying, three cohorts of
 clients, and four cheap instruments to answer them. Read this before the design
@@ -58,7 +67,8 @@ The short version:
 
 | | |
 |---|---|
-| **[10 — Validation](docs/10-VALIDATION.md)** | **The freeze, and the first twenty clients. The only open document.** |
+| **[CHARTER](CHARTER.md)** | **The company, not the software. Outranks everything below.** |
+| **[10 — Validation](docs/10-VALIDATION.md)** | **The freeze, and the first twenty clients. The only open design document.** |
 | [DEFICIENCIES](docs/DEFICIENCIES.md) | Where a client's name unfreezes something |
 | [00 — Strategy](docs/00-STRATEGY.md) | What I would change, and why. Read first. |
 | [01 — PRD](docs/01-PRD.md) | ICP, jobs, scope, non-goals, lifecycle, success metrics |

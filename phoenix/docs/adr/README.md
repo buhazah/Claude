@@ -1,5 +1,8 @@
 # Phoenix — architecture decision records
 
+Every ADR here is subordinate to [`../../CHARTER.md`](../../CHARTER.md). An ADR
+that violates a charter clause is wrong, regardless of its technical merit.
+
 0001–0009 are **proposed and now frozen** (ADR 0010). They are decisions the
 blueprint depends on, and they stop being re-argued in the abstract: from here
 they change when a named client exposes a named deficiency, filed in
