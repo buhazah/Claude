@@ -1,0 +1,1105 @@
+<title>Phoenix — Founder Command Center</title>
+
+<style>
+/* ─── tokens ─────────────────────────────────────────────────────────────── */
+:root {
+  --ground:#f7f8f8; --surface:#fff; --raised:#f1f3f3;
+  --ink:#16191c; --ink-2:#3d454a; --muted:#6a7278; --faint:#969ea3;
+  --line:#e2e5e7; --line-strong:#cfd4d7;
+  --accent:#0f6e72; --accent-weak:#d7e8e8;
+  --critical:#a8402f; --critical-weak:#f6e4e0;
+  --caution:#9a6b15; --caution-weak:#f7ecd8;
+  --verified:#3e6b4a; --verified-weak:#e2eee5;
+  --serif:"Charter","Bitstream Charter","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:-apple-system,"Segoe UI Variable Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","IBM Plex Mono","Cascadia Mono",Consolas,monospace;
+  --r:3px; --rail:206px; --strip:38px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --ground:#0e1113; --surface:#161a1d; --raised:#1d2225;
+  --ink:#e6e9ea; --ink-2:#c2c9cc; --muted:#8a9399; --faint:#6b7479;
+  --line:#262c30; --line-strong:#38403f;
+  --accent:#4ec3c7; --accent-weak:#123033;
+  --critical:#d9705c; --critical-weak:#33201c;
+  --caution:#c99a3e; --caution-weak:#2e2617;
+  --verified:#6da37e; --verified-weak:#1a2a20;
+}}
+:root[data-theme="dark"]{
+  --ground:#0e1113; --surface:#161a1d; --raised:#1d2225;
+  --ink:#e6e9ea; --ink-2:#c2c9cc; --muted:#8a9399; --faint:#6b7479;
+  --line:#262c30; --line-strong:#38403f;
+  --accent:#4ec3c7; --accent-weak:#123033;
+  --critical:#d9705c; --critical-weak:#33201c;
+  --caution:#c99a3e; --caution-weak:#2e2617;
+  --verified:#6da37e; --verified-weak:#1a2a20;
+}
+:root[data-theme="light"]{
+  --ground:#f7f8f8; --surface:#fff; --raised:#f1f3f3;
+  --ink:#16191c; --ink-2:#3d454a; --muted:#6a7278; --faint:#969ea3;
+  --line:#e2e5e7; --line-strong:#cfd4d7;
+  --accent:#0f6e72; --accent-weak:#d7e8e8;
+  --critical:#a8402f; --critical-weak:#f6e4e0;
+  --caution:#9a6b15; --caution-weak:#f7ecd8;
+  --verified:#3e6b4a; --verified-weak:#e2eee5;
+}
+
+/* ─── base ───────────────────────────────────────────────────────────────── */
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,p,ul,ol{margin:0}
+ul{padding:0;list-style:none}
+a{color:var(--accent);text-decoration:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* every number in the product is monospaced and tabular. This is the choice
+   that makes it read as an instrument rather than a CRM. */
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+
+.lbl{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600}
+.mut{color:var(--muted)}
+.serif{font-family:var(--serif)}
+
+/* ─── chrome: the permanent strip ────────────────────────────────────────── */
+/* The three zero-tolerance metrics live in the chrome and cannot be scrolled
+   away from. The charter says they are never averaged and never traded off;
+   the interface should make that structurally true rather than merely stated. */
+.strip{position:fixed;inset:0 0 auto 0;height:var(--strip);z-index:20;
+  background:var(--surface);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:26px;padding:0 18px}
+.strip .mark{font-family:var(--serif);font-size:15px;letter-spacing:-.01em;font-weight:600;
+  padding-right:22px;border-right:1px solid var(--line);height:100%;display:flex;align-items:center}
+.zt{display:flex;align-items:baseline;gap:7px}
+.zt b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
+.zt.ok b{color:var(--verified)}
+.zt.bad b{color:var(--critical)}
+.zt span{font-size:11px;color:var(--muted)}
+.strip .right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:11px;color:var(--muted)}
+.tbtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:var(--r);
+  padding:3px 9px;font:inherit;font-size:11px;cursor:pointer}
+.tbtn:hover{color:var(--ink);border-color:var(--line-strong)}
+
+/* ─── chrome: rail ───────────────────────────────────────────────────────── */
+.rail{position:fixed;top:var(--strip);bottom:0;left:0;width:var(--rail);z-index:15;
+  background:var(--surface);border-right:1px solid var(--line);
+  padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.rail .grp{margin:14px 0 5px;padding:0 8px}
+.nav{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--r);
+  color:var(--ink-2);cursor:pointer;border:0;background:none;font:inherit;width:100%;text-align:left}
+.nav:hover{background:var(--raised);color:var(--ink)}
+.nav[aria-current="page"]{background:var(--accent-weak);color:var(--accent);font-weight:600}
+.nav .k{font-family:var(--mono);font-size:10px;color:var(--faint);margin-left:auto}
+.nav[aria-current="page"] .k{color:var(--accent)}
+.nav .ct{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11px;
+  color:var(--faint);margin-left:auto}
+.nav svg{flex:0 0 15px;stroke:currentColor;fill:none;stroke-width:1.5}
+
+/* ─── layout ─────────────────────────────────────────────────────────────── */
+main{margin:var(--strip) 0 0 var(--rail);padding:22px 26px 80px;max-width:1520px}
+.view{display:none}
+.view.on{display:block}
+.head{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px;
+  padding-bottom:14px;border-bottom:1px solid var(--line)}
+.head h1{font-family:var(--serif);font-size:25px;font-weight:600;letter-spacing:-.015em;text-wrap:balance}
+.head .sub{font-size:12.5px;color:var(--muted);padding-bottom:3px}
+.head .act{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+.cols{display:grid;gap:20px}
+.cols.c2{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+.cols.c2b{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1080px){.cols.c2,.cols.c2b,.cols.c3{grid-template-columns:1fr}}
+.stack{display:flex;flex-direction:column;gap:20px}
+
+/* ─── panel ──────────────────────────────────────────────────────────────── */
+/* Not cards. A panel is a hairline container with a labelled edge — the point
+   is to group, not to float. Nothing has a shadow. */
+.p{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.p > header{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--line)}
+.p > header h2{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--muted);font-weight:600}
+.p > header .tail{margin-left:auto;font-size:11px;color:var(--faint)}
+.p .body{padding:13px}
+.p .body.flush{padding:0}
+
+/* ─── table ──────────────────────────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--faint);font-weight:600;padding:8px 12px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--raised)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tname{font-weight:550}
+
+/* ─── severity: state encoded in form, not only colour ───────────────────── */
+.sev{border-left:3px solid transparent}
+.sev.urgent{border-left-color:var(--critical)}
+.sev.soon{border-left-color:var(--caution)}
+.sev.watch{border-left-color:var(--line-strong)}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:2px;
+  border:1px solid var(--line-strong);color:var(--muted);white-space:nowrap}
+.pill.urgent{color:var(--critical);border-color:var(--critical);background:var(--critical-weak)}
+.pill.soon{color:var(--caution);border-color:var(--caution);background:var(--caution-weak)}
+.pill.ok{color:var(--verified);border-color:var(--verified);background:var(--verified-weak)}
+.pill.live{color:var(--accent);border-color:var(--accent);background:var(--accent-weak)}
+.pill.quiet{background:var(--raised)}
+
+/* ─── metric ─────────────────────────────────────────────────────────────── */
+.mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.m{background:var(--surface);padding:11px 13px}
+.m .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:22px;
+  font-weight:600;letter-spacing:-.03em;line-height:1.15}
+.m .k{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);
+  font-weight:600;margin-top:3px}
+.m .d{font-size:11px;color:var(--muted);margin-top:4px}
+.m .v.acc{color:var(--accent)}
+
+/* ─── evidence / verbatim ────────────────────────────────────────────────── */
+/* A customer's words are set in the serif and given a rule. Our commentary is
+   sans and grey. Never the same treatment — the distinction is the discipline. */
+.vb{font-family:var(--serif);font-size:14.5px;line-height:1.45;color:var(--ink);
+  border-left:2px solid var(--accent);padding:1px 0 1px 12px}
+.vb.q{border-left-color:var(--line-strong)}
+.attr{font-size:11px;color:var(--faint);margin-top:5px}
+.ev{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.ev:last-child{border-bottom:0}
+.ev .top{display:flex;align-items:center;gap:8px}
+
+/* ─── timeline ───────────────────────────────────────────────────────────── */
+/* The marker glyph encodes the event type: meetings, decisions, findings and
+   changes are different kinds of thing and should not look alike. */
+.tl{position:relative;padding-left:22px}
+.tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.tl li{position:relative;padding:0 0 16px}
+.tl li:last-child{padding-bottom:0}
+.tl .mk{position:absolute;left:-22px;top:3px;width:11px;height:11px;border-radius:50%;
+  background:var(--surface);border:1.5px solid var(--line-strong)}
+.tl .mk.meeting{border-color:var(--accent);background:var(--accent)}
+.tl .mk.decision{border-color:var(--ink);background:var(--surface);border-radius:1px;transform:rotate(45deg)}
+.tl .mk.finding{border-color:var(--caution);background:var(--caution-weak)}
+.tl .mk.change{border-color:var(--muted);background:var(--surface)}
+.tl .when{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:-.01em}
+.tl .what{font-weight:550;margin-top:1px}
+.tl .det{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* ─── stage rail: a real sequence, so numbering carries information ──────── */
+.stages{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;background:var(--surface)}
+.st{flex:1;padding:10px 12px;border-right:1px solid var(--line);position:relative;min-width:0}
+.st:last-child{border-right:0}
+.st .i{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.st .nm{font-size:12px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st .mt{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:3px}
+.st.done{background:var(--verified-weak)}
+.st.done .i,.st.done .nm{color:var(--verified)}
+.st.now{background:var(--accent-weak)}
+.st.now .i,.st.now .nm{color:var(--accent)}
+.st.now::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--accent)}
+.st.blocked{background:var(--critical-weak)}
+.st.blocked .i,.st.blocked .nm{color:var(--critical)}
+
+/* ─── gate ───────────────────────────────────────────────────────────────── */
+.gate{border:1px solid var(--critical);border-radius:var(--r);background:var(--critical-weak)}
+.gate.pass{border-color:var(--verified);background:var(--verified-weak)}
+.gate .g-h{padding:10px 13px;border-bottom:1px solid color-mix(in srgb,var(--critical) 30%,transparent);
+  display:flex;align-items:center;gap:9px}
+.gate.pass .g-h{border-bottom-color:color-mix(in srgb,var(--verified) 30%,transparent)}
+.gate h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--critical);font-weight:700}
+.gate.pass h3{color:var(--verified)}
+
+/* ─── three-number reconciliation block ──────────────────────────────────── */
+.recon{display:grid;grid-template-columns:1fr auto;gap:2px 14px;padding:13px;align-items:baseline}
+.recon dt{font-size:12.5px;color:var(--ink-2)}
+.recon dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:15px;
+  font-weight:600;text-align:right}
+.recon .gap dt,.recon .gap dd{padding-top:8px;margin-top:6px;border-top:1px solid var(--line-strong);font-weight:700}
+.recon .gap dd{color:var(--critical);font-size:17px}
+
+/* ─── bars ───────────────────────────────────────────────────────────────── */
+.bar{height:7px;border-radius:1px;background:var(--raised);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.bar i.a{background:var(--accent)}
+.bar i.b{background:var(--caution)}
+.bar i.c{background:var(--line-strong)}
+.legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:9px;flex-wrap:wrap}
+.legend b{display:inline-block;width:8px;height:8px;border-radius:1px;margin-right:5px;vertical-align:baseline}
+
+.hbar{display:flex;align-items:center;gap:9px}
+.hbar .t{flex:1;height:6px;background:var(--raised);border-radius:1px;overflow:hidden}
+.hbar .t i{display:block;height:100%;background:var(--accent)}
+.hbar .t i.warn{background:var(--caution)}
+
+/* ─── misc ───────────────────────────────────────────────────────────────── */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11.5px;padding:3px 9px;border:1px solid var(--line);border-radius:2px;
+  color:var(--muted);cursor:pointer;background:var(--surface)}
+.chip:hover{border-color:var(--line-strong);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--accent-weak);border-color:var(--accent);color:var(--accent);font-weight:600}
+.facts{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface);overflow:hidden}
+.facts div{padding:9px 15px;border-right:1px solid var(--line);flex:1;min-width:118px}
+.facts div:last-child{border-right:0}
+.facts .k{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);font-weight:600}
+.facts .v{margin-top:2px;font-size:13.5px;font-weight:550}
+.hr{height:1px;background:var(--line);margin:4px 0}
+.note{font-size:12px;color:var(--muted);line-height:1.55}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kv:last-child{border-bottom:0}
+.swatch{height:44px;border-radius:var(--r);border:1px solid var(--line)}
+.grid-sw{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:11px}
+.spec{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:5px}
+.flow{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12.5px}
+.flow .b{padding:6px 11px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.flow .b.hi{border-color:var(--accent);color:var(--accent);font-weight:600}
+.flow .ar{color:var(--faint);font-family:var(--mono)}
+</style>
+
+<div class="strip">
+  <div class="mark">Phoenix</div>
+  <div class="zt ok"><b>0</b><span>unauthorised actions</span></div>
+  <div class="zt ok"><b>0</b><span>unreconciled figures reported</span></div>
+  <div class="zt ok"><b>0</b><span>account losses caused</span></div>
+  <div class="right">
+    <span class="n">Thu 30 Jul 2026</span>
+    <button class="tbtn" id="theme">Theme</button>
+  </div>
+</div>
+
+<nav class="rail">
+  <button class="nav" data-v="command" aria-current="page">
+    <svg viewBox="0 0 16 16"><path d="M2 8h3l2-5 2 10 2-5h3"/></svg>Command<span class="ct">3</span>
+  </button>
+  <button class="nav" data-v="clients">
+    <svg viewBox="0 0 16 16"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4"/></svg>Clients<span class="ct">10</span>
+  </button>
+  <button class="nav" data-v="audit">
+    <svg viewBox="0 0 16 16"><path d="M3 2h7l3 3v9H3z"/><path d="M5.5 8.5h5M5.5 11h3"/></svg>Audits<span class="ct">3</span>
+  </button>
+  <button class="nav" data-v="intel">
+    <svg viewBox="0 0 16 16"><path d="M8 2v12M3 4.5v7M13 4.5v7"/><circle cx="8" cy="8" r="2"/></svg>Intelligence
+  </button>
+  <button class="nav" data-v="effort">
+    <svg viewBox="0 0 16 16"><path d="M2 13h12M4 13V8M7.3 13V4M10.6 13V9.5M14 13V6"/></svg>Effort
+  </button>
+
+  <p class="lbl grp">Design review</p>
+  <button class="nav" data-v="system">
+    <svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="5" height="5"/><rect x="8.5" y="8.5" width="5" height="5"/><path d="M2.5 11h5M11 2.5v5"/></svg>System
+  </button>
+  <button class="nav" data-v="ia">
+    <svg viewBox="0 0 16 16"><rect x="5.5" y="1.5" width="5" height="3.5"/><rect x="1.5" y="11" width="4.5" height="3.5"/><rect x="10" y="11" width="4.5" height="3.5"/><path d="M8 5v3.5M3.7 11V8.5h8.6V11"/></svg>Architecture
+  </button>
+</nav>
+
+<main>
+
+<!-- ══════════════════════════════════════════════════ COMMAND CENTER ════ -->
+<section class="view on" id="v-command">
+  <div class="head">
+    <h1>Command Center</h1>
+    <p class="sub">Three things need you. Two can wait until Monday.</p>
+    <div class="act"><span class="pill live">Cohort B · week 6</span></div>
+  </div>
+
+  <div class="stack">
+    <div class="mrow">
+      <div class="m"><div class="v n">£14,000</div><div class="k">Monthly recurring</div><div class="d">5 paying · 3 at partner rate</div></div>
+      <div class="m"><div class="v n">£4,500</div><div class="k">Audits sold, quarter</div><div class="d">3 delivered · 1 refunded</div></div>
+      <div class="m"><div class="v n acc">6 / 10</div><div class="k">Toward first ten</div><div class="d">2 in audit, likely to convert</div></div>
+      <div class="m"><div class="v n">0.94</div><div class="k">Median reconciliation</div><div class="d">4 of 5 above the gate</div></div>
+      <div class="m"><div class="v n">83<span style="font-size:13px">m</span></div><div class="k">Human min / client / wk</div><div class="d">flat against account size</div></div>
+    </div>
+
+    <div class="cols c2">
+      <div class="stack">
+        <div class="p">
+          <header>
+            <h2>Needs attention</h2>
+            <span class="tail">Rules, not judgement — the same list until something changes</span>
+          </header>
+          <div class="body flush">
+            <table>
+              <thead><tr><th style="width:74px">Severity</th><th style="width:160px">Client</th><th>Why</th><th class="num" style="width:62px">Age</th></tr></thead>
+              <tbody>
+                <tr class="sev urgent">
+                  <td><span class="pill urgent">Urgent</span></td>
+                  <td class="tname">Vellum Skin</td>
+                  <td>Past day five, reconciliation not recorded<div class="note">The gate. Fix the tracking, or refund and decline.</div></td>
+                  <td class="num">7d</td>
+                </tr>
+                <tr class="sev urgent">
+                  <td><span class="pill urgent">Urgent</span></td>
+                  <td class="tname">Aster Home</td>
+                  <td>Spoke to them, no next action set<div class="note">The most common way a warm prospect is quietly lost.</div></td>
+                  <td class="num">4d</td>
+                </tr>
+                <tr class="sev urgent">
+                  <td><span class="pill urgent">Urgent</span></td>
+                  <td class="tname">Halden &amp; Co</td>
+                  <td>Churned, no exit interview<div class="note">Worth more than a renewal. They are finally free to be blunt.</div></td>
+                  <td class="num">3d</td>
+                </tr>
+                <tr class="sev soon">
+                  <td><span class="pill soon">Soon</span></td>
+                  <td class="tname">Northbound</td>
+                  <td>Monthly review 38d ago</td>
+                  <td class="num">38d</td>
+                </tr>
+                <tr class="sev soon">
+                  <td><span class="pill soon">Soon</span></td>
+                  <td class="tname">Marrow Goods</td>
+                  <td>Task overdue: send week-6 report</td>
+                  <td class="num">2d</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="p">
+          <header><h2>Captured this week</h2><span class="tail">Verbatim · categorised Friday</span></header>
+          <div class="body flush">
+            <div class="ev">
+              <div class="top"><span class="pill quiet">Pain</span><span class="mut" style="font-size:12px">Marrow Goods · discovery call</span></div>
+              <p class="vb">The platform tells me 4.2× and my accountant tells me we barely broke even. Both of them are certain.</p>
+            </div>
+            <div class="ev">
+              <div class="top"><span class="pill quiet">Objection</span><span class="pill urgent">Answered badly</span><span class="mut" style="font-size:12px">Ilford Supply</span></div>
+              <p class="vb q">You have no case studies. Why would I be the one who finds out?</p>
+              <p class="attr">Fumbled it. Should have led with the refundable audit and the thirty-day term.</p>
+            </div>
+            <div class="ev">
+              <div class="top"><span class="pill quiet">Language · value</span><span class="mut" style="font-size:12px">Northbound · monthly review</span></div>
+              <p class="vb">Honestly? The Friday note. I read it before I read my own numbers.</p>
+              <p class="attr">Third client to name the weekly report first. H1 is looking real.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="p">
+          <header><h2>Audit pipeline</h2><span class="tail">3 live</span></header>
+          <div class="body">
+            <div class="stages" style="margin-bottom:12px">
+              <div class="st done"><div class="i">01</div><div class="nm">Disc</div><div class="mt">3</div></div>
+              <div class="st done"><div class="i">02</div><div class="nm">Data</div><div class="mt">3</div></div>
+              <div class="st blocked"><div class="i">03</div><div class="nm">Recon</div><div class="mt">1</div></div>
+              <div class="st now"><div class="i">04</div><div class="nm">Diag</div><div class="mt">1</div></div>
+              <div class="st"><div class="i">05</div><div class="nm">Strat</div><div class="mt">1</div></div>
+              <div class="st"><div class="i">06</div><div class="nm">Report</div><div class="mt">—</div></div>
+              <div class="st"><div class="i">07</div><div class="nm">Review</div><div class="mt">—</div></div>
+              <div class="st"><div class="i">08</div><div class="nm">Done</div><div class="mt">2</div></div>
+            </div>
+            <div class="kv"><span>Vellum Skin</span><span class="pill urgent">Blocked at gate</span></div>
+            <div class="kv"><span>Ilford Supply</span><span class="pill live">Diagnosis</span></div>
+            <div class="kv"><span>Marrow Goods</span><span class="pill quiet">Strategy</span></div>
+          </div>
+        </div>
+
+        <div class="p">
+          <header><h2>Learning signals</h2><span class="tail">Rule of three</span></header>
+          <div class="body" style="display:flex;flex-direction:column;gap:13px">
+            <div>
+              <div class="top" style="display:flex;gap:8px;align-items:center;margin-bottom:5px">
+                <span class="pill ok">Finding</span><span class="n mut" style="font-size:11px">4 clients</span>
+              </div>
+              <p class="vb">I don't know what's working</p>
+              <p class="attr">Northbound · Aster Home · Vellum Skin · Marrow Goods</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <div class="top" style="display:flex;gap:8px;align-items:center;margin-bottom:5px">
+                <span class="pill ok">Finding</span><span class="n mut" style="font-size:11px">3 clients</span>
+              </div>
+              <p class="vb">the reporting never answers what I asked</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <div class="top" style="display:flex;gap:8px;align-items:center;margin-bottom:5px">
+                <span class="pill quiet">Emerging</span><span class="n mut" style="font-size:11px">2 clients</span>
+              </div>
+              <p class="vb q">creative goes stale faster than we can replace it</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p">
+          <header><h2>Today</h2></header>
+          <div class="body flush">
+            <table>
+              <tbody>
+                <tr><td class="num" style="width:60px;color:var(--muted)">09:30</td><td class="tname">Vellum Skin</td><td class="mut">Reconciliation review — the gap call</td></tr>
+                <tr><td class="num" style="color:var(--muted)">14:00</td><td class="tname">Ilford Supply</td><td class="mut">Discovery, second half</td></tr>
+                <tr><td class="num" style="color:var(--muted)">16:30</td><td class="tname">Halden &amp; Co</td><td class="mut">Exit interview</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ CLIENT INTELLIGENCE ═══ -->
+<section class="view" id="v-clients">
+  <div class="head">
+    <h1>Northbound</h1>
+    <p class="sub">Apparel · client since 12 May · design partner</p>
+    <div class="act"><span class="pill ok">Reconciled 0.96</span><span class="pill live">Active</span></div>
+  </div>
+
+  <div class="stack">
+    <div class="facts">
+      <div><div class="k">Industry</div><div class="v">Apparel — outerwear</div></div>
+      <div><div class="k">Revenue</div><div class="v n">£2.8m</div></div>
+      <div><div class="k">Ad spend</div><div class="v n">£28k / mo</div></div>
+      <div><div class="k">Fee</div><div class="v n">£2,000 / mo</div></div>
+      <div><div class="k">Blended CAC</div><div class="v n">£34.10</div></div>
+      <div><div class="k">Baseline CAC</div><div class="v n">£41.60</div></div>
+      <div><div class="k">Products</div><div class="v">41 lines, 3 hero SKUs</div></div>
+    </div>
+
+    <div class="p">
+      <header><h2>Current objectives</h2><span class="tail">Agreed 1 Jul · reviewed monthly</span></header>
+      <div class="body" style="display:flex;flex-direction:column;gap:9px">
+        <div class="hbar"><span style="width:290px;font-size:13px">Hold CAC under £36 through the autumn launch</span><span class="t"><i style="width:78%"></i></span><span class="n mut" style="font-size:11.5px;width:44px;text-align:right">on&nbsp;track</span></div>
+        <div class="hbar"><span style="width:290px;font-size:13px">Ship 40 tested variants a month</span><span class="t"><i style="width:62%"></i></span><span class="n mut" style="font-size:11.5px;width:44px;text-align:right">25/40</span></div>
+        <div class="hbar"><span style="width:290px;font-size:13px">Resolve the fit-anxiety hypothesis</span><span class="t"><i class="warn" style="width:33%"></i></span><span class="n mut" style="font-size:11.5px;width:44px;text-align:right">1/3</span></div>
+      </div>
+    </div>
+
+    <div class="cols c2">
+      <div class="p">
+        <header><h2>Timeline</h2><span class="tail">Meetings · decisions · findings · changes</span></header>
+        <div class="body">
+          <ul class="tl">
+            <li><span class="mk meeting"></span>
+              <div class="when">28 JUL · MEETING</div>
+              <div class="what">Monthly review</div>
+              <div class="det">Named the weekly note as the thing they'd most hate to lose. Third client to say it.</div>
+            </li>
+            <li><span class="mk decision"></span>
+              <div class="when">21 JUL · DECISION</div>
+              <div class="what">Shifted 15 points of budget from iterate to explore</div>
+              <div class="det">Frontier stale three generations. Their call, our recommendation, recorded either way.</div>
+            </li>
+            <li><span class="mk finding"></span>
+              <div class="when">14 JUL · FINDING</div>
+              <div class="what">Returns data contradicts the aesthetic angle</div>
+              <div class="det">34% of returns cite sizing. Nothing in twelve months of creative addresses it.</div>
+            </li>
+            <li><span class="mk change"></span>
+              <div class="when">09 JUL · CHANGE</div>
+              <div class="what">Their buyer paused two ad sets in-platform</div>
+              <div class="det">Drift detected next morning. Surfaced, not re-applied. They confirmed it was intentional.</div>
+            </li>
+            <li><span class="mk meeting"></span>
+              <div class="when">02 JUL · MEETING</div>
+              <div class="what">Weekly — tracking verification</div>
+            </li>
+            <li><span class="mk finding"></span>
+              <div class="when">24 JUN · FINDING</div>
+              <div class="what">Platform over-reports revenue by 31%</div>
+              <div class="det">View-through and an attribution window. Explained in full at the review; no drama.</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="p">
+          <header><h2>Hypotheses</h2><span class="tail">Each with a test and a kill condition</span></header>
+          <div class="body flush">
+            <table>
+              <tbody>
+                <tr><td class="tname" style="width:58%">Fit-anxiety framing beats aesthetic framing on cold traffic</td><td><span class="pill live">Testing</span></td><td class="num">1 / 3</td></tr>
+                <tr><td class="tname">Bundle pricing lifts AOV without hurting conversion</td><td><span class="pill ok">Held</span></td><td class="num">3 / 3</td></tr>
+                <tr><td class="tname">Video outperforms static on retargeting</td><td><span class="pill quiet">Killed</span></td><td class="num">0 / 3</td></tr>
+                <tr><td class="tname">Free returns messaging is the objection that matters</td><td><span class="pill quiet">Queued</span></td><td class="num">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="p">
+          <header><h2>Knowledge</h2><span class="tail">Theirs · never leaves this workspace</span></header>
+          <div class="body" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <p class="lbl">Customer insight</p>
+              <p class="note" style="margin-top:4px">Sizing is the dominant objection: 34% of returns and 61 review mentions in 90 days. Their team believed the objection was price.</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <p class="lbl">Market observation</p>
+              <p class="note" style="margin-top:4px">Category CPMs rose 22% year on year into the autumn window. Their CAC rose 18% — they are losing ground more slowly than the market, which nobody had told them.</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <p class="lbl">Competitor observation</p>
+              <p class="note" style="margin-top:4px">Two competitors have run fit-guarantee creative continuously for 90+ days. Weak evidence of efficacy — a hypothesis source, never a reason.</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <p class="lbl">Outcome</p>
+              <p class="note" style="margin-top:4px">Blended CAC £41.60 → £34.10 over eleven weeks, measured from their own order records. Reconciliation confidence 0.96.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ AUDIT WORKSPACE ══════ -->
+<section class="view" id="v-audit">
+  <div class="head">
+    <h1>Vellum Skin</h1>
+    <p class="sub">Acquisition Audit · day 7 of 14 · £1,500 credited against month one</p>
+    <div class="act"><span class="pill urgent">Blocked at the gate</span></div>
+  </div>
+
+  <div class="stack">
+    <div class="stages">
+      <div class="st done"><div class="i">01</div><div class="nm">Discovery</div><div class="mt">Complete</div></div>
+      <div class="st done"><div class="i">02</div><div class="nm">Data collection</div><div class="mt">Complete</div></div>
+      <div class="st blocked"><div class="i">03</div><div class="nm">Reconciliation</div><div class="mt">0.71 · gate</div></div>
+      <div class="st"><div class="i">04</div><div class="nm">Diagnosis</div><div class="mt">Held</div></div>
+      <div class="st"><div class="i">05</div><div class="nm">Strategy</div><div class="mt">—</div></div>
+      <div class="st"><div class="i">06</div><div class="nm">Report</div><div class="mt">—</div></div>
+      <div class="st"><div class="i">07</div><div class="nm">Client review</div><div class="mt">—</div></div>
+      <div class="st"><div class="i">08</div><div class="nm">Complete</div><div class="mt">—</div></div>
+    </div>
+
+    <div class="gate">
+      <div class="g-h">
+        <h3>Reconciliation below 0.90 — onboarding cannot proceed</h3>
+        <span class="pill urgent" style="margin-left:auto">Decision due today</span>
+      </div>
+      <div class="body" style="padding:13px">
+        <p class="note" style="margin-bottom:11px;max-width:74ch">Three outcomes, decided today. Fixable tracking problem — we fix it, billed separately, restart the clock. Not fixable in two weeks — refund and decline, with a written explanation of what would need to be true. Neither is a failure; proceeding anyway would be.</p>
+        <div class="cols c2b">
+          <dl class="recon" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r)">
+            <dt>Platform reported, 90 days</dt><dd class="n">£412,880</dd>
+            <dt>Their own order records</dt><dd class="n">£286,140</dd>
+            <dt class="gap">Unexplained after decomposition</dt><dd class="n gap">£38,410</dd>
+          </dl>
+          <div class="p"><div class="body" style="display:flex;flex-direction:column;gap:7px">
+            <p class="lbl">Gap decomposed</p>
+            <div class="kv"><span>Attribution window</span><span class="n">£51,200</span></div>
+            <div class="kv"><span>View-through</span><span class="n">£24,900</span></div>
+            <div class="kv"><span>Refunds and returns</span><span class="n">£12,130</span></div>
+            <div class="kv"><span>Subscription renewals</span><span class="n">£0</span></div>
+            <div class="kv"><span style="color:var(--critical)">Unexplained</span><span class="n" style="color:var(--critical)">£38,410</span></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cols c3">
+      <div class="p">
+        <header><h2>Tasks · stage 03</h2><span class="tail">3 of 5</span></header>
+        <div class="body flush">
+          <table><tbody>
+            <tr><td><span class="pill ok">Done</span></td><td>Pull 12 months platform data</td><td class="num mut">45m</td></tr>
+            <tr><td><span class="pill ok">Done</span></td><td>Export order records with refund status</td><td class="num mut">30m</td></tr>
+            <tr><td><span class="pill ok">Done</span></td><td>Daily alignment check</td><td class="num mut">90m</td></tr>
+            <tr><td><span class="pill soon">Open</span></td><td>Trace the £38k — pixel or offline?</td><td class="num mut">—</td></tr>
+            <tr><td><span class="pill soon">Open</span></td><td>Decide: fix, or refund and decline</td><td class="num mut">—</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+
+      <div class="p">
+        <header><h2>Evidence collected</h2><span class="tail">11 items</span></header>
+        <div class="body" style="display:flex;flex-direction:column;gap:11px">
+          <div>
+            <p class="lbl">Tracking</p>
+            <p class="note" style="margin-top:3px">Purchase event fires twice on the express checkout path. Confirmed by replay on three orders.</p>
+          </div>
+          <div class="hr"></div>
+          <div>
+            <p class="lbl">Their words</p>
+            <p class="vb" style="margin-top:5px">We replatformed in March and nobody re-checked the pixel.</p>
+          </div>
+          <div class="hr"></div>
+          <div>
+            <p class="lbl">Offline revenue</p>
+            <p class="note" style="margin-top:3px">Roughly 8% of orders are phone or wholesale and never touch the storefront. Not in either number.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p">
+        <header><h2>Decisions &amp; unknowns</h2></header>
+        <div class="body" style="display:flex;flex-direction:column;gap:11px">
+          <div>
+            <p class="lbl">Decided</p>
+            <p class="note" style="margin-top:3px"><b>Do not proceed to diagnosis.</b> Optimising against these numbers would produce confident, wrong advice — which is the failure this company exists to avoid.</p>
+          </div>
+          <div class="hr"></div>
+          <div>
+            <p class="lbl">Unknown — blocking</p>
+            <p class="note" style="margin-top:3px">Whether the duplicate event explains all £38k or only part of it. One day of work answers it.</p>
+          </div>
+          <div>
+            <p class="lbl">Unknown — not blocking</p>
+            <p class="note" style="margin-top:3px">Whether wholesale should be excluded from CAC entirely. Their commercial call, not ours.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ INTELLIGENCE LIBRARY ═ -->
+<section class="view" id="v-intel">
+  <div class="head">
+    <h1>Intelligence</h1>
+    <p class="sub">What the company knows, and how sure it is entitled to be</p>
+    <div class="act chips">
+      <button class="chip" aria-pressed="true">All</button>
+      <button class="chip">Observations</button>
+      <button class="chip">Hypotheses</button>
+      <button class="chip">Experiments</button>
+      <button class="chip">Outcomes</button>
+      <button class="chip">Lessons</button>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="mrow">
+      <div class="m"><div class="v n">47</div><div class="k">Observations</div><div class="d">across 6 clients</div></div>
+      <div class="m"><div class="v n">9</div><div class="k">Hypotheses live</div><div class="d">4 resolved, 2 killed</div></div>
+      <div class="m"><div class="v n">3</div><div class="k">Cleared rule of three</div><div class="d">≥3 distinct clients</div></div>
+      <div class="m"><div class="v n">0</div><div class="k">Published to fleet</div><div class="d">k=5 not reachable at n=6</div></div>
+      <div class="m"><div class="v n">2</div><div class="k">Contradictions open</div><div class="d">both likely scope errors</div></div>
+    </div>
+
+    <div class="cols c2">
+      <div class="stack">
+        <div class="p">
+          <header><h2>Findings</h2><span class="tail">Three distinct clients or more</span></header>
+          <div class="body" style="display:flex;flex-direction:column;gap:15px">
+            <div>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+                <span class="pill ok">Pain</span><span class="n mut" style="font-size:11px">4 clients · 6 statements</span>
+              </div>
+              <p class="vb">I don't know what's working</p>
+              <p class="attr">Every one of them said a version of this before they said anything about creative, price or scale. It is the first sentence, not the third.</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+                <span class="pill ok">Value</span><span class="n mut" style="font-size:11px">3 clients · 3 statements</span>
+              </div>
+              <p class="vb">the Friday note — I read it before my own numbers</p>
+              <p class="attr">H1 evidence. The cheapest thing we produce may be the thing they would most hate to lose.</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+                <span class="pill urgent">Objection</span><span class="n mut" style="font-size:11px">3 clients · answered badly twice</span>
+              </div>
+              <p class="vb q">you have no case studies</p>
+              <p class="attr">The offer is wrong here, not the pitch. Lead with the refundable audit and the thirty-day term.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p">
+          <header><h2>Lessons</h2><span class="tail">Written after the fact, kept whether or not they flatter</span></header>
+          <div class="body" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <p class="note"><b>A confounded read is worse than no read.</b> Halden's November-versus-September comparison produced a confident conclusion that a matched test later reversed. Test structure now sets the learning weight before the result exists.</p>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <p class="note"><b>Reconciliation failures cluster around replatforming.</b> Two of six. Ask the question during qualification, not on day three.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="p">
+          <header><h2>Hypotheses across clients</h2></header>
+          <div class="body flush">
+            <table>
+              <thead><tr><th>Claim</th><th style="width:82px">Scope</th><th style="width:78px">State</th><th class="num" style="width:52px">n</th></tr></thead>
+              <tbody>
+                <tr><td class="tname">Fit-anxiety framing beats aesthetic on cold traffic</td><td class="mut">Apparel</td><td><span class="pill live">Testing</span></td><td class="num">1/3</td></tr>
+                <tr><td class="tname">Bundle pricing lifts AOV without hurting conversion</td><td class="mut">Apparel</td><td><span class="pill ok">Held</span></td><td class="num">3/3</td></tr>
+                <tr><td class="tname">Founder-voice creative beats studio on first purchase</td><td class="mut">Beauty</td><td><span class="pill live">Testing</span></td><td class="num">2/3</td></tr>
+                <tr><td class="tname">Video outperforms static on retargeting</td><td class="mut">Apparel</td><td><span class="pill quiet">Killed</span></td><td class="num">0/3</td></tr>
+                <tr><td class="tname">Free-returns messaging is the objection that matters</td><td class="mut">Apparel</td><td><span class="pill quiet">Queued</span></td><td class="num">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="p">
+          <header><h2>Contradiction</h2><span class="tail">Usually a scope error, not a disagreement</span></header>
+          <div class="body">
+            <p class="vb q" style="font-size:13.5px">Question hooks beat control — apparel, £20–60 AOV, n=180</p>
+            <p class="vb q" style="font-size:13.5px;margin-top:9px">Question hooks lose to control — apparel, £20–60 AOV, n=140</p>
+            <div class="hr" style="margin:13px 0"></div>
+            <p class="note"><b>Candidate split: audience stage.</b> The winning set is cold, the losing set retargeting. Re-test both halves rather than picking a side — two narrower claims are worth more than one wrong one.</p>
+          </div>
+        </div>
+
+        <div class="p">
+          <header><h2>Not yet publishable</h2></header>
+          <div class="body">
+            <p class="note">Nothing here has crossed the tenant boundary and nothing will until five distinct clients support a claim. At six clients that is reachable for one finding and no others. The gate is deterministic and a model never decides what passes it.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ EFFORT LEDGER ═════ -->
+<section class="view" id="v-effort">
+  <div class="head">
+    <h1>Effort</h1>
+    <p class="sub">Where the time actually went. This becomes the automation roadmap — derived, not guessed.</p>
+    <div class="act"><span class="pill quiet">Last 30 days</span></div>
+  </div>
+
+  <div class="stack">
+    <div class="cols c2">
+      <div class="p">
+        <header><h2>By category</h2><span class="tail">Only B is ever sorted by hours</span></header>
+        <div class="body">
+          <div class="bar" style="height:11px">
+            <i class="a" style="width:47%"></i><i class="b" style="width:34%"></i><i class="c" style="width:19%"></i>
+          </div>
+          <div class="legend">
+            <span><b style="background:var(--accent)"></b>A · instrument · <span class="n">2,140m</span></span>
+            <span><b style="background:var(--caution)"></b>B · cheap for now · <span class="n">1,550m</span></span>
+            <span><b style="background:var(--line-strong)"></b>C · unsafe to automate · <span class="n">865m</span></span>
+          </div>
+          <div class="hr" style="margin:15px 0"></div>
+          <p class="note" style="max-width:70ch">Category A is the most expensive line and is not a candidate. Client conversations, creative selection and reading every report before it leaves are how we learn what the system should do — automating them early would end the phase, not accelerate it.</p>
+        </div>
+      </div>
+
+      <div class="p">
+        <header><h2>Human minutes per client per week</h2><span class="tail">By onboarding order — flat is the target</span></header>
+        <div class="body">
+          <svg viewBox="0 0 320 96" style="width:100%;height:96px" role="img" aria-label="Minutes per client per week from client one to client six, falling from 218 to 83">
+            <line x1="26" y1="80" x2="316" y2="80" stroke="var(--line)"/>
+            <line x1="26" y1="44" x2="316" y2="44" stroke="var(--line)" stroke-dasharray="2 3"/>
+            <text x="0" y="47" fill="var(--faint)" font-size="8" font-family="ui-monospace,monospace">120</text>
+            <text x="4" y="83" fill="var(--faint)" font-size="8" font-family="ui-monospace,monospace">0</text>
+            <g fill="var(--accent)">
+              <rect x="34" y="15" width="30" height="65"/><rect x="82" y="26" width="30" height="54"/>
+              <rect x="130" y="34" width="30" height="46"/><rect x="178" y="41" width="30" height="39"/>
+              <rect x="226" y="49" width="30" height="31"/><rect x="274" y="55" width="30" height="25"/>
+            </g>
+            <g fill="var(--muted)" font-size="8" font-family="ui-monospace,monospace" text-anchor="middle">
+              <text x="49" y="93">C1</text><text x="97" y="93">C2</text><text x="145" y="93">C3</text>
+              <text x="193" y="93">C4</text><text x="241" y="93">C5</text><text x="289" y="93">C6</text>
+            </g>
+            <text x="289" y="50" fill="var(--accent)" font-size="9" font-family="ui-monospace,monospace" text-anchor="middle" font-weight="600">83</text>
+          </svg>
+          <p class="note" style="margin-top:8px">218 → 83 across six clients. The number that matters is not whether it reaches zero; it is whether it stays flat as accounts get larger.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cols c2">
+      <div class="p">
+        <header><h2>Where the time goes</h2><span class="tail">30 days, all clients</span></header>
+        <div class="body flush">
+          <table>
+            <thead><tr><th>Activity</th><th style="width:52px">Cat</th><th class="num" style="width:66px">Minutes</th><th class="num" style="width:52px">Times</th><th style="width:96px"></th></tr></thead>
+            <tbody>
+              <tr><td class="tname">Creative review</td><td><span class="pill live">A</span></td><td class="num">980</td><td class="num">42</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:100%;background:var(--accent)"></i></span></td></tr>
+              <tr><td class="tname">Report editing</td><td><span class="pill soon">B</span></td><td class="num">620</td><td class="num">24</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:63%;background:var(--caution)"></i></span></td></tr>
+              <tr><td class="tname">Client calls</td><td><span class="pill live">A</span></td><td class="num">610</td><td class="num">31</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:62%;background:var(--accent)"></i></span></td></tr>
+              <tr><td class="tname">Reconciliation fixes</td><td><span class="pill quiet">C</span></td><td class="num">540</td><td class="num">7</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:55%;background:var(--line-strong)"></i></span></td></tr>
+              <tr><td class="tname">Data assembly</td><td><span class="pill soon">B</span></td><td class="num">470</td><td class="num">18</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:48%;background:var(--caution)"></i></span></td></tr>
+              <tr><td class="tname">Diagnosis review</td><td><span class="pill live">A</span></td><td class="num">390</td><td class="num">26</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:40%;background:var(--accent)"></i></span></td></tr>
+              <tr><td class="tname">Provisioning</td><td><span class="pill soon">B</span></td><td class="num">280</td><td class="num">6</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:29%;background:var(--caution)"></i></span></td></tr>
+              <tr><td class="tname">Scheduling &amp; admin</td><td><span class="pill soon">B</span></td><td class="num">180</td><td class="num">33</td><td><span class="t" style="display:block;height:5px;background:var(--raised)"><i style="display:block;height:100%;width:18%;background:var(--caution)"></i></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="p">
+        <header><h2>Automation backlog</h2><span class="tail">Category B only, by cost</span></header>
+        <div class="body">
+          <table>
+            <thead><tr><th class="num" style="width:34px">#</th><th>Candidate</th><th class="num" style="width:66px">Minutes</th><th class="num" style="width:74px">Est. saved</th></tr></thead>
+            <tbody>
+              <tr><td class="num mut">01</td><td class="tname">Report editing</td><td class="num">620</td><td class="num" style="color:var(--verified)">~70%</td></tr>
+              <tr><td class="num mut">02</td><td class="tname">Data assembly</td><td class="num">470</td><td class="num" style="color:var(--verified)">~85%</td></tr>
+              <tr><td class="num mut">03</td><td class="tname">Provisioning</td><td class="num">280</td><td class="num" style="color:var(--verified)">~95%</td></tr>
+              <tr><td class="num mut">04</td><td class="tname">Scheduling &amp; admin</td><td class="num">180</td><td class="num mut">~40%</td></tr>
+            </tbody>
+          </table>
+          <div class="hr" style="margin:13px 0"></div>
+          <p class="note"><b>Creative review is absent, and it is the largest line by a distance.</b> 980 minutes, category A. Hours are not an argument for automating the instrument — the moment we stop looking at every batch is the moment we stop learning what "good" means here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ DESIGN SYSTEM ═════ -->
+<section class="view" id="v-system">
+  <div class="head">
+    <h1>Design system</h1>
+    <p class="sub">Tokens, type and components — the vocabulary every screen is built from</p>
+  </div>
+
+  <div class="stack">
+    <div class="p">
+      <header><h2>Colour</h2><span class="tail">Cool graphite and petrol. Semantics never borrow the accent</span></header>
+      <div class="body">
+        <p class="lbl">Ground and ink</p>
+        <div class="grid-sw" style="margin:9px 0 18px">
+          <div><div class="swatch" style="background:var(--ground)"></div><div class="spec">--ground</div></div>
+          <div><div class="swatch" style="background:var(--surface)"></div><div class="spec">--surface</div></div>
+          <div><div class="swatch" style="background:var(--raised)"></div><div class="spec">--raised</div></div>
+          <div><div class="swatch" style="background:var(--ink)"></div><div class="spec">--ink</div></div>
+          <div><div class="swatch" style="background:var(--muted)"></div><div class="spec">--muted</div></div>
+          <div><div class="swatch" style="background:var(--line)"></div><div class="spec">--line</div></div>
+        </div>
+        <p class="lbl">Accent — interactive, and measured confidence</p>
+        <div class="grid-sw" style="margin:9px 0 18px">
+          <div><div class="swatch" style="background:var(--accent)"></div><div class="spec">--accent</div></div>
+          <div><div class="swatch" style="background:var(--accent-weak)"></div><div class="spec">--accent-weak</div></div>
+        </div>
+        <p class="lbl">State — separate from the accent, deliberately muted</p>
+        <div class="grid-sw" style="margin:9px 0 0">
+          <div><div class="swatch" style="background:var(--critical)"></div><div class="spec">--critical</div></div>
+          <div><div class="swatch" style="background:var(--caution)"></div><div class="spec">--caution</div></div>
+          <div><div class="swatch" style="background:var(--verified)"></div><div class="spec">--verified</div></div>
+        </div>
+        <p class="note" style="margin-top:16px;max-width:74ch">A dashboard that borrows its alarm colour for navigation teaches you to ignore the alarm. The accent marks what is interactive and what has been verified; the three state colours mark state and appear nowhere else. Both themes are designed, not inverted.</p>
+      </div>
+    </div>
+
+    <div class="cols c2">
+      <div class="p">
+        <header><h2>Type</h2><span class="tail">Three faces, three jobs</span></header>
+        <div class="body">
+          <div style="padding-bottom:14px;border-bottom:1px solid var(--line)">
+            <p class="lbl">Serif — screen titles and customer words</p>
+            <p class="serif" style="font-size:26px;letter-spacing:-.015em;margin-top:5px">Command Center</p>
+            <p class="vb" style="margin-top:9px">I don't know what's working</p>
+            <p class="spec">Charter / Iowan Old Style / Georgia</p>
+          </div>
+          <div style="padding:14px 0;border-bottom:1px solid var(--line)">
+            <p class="lbl">Sans — interface and prose</p>
+            <p style="font-size:15px;margin-top:5px">Past day five, reconciliation not recorded</p>
+            <p class="spec">System grotesque. Deliberately not Inter</p>
+          </div>
+          <div style="padding-top:14px">
+            <p class="lbl">Mono — every number, always tabular</p>
+            <p class="n" style="font-size:21px;font-weight:600;margin-top:5px">£412,880 · 0.94 · 83m</p>
+            <p class="spec">tabular-nums so columns align and digits never reflow</p>
+          </div>
+          <p class="note" style="margin-top:15px">Customer words are set in the serif with a rule; our commentary is grey sans. The two are never given the same treatment — the visual distinction is the discipline that keeps a paraphrase from becoming a quote.</p>
+        </div>
+      </div>
+
+      <div class="p">
+        <header><h2>Components</h2></header>
+        <div class="body" style="display:flex;flex-direction:column;gap:15px">
+          <div>
+            <p class="lbl">Status</p>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px">
+              <span class="pill urgent">Urgent</span><span class="pill soon">Soon</span>
+              <span class="pill ok">Verified</span><span class="pill live">Active</span><span class="pill quiet">Neutral</span>
+            </div>
+          </div>
+          <div>
+            <p class="lbl">Severity row — state in form, not only colour</p>
+            <div style="margin-top:7px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden">
+              <div class="sev urgent" style="padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)">Blocked at the gate</div>
+              <div class="sev soon" style="padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)">Monthly review overdue</div>
+              <div class="sev watch" style="padding:8px 12px;background:var(--surface)">Nothing pressing</div>
+            </div>
+          </div>
+          <div>
+            <p class="lbl">Timeline markers — the glyph encodes the type</p>
+            <ul class="tl" style="margin-top:9px">
+              <li style="padding-bottom:9px"><span class="mk meeting"></span><span style="font-size:13px">Meeting — filled, accent</span></li>
+              <li style="padding-bottom:9px"><span class="mk decision"></span><span style="font-size:13px">Decision — rotated square</span></li>
+              <li style="padding-bottom:9px"><span class="mk finding"></span><span style="font-size:13px">Finding — ochre ring</span></li>
+              <li><span class="mk change"></span><span style="font-size:13px">Change — hollow, neutral</span></li>
+            </ul>
+          </div>
+          <div>
+            <p class="lbl">Stage rail — numbered, because order carries meaning</p>
+            <div class="stages" style="margin-top:7px">
+              <div class="st done"><div class="i">01</div><div class="nm">Done</div></div>
+              <div class="st now"><div class="i">02</div><div class="nm">Current</div></div>
+              <div class="st blocked"><div class="i">03</div><div class="nm">Blocked</div></div>
+              <div class="st"><div class="i">04</div><div class="nm">Ahead</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p">
+      <header><h2>Rules the system enforces</h2></header>
+      <div class="body">
+        <div class="cols c3" style="gap:22px">
+          <div><p class="lbl">No cards, no shadows</p><p class="note" style="margin-top:5px">Panels are hairline containers with a labelled edge. Grouping is done by rules and alignment, so density stays readable and nothing floats for decoration.</p></div>
+          <div><p class="lbl">Numbers are monospaced</p><p class="note" style="margin-top:5px">Every figure, everywhere, tabular. Columns align, digits do not reflow while you read, and the interface reads as an instrument.</p></div>
+          <div><p class="lbl">Motion is for state changes only</p><p class="note" style="margin-top:5px">No entrance animation, no parallax, no ambient movement. A screen you open forty times a day should be still when you arrive.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ ARCHITECTURE ══════ -->
+<section class="view" id="v-ia">
+  <div class="head">
+    <h1>Architecture</h1>
+    <p class="sub">Information structure, the three flows that matter, and what is real today</p>
+  </div>
+
+  <div class="stack">
+    <div class="p">
+      <header><h2>Information architecture</h2></header>
+      <div class="body">
+        <div class="cols c3" style="gap:20px">
+          <div>
+            <p class="lbl">Operating surfaces</p>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px">
+              <div class="kv"><span><b>Command</b> — what needs me today</span><span class="pill ok">Real data</span></div>
+              <div class="kv"><span><b>Clients</b> — one workspace each</span><span class="pill ok">Real data</span></div>
+              <div class="kv"><span><b>Effort</b> — where time goes</span><span class="pill ok">Real data</span></div>
+              <div class="kv"><span><b>Audits</b> — the eight-stage flow</span><span class="pill soon">Needs backend</span></div>
+              <div class="kv"><span><b>Intelligence</b> — what we know</span><span class="pill soon">Partly</span></div>
+            </div>
+          </div>
+          <div>
+            <p class="lbl">Objects underneath</p>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px">
+              <div class="kv"><span>Client</span><span class="n mut">built</span></div>
+              <div class="kv"><span>Interaction</span><span class="n mut">built</span></div>
+              <div class="kv"><span>Evidence</span><span class="n mut">built</span></div>
+              <div class="kv"><span>Task → effort</span><span class="n mut">built</span></div>
+              <div class="kv"><span>Audit + Stage</span><span class="n" style="color:var(--caution)">next</span></div>
+              <div class="kv"><span>Hypothesis</span><span class="n" style="color:var(--caution)">next</span></div>
+            </div>
+          </div>
+          <div>
+            <p class="lbl">Deliberately absent</p>
+            <p class="note" style="margin-top:7px">No customer portal. No chat surface. No notification centre. No settings screen — configuration is a file. Every one of these would be a thing to maintain before it was a thing to need.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p">
+      <header><h2>The three flows</h2><span class="tail">Everything else is navigation</span></header>
+      <div class="body" style="display:flex;flex-direction:column;gap:18px">
+        <div>
+          <p class="lbl">1 · Morning triage — under two minutes</p>
+          <div class="flow" style="margin-top:8px">
+            <span class="b hi">Command</span><span class="ar">→</span>
+            <span class="b">Read the attention list</span><span class="ar">→</span>
+            <span class="b">Open the worst one</span><span class="ar">→</span>
+            <span class="b">Act, or set a next action</span><span class="ar">→</span>
+            <span class="b hi">Back to Command</span>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div>
+          <p class="lbl">2 · After a client call — under three minutes, while it is fresh</p>
+          <div class="flow" style="margin-top:8px">
+            <span class="b hi">Client</span><span class="ar">→</span>
+            <span class="b">Paste the verbatim</span><span class="ar">→</span>
+            <span class="b">Tag pain / objection / value</span><span class="ar">→</span>
+            <span class="b">Set the next action</span><span class="ar">→</span>
+            <span class="b hi">Rule of three re-runs</span>
+          </div>
+          <p class="note" style="margin-top:7px">The capture form is on the client page rather than behind a menu, because a form that takes thirty seconds to reach is a form that gets filled in from memory on Friday.</p>
+        </div>
+        <div class="hr"></div>
+        <div>
+          <p class="lbl">3 · Friday synthesis — thirty minutes, calendared</p>
+          <div class="flow" style="margin-top:8px">
+            <span class="b hi">Intelligence</span><span class="ar">→</span>
+            <span class="b">What repeated this week</span><span class="ar">→</span>
+            <span class="b">What contradicts last week</span><span class="ar">→</span>
+            <span class="b hi">Effort</span><span class="ar">→</span>
+            <span class="b">What would I change about the offer</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p">
+      <header><h2>What I would build, and in what order</h2></header>
+      <div class="body">
+        <p class="note" style="max-width:76ch;margin-bottom:13px">Three of the five surfaces sit on data the ops tool already produces and can be implemented immediately. Two do not, and building screens against invented data is how a design starts lying about the product. The audit workspace is the highest-value next thing — it is what a paying customer actually buys.</p>
+        <table>
+          <thead><tr><th class="num" style="width:34px">#</th><th>Step</th><th style="width:190px">Depends on</th><th style="width:96px">Size</th></tr></thead>
+          <tbody>
+            <tr><td class="num mut">01</td><td class="tname">Design system into the ops tool — tokens, type, components</td><td class="mut">Nothing</td><td class="mut">Half a day</td></tr>
+            <tr><td class="num mut">02</td><td class="tname">Command, Clients, Effort against live data</td><td class="mut">Step 01</td><td class="mut">One day</td></tr>
+            <tr><td class="num mut">03</td><td class="tname">Audit + Stage objects, then the workspace</td><td class="mut">Phase B backend</td><td class="mut">Two days</td></tr>
+            <tr><td class="num mut">04</td><td class="tname">Hypothesis object, then Intelligence in full</td><td class="mut">Phase C backend</td><td class="mut">One day</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var views = document.querySelectorAll('.view');
+  var navs = document.querySelectorAll('.nav');
+
+  function show(name) {
+    views.forEach(function (v) { v.classList.toggle('on', v.id === 'v-' + name); });
+    navs.forEach(function (n) {
+      if (n.dataset.v === name) { n.setAttribute('aria-current', 'page'); }
+      else { n.removeAttribute('aria-current'); }
+    });
+    window.scrollTo(0, 0);
+  }
+
+  navs.forEach(function (n) {
+    n.addEventListener('click', function () { show(n.dataset.v); });
+  });
+
+  // Filter chips are a single-select group; this is the design prototype, so
+  // they demonstrate the state rather than filter anything.
+  document.querySelectorAll('.chips').forEach(function (group) {
+    group.addEventListener('click', function (e) {
+      var chip = e.target.closest('.chip');
+      if (!chip) return;
+      group.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+      chip.setAttribute('aria-pressed', 'true');
+    });
+  });
+
+  var root = document.documentElement;
+  document.getElementById('theme').addEventListener('click', function () {
+    var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var current = root.getAttribute('data-theme') || (dark ? 'dark' : 'light');
+    root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>

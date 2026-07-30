@@ -1,0 +1,85 @@
+/* Phoenix — design tokens
+ *
+ * Cool graphite and petrol. The neutral is blue-shifted rather than warm,
+ * because the subject is measurement instruments, not editorial.
+ *
+ * Semantic colour is separate from the accent and never borrows it: the accent
+ * marks *interactive*, the semantics mark *state*. Mixing them is how a
+ * dashboard ends up looking alarmed about its own navigation.
+ */
+
+:root {
+  /* ground → surface → raised, cool-shifted greys */
+  --ground: #f7f8f8;
+  --surface: #ffffff;
+  --raised: #f1f3f3;
+  --ink: #16191c;
+  --ink-2: #3d454a;
+  --muted: #6a7278;
+  --faint: #969ea3;
+  --line: #e2e5e7;
+  --line-strong: #cfd4d7;
+
+  /* petrol — reserved for interactive and for measured confidence */
+  --accent: #0f6e72;
+  --accent-weak: #d7e8e8;
+
+  /* state, deliberately muted. A dashboard that shouts is a dashboard ignored */
+  --critical: #a8402f;
+  --critical-weak: #f6e4e0;
+  --caution: #9a6b15;
+  --caution-weak: #f7ecd8;
+  --verified: #3e6b4a;
+  --verified-weak: #e2eee5;
+
+  --serif: "Charter", "Bitstream Charter", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+
+  --r: 3px;           /* barely rounded. Instruments have edges */
+  --rail: 208px;
+  --strip: 40px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #0e1113;
+    --surface: #161a1d;
+    --raised: #1d2225;
+    --ink: #e6e9ea;
+    --ink-2: #c2c9cc;
+    --muted: #8a9399;
+    --faint: #6b7479;
+    --line: #262c30;
+    --line-strong: #38403f;
+    --accent: #4ec3c7;
+    --accent-weak: #123033;
+    --critical: #d9705c;
+    --critical-weak: #33201c;
+    --caution: #c99a3e;
+    --caution-weak: #2e2617;
+    --verified: #6da37e;
+    --verified-weak: #1a2a20;
+  }
+}
+
+/* The viewer's toggle must win over the OS preference, in both directions. */
+:root[data-theme="dark"] {
+  --ground: #0e1113; --surface: #161a1d; --raised: #1d2225;
+  --ink: #e6e9ea; --ink-2: #c2c9cc; --muted: #8a9399; --faint: #6b7479;
+  --line: #262c30; --line-strong: #38403f;
+  --accent: #4ec3c7; --accent-weak: #123033;
+  --critical: #d9705c; --critical-weak: #33201c;
+  --caution: #c99a3e; --caution-weak: #2e2617;
+  --verified: #6da37e; --verified-weak: #1a2a20;
+}
+
+:root[data-theme="light"] {
+  --ground: #f7f8f8; --surface: #ffffff; --raised: #f1f3f3;
+  --ink: #16191c; --ink-2: #3d454a; --muted: #6a7278; --faint: #969ea3;
+  --line: #e2e5e7; --line-strong: #cfd4d7;
+  --accent: #0f6e72; --accent-weak: #d7e8e8;
+  --critical: #a8402f; --critical-weak: #f6e4e0;
+  --caution: #9a6b15; --caution-weak: #f7ecd8;
+  --verified: #3e6b4a; --verified-weak: #e2eee5;
+}
