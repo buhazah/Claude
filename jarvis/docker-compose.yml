@@ -38,6 +38,13 @@ services:
       JARVIS_ANTHROPIC_API_KEY: ${JARVIS_ANTHROPIC_API_KEY:-}
       JARVIS_OPENAI_API_KEY: ${JARVIS_OPENAI_API_KEY:-}
       JARVIS_EMBEDDING_API_KEY: ${JARVIS_EMBEDDING_API_KEY:-}
+      # Trading department (see apps/api/src/jarvis/trading/README.md). Off
+      # unless TRADING_ENABLED is set — the same api process runs its
+      # scheduled workflows and, with a bot token, its Telegram long-poll
+      # loop, so no second service is required to turn it on.
+      TRADING_ENABLED: ${TRADING_ENABLED:-false}
+      TRADING_TELEGRAM_BOT_TOKEN: ${TRADING_TELEGRAM_BOT_TOKEN:-}
+      TRADING_TELEGRAM_ADMIN_IDS: ${TRADING_TELEGRAM_ADMIN_IDS:-[]}
     ports: ["8000:8000"]
     # Postgres schema is owned by Alembic, so migrate before serving.
     command: >

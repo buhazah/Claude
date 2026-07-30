@@ -8,6 +8,7 @@ DNS at it.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import structlog
@@ -127,3 +128,17 @@ class TelegramBot:
                     "telegram_broadcast_failed", telegram_id=user.telegram_id, error=str(exc)
                 )
         return sent
+
+    async def run_forever(self) -> None:
+        """Poll until cancelled. One bad batch logs and retries rather than
+        taking the loop down — a deployment restarting the whole process
+        over a single flaky ``getUpdates`` call would drop updates for
+        longer than just backing off and trying again."""
+        while True:
+            try:
+                await self.poll_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning("telegram_poll_failed", error=str(exc))
+                await asyncio.sleep(5.0)

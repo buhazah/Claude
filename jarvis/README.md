@@ -72,6 +72,13 @@ and agent metrics.
 583 tests, including load and chaos, and durability verified across a real
 process restart.
 
+*Trading — Hermes SPX AI Signal Bot*: the first department built on the
+finished kernel rather than a kernel milestone itself. Deterministic market,
+technical and options analysis; six priced strategy builders; a seven-rule
+risk manager with veto power; a Telegram bot; three scheduled workflows; and
+a track record. See [its README](apps/api/src/jarvis/trading/README.md).
+259 tests, off by default behind `TRADING_ENABLED`.
+
 ## Run it
 
 Nothing is required to start — no API keys, no database, no network. Jarvis
@@ -225,6 +232,22 @@ Embeddings follow the same pattern: deterministic local ones by default,
 hosted ones when `JARVIS_EMBEDDING_API_KEY` is set, falling back to local if
 the provider fails.
 
+## Departments
+
+Jarvis's kernel is general-purpose; a department is a domain-specific
+product built on top of it, reusing the same event bus, workflow engine,
+tool registry, memory, security and observability.
+
+- **[Trading](apps/api/src/jarvis/trading/README.md)** — an SPX options AI
+  Telegram signal bot. Deterministic market data, technical and options
+  analysis, strategy construction and risk filtering (not chat agents),
+  scheduled by three workflows on the existing scheduler.
+
+  ```bash
+  export TRADING_ENABLED=true
+  export TRADING_TELEGRAM_BOT_TOKEN=...   # from @BotFather
+  ```
+
 ## Develop
 
 ```bash
@@ -260,7 +283,8 @@ jarvis/
     │   │   ├── security/ vault · redaction · cost governance · SQL stores
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
-    │   │   └── api/     routes · schemas · SSE
+    │   │   ├── api/     routes · schemas · SSE
+    │   │   └── trading/ SPX signal bot department (see its own README)
     │   └── tests/
     └── web/             Next.js client
         ├── src/app/      dashboard · chat · agents · memory · knowledge ·

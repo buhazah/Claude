@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from jarvis.config import get_settings
 from jarvis.persistence.db import normalise_url
 from jarvis.persistence.models import Base
-from jarvis.trading.database import models as _trading_models  # noqa: F401  registers tables on Base
+from jarvis.trading.database import (
+    models as _trading_models,  # noqa: F401  registers tables on Base
+)
 
 config = context.config
 

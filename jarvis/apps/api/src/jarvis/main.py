@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -15,6 +17,7 @@ from jarvis.config import Settings, get_settings
 from jarvis.kernel import container
 from jarvis.kernel.errors import JarvisError
 from jarvis.observability.logging import configure_logging
+from jarvis.trading.bootstrap import install_trading
 
 log = structlog.get_logger(__name__)
 
@@ -39,9 +42,24 @@ def create_app(
             "system.started",
             {"environment": settings.environment, "storage": system.storage},
         )
+
+        # Optional and off by default (TRADING_ENABLED). When on, this
+        # registers the trading tools and workflows onto the same scheduler
+        # already running above — no second process for the workflow side.
+        # The Telegram bot's long-poll loop is the one thing the scheduler
+        # can't drive, so it gets its own background task here.
+        trading_bot_task: asyncio.Task[None] | None = None
+        department = await install_trading(system)
+        if department is not None and department.telegram_bot is not None:
+            trading_bot_task = asyncio.create_task(department.telegram_bot.run_forever())
+
         log.info("api_ready", environment=settings.environment, storage=system.storage)
         yield
         system.bus.publish("system.stopping", {})
+        if trading_bot_task is not None:
+            trading_bot_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await trading_bot_task
         await system.stop()
 
     app = FastAPI(

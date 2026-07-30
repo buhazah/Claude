@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -24,6 +25,7 @@ class FakeTelegramClient:
         return {"ok": True}
 
     async def get_updates(self, *, offset: int | None = None, timeout: float = 30.0) -> list[dict]:
+        await asyncio.sleep(0)  # a real suspension point, so run_forever stays cooperative
         batch = self.updates
         self.updates = []
         return batch
@@ -123,3 +125,46 @@ async def test_broadcast_sends_only_to_subscribers_with_notifications_on(store, 
     sent = await bot.broadcast("new signal!")
     assert sent == 1
     assert client.sent == [(1, "new signal!")]
+
+
+async def test_run_forever_stops_cleanly_on_cancellation(store, clock):
+    client = FakeTelegramClient()
+    bot = make_bot(client=client, store=store, clock=clock)
+    task = asyncio.create_task(bot.run_forever())
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+async def test_run_forever_survives_a_failed_poll_and_keeps_going(store, clock, monkeypatch):
+    class FlakyClient(FakeTelegramClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self.calls = 0
+
+        async def get_updates(self, *, offset=None, timeout=30.0):
+            await asyncio.sleep(0)  # a real suspension point, so the loop stays cooperative
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("simulated network failure")
+            return []
+
+    real_sleep = asyncio.sleep
+
+    async def instant(_seconds: float) -> None:
+        await real_sleep(0)  # patching asyncio.sleep globally would recurse into itself
+
+    monkeypatch.setattr("jarvis.trading.telegram_agent.bot.asyncio.sleep", instant)
+
+    client = FlakyClient()
+    bot = make_bot(client=client, store=store, clock=clock)
+    task = asyncio.create_task(bot.run_forever())
+    for _ in range(5):
+        await asyncio.sleep(0)
+        if client.calls >= 2:
+            break
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert client.calls >= 2
