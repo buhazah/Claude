@@ -156,7 +156,14 @@ cohorts, because nothing gets fixed in between.
 
 ### Cohort A — clients 1–3 · *design partners*
 
-Heavily discounted or free, and told exactly why. **Insight tier only.**
+> **Refined by [`11-FIRST-TEN.md §2`](11-FIRST-TEN.md), which supersedes this
+> paragraph on two points.** They pay £2,000/month rather than being free or
+> heavily discounted — a client who pays nothing does not renew like a customer,
+> and the retention signal is the only thing this phase buys. And there is one
+> offer rather than a tier split; H1 is tested by *sequencing* delivery, not by
+> selling two different products.
+
+Discounted in exchange for written obligations, and told exactly why.
 
 *Question:* what breaks, and what do they actually ask us for?
 
@@ -172,14 +179,15 @@ having no clients.
 
 ### Cohort B — clients 4–10 · *the first money*
 
-Full price. **Recommend tier**, plus Insight-only for two of them as H1's control.
+Full price, one offer (`11-FIRST-TEN.md §2`).
 
 *Question:* will they pay, and will they renew at month three?
 
-This cohort answers H1, H2, H3 and H6 together. Two clients deliberately receive
-only the report and reconciliation — no recommendations, no creative. If they
-renew at the same rate as the full-service clients, H1 is true and the roadmap
-changes.
+This cohort answers H1, H2, H3 and H6 together. **H1 is tested by sequencing
+rather than by a tier split:** two clients start with measurement only, told
+honestly that creative begins in week seven — and what matters is what they ask
+for in weeks one to six. If they never ask, H1 has its answer, and nobody has
+been charged the same price for less.
 
 **Stop rule:** fewer than four of seven renewing at month three means the offer
 is wrong, not the execution. Stop selling and go and find out which part they
@@ -202,10 +210,12 @@ account size by client twenty, R6 has fired.
 Cheap, and between them they answer everything in §4.
 
 **The effort ledger.** Every human minute spent on a client, categorised, weekly.
-Onboarding, review, exceptions, comms, firefighting, unplanned. After twenty
-clients this *is* the automation roadmap — derived from where time actually went
-rather than guessed from where we expected it to go. It is the highest-value
-artefact in this document and it is a spreadsheet.
+After twenty clients this *is* the automation roadmap — derived from where time
+actually went rather than guessed from where we expected it to go. It is the
+highest-value artefact in this document and it is a table:
+[`EFFORT-LEDGER.md`](EFFORT-LEDGER.md). The categories matter more than the
+minutes — work that is manual *because it is teaching us something* must never be
+automated on hours alone.
 
 **The near-churn interview.** Structured, at month two and month five, with one
 question that matters: *"if we removed one part of this, which would you miss
@@ -266,7 +276,8 @@ data, which is the trade this whole document is making.
 
 - **Stop:** designing subsystems, extending abstractions, writing ADRs about
   things no client has hit.
-- **Start:** Phase 0 and Phase 1 as written, against one real ad account.
+- **Start:** [`11-FIRST-TEN.md`](11-FIRST-TEN.md) — the offer, the onboarding
+  gate, the weekly rhythm, and Phase 0/1 built only as far as those need.
 - **Keep:** recording observations, predictions, overrides and provenance —
   three days of work, permanently unrecoverable if skipped.
 - **File:** every gap into `DEFICIENCIES.md`, with a client's name on it.
