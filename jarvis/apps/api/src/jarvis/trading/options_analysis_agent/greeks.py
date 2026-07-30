@@ -67,6 +67,61 @@ def black_scholes_greeks(
     return OptionGreeks(delta=delta, gamma=gamma, theta=theta, vega=vega)
 
 
+def black_scholes_price(
+    *,
+    spot: float,
+    strike: float,
+    days_to_expiration: int,
+    volatility: float,
+    option_type: str,
+    risk_free_rate: float = 0.05,
+) -> float:
+    """The theoretical premium for one option, used by the strategy agent to
+    price legs it did not get a live quote for (e.g. a strike between two
+    quoted ones)."""
+    if spot <= 0 or strike <= 0:
+        raise ValueError("spot and strike must be positive")
+    if volatility <= 0:
+        raise ValueError("volatility must be positive")
+    if days_to_expiration <= 0:
+        raise ValueError("days_to_expiration must be positive")
+    if option_type not in ("call", "put"):
+        raise ValueError(f"unknown option_type: {option_type}")
+
+    t = days_to_expiration / 365.0
+    sqrt_t = math.sqrt(t)
+    d1 = (math.log(spot / strike) + (risk_free_rate + volatility**2 / 2) * t) / (
+        volatility * sqrt_t
+    )
+    d2 = d1 - volatility * sqrt_t
+    discounted_strike = strike * math.exp(-risk_free_rate * t)
+
+    if option_type == "call":
+        return spot * _norm_cdf(d1) - discounted_strike * _norm_cdf(d2)
+    return discounted_strike * _norm_cdf(-d2) - spot * _norm_cdf(-d1)
+
+
+def probability_price_within(*, distance: float, std_dev: float) -> float:
+    """Probability, under a normal model, that price ends within
+    ``± distance`` of today's spot, given a ``std_dev`` (e.g. the expected
+    move over the strategy's holding period). Returned as a percentage."""
+    if std_dev <= 0:
+        raise ValueError("std_dev must be positive")
+    z = distance / std_dev
+    return (2 * _norm_cdf(z) - 1) * 100.0
+
+
+def probability_above(*, distance: float, std_dev: float) -> float:
+    """Probability, under a normal model, that price ends more than
+    ``distance`` above today's spot (``distance`` may be negative). Used to
+    estimate a debit spread's probability of clearing its breakeven.
+    Returned as a percentage."""
+    if std_dev <= 0:
+        raise ValueError("std_dev must be positive")
+    z = distance / std_dev
+    return (1.0 - _norm_cdf(z)) * 100.0
+
+
 def iv_rank(current_iv: float, history: list[float]) -> float:
     """Where ``current_iv`` sits in its trailing range, 0-100.
 
