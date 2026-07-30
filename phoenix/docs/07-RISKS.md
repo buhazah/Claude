@@ -6,17 +6,27 @@
 
 Ordered by how likely they are to kill the company.
 
-### R1 — Meta commoditises the work *(likely, high impact)*
-Advantage+ already absorbed most of media buying. If Meta ships better
-automated creative generation, the creative wedge narrows too.
+### R1 — Meta commoditises the work *(likely, moderate impact — downgraded)*
+Advantage+ already absorbed most of media buying. If Meta ships better automated
+creative generation, the creative wedge narrows too.
 
-**Mitigation:** the defensible layer is measurement, offer strategy, and
-operational safety — things Meta will never do for an advertiser because they
-require the advertiser's own data and interests. Do not build a business whose
-only claim is out-optimising the platform on its own data.
+**Why this is now moderate rather than high.** Two decisions changed the
+exposure. Owning the **complete acquisition workflow** means Meta would have to
+commoditise strategy, cross-channel measurement against the client's own store,
+compliance, governance and institutional memory — not one stage of it. And a
+**channel-agnostic core** means Meta commoditising Meta does not commoditise
+Phoenix; it commoditises one adapter. A platform absorbing its own layer is
+precisely the scenario the abstraction in ADR 0006 was bought for.
 
-**Leading indicator:** creative win rate against Meta's own generated assets.
-Track from Phase 2.
+**What is genuinely not defensible:** any claim to beat the auction. That claim
+is dropped in `00-STRATEGY.md §3`.
+
+**Mitigation:** keep the defensible layer — measurement against the client's own
+revenue, offer strategy, operational safety, and cross-channel knowledge — and
+make sure none of it lives inside an adapter.
+
+**Leading indicator:** creative win rate against the platform's own generated
+assets. Track from Phase 2.
 
 ### R2 — AI creative is not good enough *(unknown, existential)*
 The assumption everything rests on.
@@ -24,43 +34,76 @@ The assumption everything rests on.
 **Mitigation:** Phase 2 tests it for ~£4k in week three, with a written
 decision rule for each of the three outcomes.
 
-### R3 — Nobody trusts an AI with their ad spend *(likely, high)*
+### R3 — Nobody trusts an AI with their ad spend *(likely, now manageable)*
 Rational customer behaviour, not a marketing problem.
 
-**Mitigation:** shadow mode is the entire answer. Sell measurement first (Phase
-1), earn autonomy on evidence, per action type. The decision ledger is the
-trust product.
+**Mitigation:** recommendation mode is a better answer than shadow mode alone,
+because the client sees the proposals and keeps their hands on the controls.
+Sell Insight and Recommend first; earn write authority on evidence, per action
+type. The decision ledger is the trust product.
+
+The pricing structure now reflects this rather than fighting it: a client who
+never grants write access is a full-price Recommend client, not a stalled sale.
 
 ### R4 — Ad account ban *(possible, severe per client)*
 A policy strike can end a client relationship in an afternoon, and appeals run
-on Meta's timetable, not ours.
+on the platform's timetable, not ours.
 
 **Mitigation:** compliance gate before every ship, scored on **recall** not
 precision; conservative claim handling; never auto-resume a policy pause; never
-hold billing permissions.
+hold billing permissions. Under the agency model the account is the client's, so
+a strike is contained to one relationship rather than to an app that serves all
+of them.
 
-### R5 — Liability for autonomous spend *(certain to arise, unbounded)*
-Phoenix will eventually lose someone money. The question is whether the
-contract answered it in advance.
+### R5 — Liability for the results of our decisions *(certain to arise, now bounded)*
+Phoenix will eventually lose someone money. The question is whether the contract
+answered it in advance.
 
-**Mitigation:** settle in Phase 0, before the first mandate. Mandate ceilings
-double as contractual liability caps. Insurance. Decide whether we hold the ad
-accounts — it changes the exposure entirely.
+**The agency model narrows this substantially.** The client is the advertiser of
+record; the accounts, the billing relationship and the platform terms are
+theirs. We act on instruction inside an envelope they set and can revoke, and we
+never front or resell media, so there is no exposure on spend itself.
 
-### R6 — Services margin, not software margin *(likely)*
-If every client needs eight hours of human time a week, this is an agency with
-a large AI bill.
+**Mitigation, settled before the first mandate:** mandate ceilings double as
+contractual liability caps stated in the same numbers; the decision ledger is
+the evidentiary record; professional indemnity insurance sized against the
+aggregate of live mandate ceilings, not against revenue. Detail in
+`01-PRD.md §11`.
 
-**Mitigation:** human-minutes-per-client-per-week is a tracked metric with a
-target from Phase 5. If it does not fall, the business is an agency and should
-be priced as one.
+**What remains genuinely open:** negligent *advice*. Recommendation mode moves
+execution to the client but does not make bad advice free, and a premium fee
+raises what a client reasonably expects of it. That is an insurance and
+contract-drafting problem, not an architecture one.
 
-### R7 — Meta cuts off API access *(unlikely, fatal)*
-Platform risk in its purest form.
+### R6 — Services margin, not software margin *(likely — and partly accepted)*
+If every client needs eight hours of human time a week, this is an agency with a
+large AI bill.
 
-**Mitigation:** none that is honest. Comply meticulously, keep the measurement
-layer platform-agnostic so it survives, and do not pretend this risk is
-managed. It is accepted.
+**Reframed by the pricing decision.** At a premium fee, 2–4h/week of senior human
+time is affordable and is part of what is sold; `07-RISKS.md §3` budgets it
+rather than trying to eliminate it. The failure mode is not "this is services" —
+it is **human time that scales with client spend**, which caps the business at
+however many clients the founder can personally watch.
+
+**Mitigation:** track human-minutes-per-client-per-week against *account size*,
+not just in absolute terms, from Phase 5. Flat is the target. Rising with spend
+is the kill signal.
+
+### R7 — A platform cuts off API access *(unlikely per channel, no longer fatal)*
+Platform risk in its purest form — and the one risk the channel abstraction was
+bought to survive.
+
+**Mitigation:** comply meticulously, and keep everything above the channel port
+free of platform concepts so that losing one adapter is a commercial loss rather
+than a rebuild. Being an agency operating on client accounts also means the
+exposure is per client's Business Manager rather than one app whose suspension
+ends every relationship simultaneously.
+
+**Honestly stated:** if the first adapter is the only one built, this is still
+close to fatal in the short term, because the second adapter is weeks of work we
+would be doing under duress with no revenue. The abstraction converts an
+extinction event into a bad quarter, which is worth what it costs — but it is
+not the same as being diversified.
 
 ## 2. Technical risks
 
@@ -74,55 +117,105 @@ managed. It is accepted.
 | T6 | Rate limits under fleet load | Likely | Per-tenant limiter, backoff, scheduled off-peak |
 | T7 | Token expiry / revocation looks like a rate limit | Likely | Explicit connection health; loud degradation, never stale numbers |
 | T8 | Prompt injection via competitor pages, reviews, ad comments | Likely | Jarvis's untrusted-content posture; no content can elevate a permission |
-| T9 | AI cost per client exceeds margin | Possible | Cost governor per tenant, checked before each call; creative generation is the line item to watch |
+| T9 | AI cost per client exceeds margin | Unlikely at premium pricing | Cost governor per tenant, checked before each call; creative generation is the line item to watch |
 | T10 | Multi-agent cost and latency explosion | Likely if departments talk | Workflow spine, not conversation (ADR 0004) |
 | T11 | Evaluation corpus rots as the environment moves | Certain | Cases generated from history; baselines re-cut with justification |
 | T12 | A model writes a number it was not given | Likely | `report` suite: any figure not passed in is a hard failure |
+| T13 | **The channel abstraction leaks** — a Meta concept reaches strategy, mandates or memory | Likely without enforcement | Import-graph test in CI (ADR 0006); `native` in a prompt or report is a bug; conformance suite is written before the first adapter |
+| T14 | The neutral graph cannot express something a channel needs | Certain, eventually | `native` escape hatch and adapter-namespaced verbs, both opt-in; `unsupported` verdict rate is tracked so the gap is visible rather than worked around |
+| T15 | Capabilities and mandates drift apart — we believe we can write and cannot | Likely | Capabilities re-derived on every token refresh; authority is the intersection, never the union; action type falls to tier R rather than failing |
 
 T1 and T2 are the two that must be solved before anything else is built on top
-of them.
+of them. T13 is the one that is cheap now and very expensive in a year.
 
-## 3. Cost model
+## 3. Cost model — premium managed service
 
-**Assumed price: £2,500/month per client.** Every number below moves if that
-changes, and settling it is a Phase 0 task.
+**The pricing decision is taken: Phoenix is priced as a premium managed
+service.** The architecture optimises for maintainability, reliability and
+measurable results; infrastructure efficiency is a constraint, not an objective.
 
-### Per client per month, at steady state
+Two facts set the frame. First, under the agency model there is **no media
+markup** — the client pays the platform directly, so the fee alone carries the
+business. Second, the ICP spends £10k–£100k/month; a fee that is 10–20% of
+media is both conventional in the category and comfortably above what these
+numbers require.
+
+### The offer, in tiers
+
+| Tier | What the client gets | Needs | Indicative fee |
+|---|---|---|---|
+| **Insight** | Ingest, reconciliation, diagnosis, weekly report | read only | £1,500–2,500/mo |
+| **Recommend** | The above, plus the full decision loop delivered as ranked, evidenced actions they execute, plus the creative pipeline | read only | £3,000–4,500/mo |
+| **Managed** | The above, plus execution under mandate | read + write | £5,000–7,500/mo |
+| Onboarding | Discovery, tracking verification, 90-day baseline, first strategy | — | £3,000–5,000 one-off |
+
+Two things this structure buys that a single price does not. **Recommend is a
+real tier, not a discount** — it is most of the work, and pricing it as a
+consolation prize would be pricing our own read-only mode as a failure. And
+**Managed is priced on accountability, not on labour saved**; the increment
+between Recommend and Managed is what it costs to be responsible for the change.
+
+### Per client per month, at steady state, Managed tier
+
+Numbers are deliberately *generous* rather than lean. Where a cheaper option
+exists and is worse, this model assumes we buy the better one.
 
 | Line | Estimate | Notes |
 |---|---|---|
-| Creative generation | £80–200 | 40 variants; **the dominant and most variable line** |
-| LLM — research, strategy, briefs | £25–60 | Front-loaded at onboarding |
-| LLM — diagnosis and proposals | £15–40 | Daily, cheap models, short context |
-| LLM — reports and comms | £10–25 | Weekly, prose only |
-| Embeddings and memory | £5–15 | |
-| Infrastructure — instance, DB, storage | £30–60 | The isolation tax |
-| **AI + infra subtotal** | **£165–400** | |
-| Human — success, review, exceptions | £250–800 | **The variable that decides the business** |
-| **Total COGS** | **£415–1,200** | |
-| **Gross margin at £2,500** | **52–83%** | |
+| Creative generation | £150–400 | 40–60 variants using the best available models, not the cheapest. **The dominant and most variable line.** |
+| LLM — research, strategy, briefs | £40–90 | Front-loaded at onboarding; frontier models, long context |
+| LLM — diagnosis and proposals | £30–70 | Daily. Frontier model on the reasoning step — this is the one that must be right |
+| LLM — reports and comms | £15–35 | Weekly, prose only |
+| Embeddings and memory | £10–25 | |
+| Evaluation runs | £20–50 | Nightly corpus, per-tenant cases. Not optional, therefore a line item |
+| Infrastructure — instance, DB, storage | £60–120 | Isolation, plus headroom rather than right-sizing |
+| **AI + infra subtotal** | **£325–790** | |
+| Human — success, creative review, exceptions | £600–1,400 | 2–4h/week at a loaded senior rate. **Budgeted, not minimised.** |
+| **Total COGS** | **£925–2,190** | |
+| **Gross margin at £6,000** | **64–85%** | |
+| **Gross margin at £3,750 (Recommend)** | **~55–75%** | Lower COGS too — no actuation, less review |
 
 ### What the numbers say
 
+**Premium pricing buys correctness, and correctness is the product.** At
+£925–2,190 COGS against a £6,000 fee there is no pressure to route diagnosis to
+a cheap model, skip the evaluation run, or share a database between tenants. Every
+one of those savings is worth £30–80/month and costs credibility that is worth
+the whole account. That is the entire argument for not optimising the price
+downward.
+
 **Creative generation is the cost centre, not the LLM calls.** Text is cheap;
-images and video are not. Two consequences: cache and reuse aggressively via
-lineage, and generate in tiers — cheap models to explore, expensive ones only
-for concepts that survive internal filtering.
+images and video are not. Two consequences that survive premium pricing because
+they improve quality as well as cost: cache and reuse aggressively via lineage,
+and generate in tiers — cheap models to *explore*, expensive ones only for
+concepts that survive internal filtering. That is a better creative process, not
+just a cheaper one.
 
-**Human time is the whole business.** At 8h/week/client this is an agency with
-software costs. At 1h/week it is software with a services wrapper. The gap
-between 52% and 83% margin is almost entirely that number.
+**Human time is budgeted at 2–4h/week, not squeezed toward zero.** At a premium
+fee, a senior human reviewing creative and handling exceptions is affordable and
+is part of what is being bought. The number that matters is not whether it falls
+to one hour; it is whether it stays *flat* as accounts get larger. Human time
+that scales with client spend is the thing that breaks the model.
 
-**The isolation tax is real but small.** £30–60/client for a separate instance
-and database is a fair price for a confidentiality story that survives
-scrutiny. At 500 clients it needs revisiting; at 50 it does not.
+**The isolation tax is now explicitly accepted.** £60–120/client for a separate
+instance and database is not a cost to engineer away. It is the confidentiality
+story, and at a premium fee it rounds to nothing. Revisit at 200+ clients, not
+before.
+
+**What premium pricing does not excuse.** A higher fee raises the bar on
+reliability and evidence rather than lowering it: a client paying £6,000/month
+who receives a wrong number churns faster than one paying £900, not slower.
+Every zero-tolerance metric in `05-EVALUATION.md §8` gets stricter here, not
+looser.
 
 ### Break-even sketch
 
-Fixed costs — control plane, one engineer, tooling — call it £12k/month.
-At 70% gross margin, break-even is roughly **7 clients**. At 15 clients the
-operation is profitable enough to hire. These are estimates on an assumed
-price, not a forecast.
+Fixed costs — control plane, two engineers, tooling, insurance — call it
+£28k/month. At a £4,500 blended fee and 70% gross margin, break-even is roughly
+**9 clients**. At 20 clients the operation supports a second engineer and a
+dedicated client-success hire. These are estimates against an indicative price,
+not a forecast, and the sensitivity that matters is human hours per client, not
+infrastructure.
 
 ## 4. Scaling
 
@@ -133,13 +226,14 @@ founder reviews every creative batch. Optimise for learning, not efficiency.
 triage, not review. Fleet scheduling from the control plane. Per-tenant cost
 attribution becomes necessary rather than nice.
 
-**50–200.** Instance-per-tenant starts to hurt: provisioning, migrations,
-per-instance idle cost. Two options — pooled instances for small clients with
-tenancy inside Jarvis Core, or accept the cost and price for it. Decide with
-data, not now.
+**50–200.** Instance-per-tenant starts to show: provisioning, migrations,
+per-instance idle cost. At premium pricing the infra cost is not the reason to
+change — *operational* cost is. Automate provisioning and migration rollout
+before considering pooling. This is also the range where a second channel adapter
+becomes a retention question rather than a roadmap item.
 
-**200+.** Different company. Rate limits, Meta partnership terms, and a support
-organisation all become first-order problems.
+**200+.** Different company. Rate limits, platform partnership terms, pooled
+tenancy, and a support organisation all become first-order problems.
 
 **What scales badly and should be watched:** anything requiring a human to look
 at every unit of output. Creative review is the obvious one, which is why the
@@ -154,9 +248,9 @@ Debt is a loan. The question is only whether it is recorded and priced.
 
 | Debt | Why | Repayment trigger |
 |---|---|---|
-| Instance-per-tenant | Isolation now beats efficiency now | >50 clients, or infra cost >10% of revenue |
-| Meta only | Depth before breadth | A client's retention depends on a second platform |
-| Manual creative review | We do not know what to automate yet | Review time >3h/client/week |
+| Instance-per-tenant | Isolation beats efficiency, and premium pricing pays for it | >200 clients, or infra cost >10% of revenue |
+| **One adapter**, not one architecture | Depth before breadth — but the *port* is not deferred | A client's retention depends on a second channel |
+| Manual creative review | We do not know what to automate yet, and at this price we can afford not to | Review time >4h/client/week, or rising with account size |
 | No fine-tuning | Removes a class of leakage argument | Only if measured lift justifies it |
 | Counterfactual scoring in shadow | Cheaper than universal holdouts | When a decision's stakes justify a real holdout |
 | Human onboarding | The first fifty teach us the workflow | >2 onboardings/week |
@@ -168,8 +262,14 @@ Debt is a loan. The question is only whether it is recorded and priced.
 - a shared database across tenants
 - a model computing a number that reaches a client
 - an approval path around the hard floor in `03-AUTONOMY.md §3`
+- a channel concept above the channel port
 
-Those five are the invariants. Everything else is negotiable under deadline.
+Those six are the invariants. Everything else is negotiable under deadline.
+
+The last one is new and is the easiest to breach under deadline, because every
+individual breach looks harmless: one Meta field on a report, one `campaign_id`
+in a prompt, one adapter import in the strategy service. It is enforced the same
+way Jarvis enforces its kernel rule — by a test in CI, not by intention.
 
 **The repayment discipline:** every deliberate debt gets a row in this table
 with a trigger. A debt without a trigger is not debt; it is a decision nobody
@@ -180,16 +280,20 @@ admitted to making.
 Stated in advance, because the time to write the kill criteria is before you
 are emotionally invested:
 
-1. **Meta write access is refused or takes more than six months.** Phases 3+
-   are impossible; Phase 1 is a different, smaller company.
+1. **Clients will not pay a premium fee for Recommend, and will not grant write
+   access either.** This is the replacement for the old "Meta write access is
+   refused" criterion, and it is a better test: write access being slow is
+   survivable, but a market that values neither the analysis nor the execution
+   has told us the workflow is not the product.
 2. **AI creative loses badly in Phase 2** *and* the volume advantage does not
    compensate. The wedge is gone.
-3. **Human time per client will not fall below ~4h/week by Phase 5.** It is an
-   agency. That can be a good business, but it is not this one, and it should
-   be priced and staffed as an agency from that point.
+3. **Human time per client rises with account size** and will not flatten by
+   Phase 5. Not "it is an agency" — a premium agency is a fine business — but a
+   business that cannot grow past the founder's attention.
 4. **Reconciliation confidence cannot reach 0.9 on typical accounts.** If we
    cannot measure correctly, we cannot optimise honestly, and the central
-   promise fails.
+   promise fails. This is the one that would end it fastest, because
+   recommendation mode makes measurement the *whole* product for some clients.
 
 Each has a phase that tests it and a number that answers it. That is the point
 of the ordering in `06-ROADMAP.md`.

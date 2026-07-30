@@ -44,7 +44,13 @@ See [ADR 0002](adr/0002-ai-proposes-code-disposes.md).
      │
      ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  INTEGRATION PLANE   Meta Marketing · Shopify · Stripe · GA4 · creative  │
+│  CHANNEL PORT        one interface · declared capabilities · §5          │
+│    ┌──────────┐   ┌──────────────┐   ┌──────────┐                       │
+│    │   Meta   │   │ Google Ads   │   │  TikTok  │   … adapters          │
+│    │  (first) │   │  (designed)  │   │(designed)│                       │
+│    └──────────┘   └──────────────┘   └──────────┘                       │
+├──────────────────────────────────────────────────────────────────────────┤
+│  INTEGRATION PLANE   Shopify · Stripe · GA4 · CAPI · creative providers  │
 │  All behind ports. All idempotent. All rate-limited per tenant.          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -75,7 +81,9 @@ Phoenix is an application on a platform, not a fork. What it inherits:
 **What it does not supply, and Phoenix must build:**
 
 - multi-tenancy and RBAC → **control plane**
-- OAuth token lifecycle for third-party accounts (Meta tokens expire)
+- the **channel port** and its adapters (§5) — Jarvis has ports, not this one
+- OAuth token lifecycle for third-party accounts, including capability
+  re-derivation when scopes change under us
 - webhook ingestion
 - time-series metric storage and rollups
 - a financial ledger (spend, margin, invoicing)
@@ -128,22 +136,131 @@ Seven tables and one rule. It buys, simultaneously:
 
 Detail in `03-AUTONOMY.md`.
 
-## 5. Service boundaries
+**Nothing in this spine names a channel.** A signal is a threshold on a
+normalised metric, a proposal is a verb with a magnitude, a mandate check is
+arithmetic. Meta appears in exactly one stage — `ACTION` — and only through the
+port in §5.
+
+## 5. Channels
+
+The second most important structure, and the one that decides whether Phoenix
+is a platform or a Meta tool with ambitions.
+
+> **Meta is the first execution channel, not the foundation.** Everything that
+> is not literally an API call to an ad platform is channel-neutral.
+
+Full reasoning in [ADR 0006](adr/0006-channels-are-adapters.md). The shape:
+
+```python
+class Channel(Protocol):
+    id: str                              # "meta", "google_ads", "tiktok"
+    capabilities: frozenset[Capability]  # per connection, not per channel
+
+    async def describe(self) -> ChannelSchema: ...
+    async def pull(self, window: Window) -> Iterable[EntitySnapshot]: ...
+    async def metrics(self, window: Window) -> Iterable[MetricSnapshot]: ...
+    async def preview(self, action: Action) -> ActionPreview: ...
+    async def apply(self, action: Action, *, idempotency_key: str) -> ActionResult: ...
+```
+
+### 5.1 Capabilities, not phases
+
+A connection declares what it may do, and the declaration comes from the
+permissions the client granted on **their** Business Manager:
+
+```
+read.entities        read.metrics        read.creative_library
+write.budget         write.status        write.creative        write.campaign
+experiment.holdout   experiment.split
+```
+
+Two clients on the same channel routinely have different capability sets. The
+absence of `write.*` is **not a degraded state** — it is *recommendation mode*,
+a first-class way to operate:
+
+| Mode | Capabilities | Loop runs to | Delivered as |
+|---|---|---|---|
+| **Shadow** | `read.*` | Decision | nothing — internal scoring only |
+| **Recommend** | `read.*` | Decision | a ranked, evidenced action list the client executes |
+| **Execute** | `read.*` + `write.*` | Action | the change itself, plus the ledger entry |
+
+All three are the same code path. Shadow and Recommend differ only in whether
+the proposal is shown to the client; Recommend and Execute differ only in
+whether `apply()` is called. This is why write access is a capability flag and
+not a roadmap phase: there is no separate read-only build to maintain.
+
+Outcome measurement works in all three modes, because measuring requires only
+`read.metrics`. A recommendation the client executed by hand is scored exactly
+like one Phoenix executed itself — which is what makes recommendation mode the
+evidence trail that earns a write mandate.
+
+### 5.2 The neutral entity graph
+
+Four levels. Adapters map onto them and supply the display vocabulary, so the
+client still reads "Ad Set" in their report while Phoenix's code, mandates and
+evaluation corpus speak one language.
+
+```
+Account    →  Meta: Ad Account   Google: Customer   TikTok: Advertiser
+Program    →  Meta: Campaign     Google: Campaign   TikTok: Campaign
+Group      →  Meta: Ad Set       Google: Ad Group   TikTok: Ad Group
+Placement  →  Meta: Ad           Google: Ad         TikTok: Ad
+```
+
+Deliberately a lowest common denominator. Where a channel has no fourth level,
+or a fifth, the adapter collapses or nests, and channel-specific detail lives in
+a `native` JSON column **only the adapter reads**. A `native` field appearing in
+a prompt, a mandate or a report is a bug.
+
+### 5.3 Normalised metrics with provenance
+
+Every adapter emits the same `MetricSnapshot`: minor currency units, an `as_of`,
+and a declared attribution basis (`window`, `model`, `modelled: bool`). The
+Truth service will not add a modelled conversion to a deterministic one without
+labelling the result — cross-channel arithmetic between incompatible bases is
+refused, not silently averaged.
+
+### 5.4 Channel-neutral actions
+
+`shift_budget`, `set_status`, `launch_creative`, `create_program`, each with a
+target entity and a magnitude. The mandate checker validates verbs and
+magnitudes and has never heard of Meta. The adapter translates or refuses —
+`unsupported` is a fifth verdict alongside accept, clamp, reject and escalate,
+and it is recorded like the others.
+
+Channel-specific capability that does not generalise — Advantage+ specifics,
+Meta's experiment tooling, Google asset groups — is exposed as an
+adapter-namespaced action (`meta.enable_advantage_plus`) that a mandate must
+enumerate explicitly. Opt-in, never implicit.
+
+### 5.5 The import rule
+
+Strategy, research, briefs, creative and lineage, the spine, mandates,
+approvals, memory, knowledge cards, workflows, reporting and evaluation import
+no adapter. The composition root is the only module that knows Meta exists.
+
+This is Jarvis Core's kernel rule, and it gets Jarvis's enforcement: a test that
+walks the import graph and fails the build on a violation. That test caught a
+real violation in Phase 11 when an API route imported `KnowledgeIndexer`
+directly, which is the entire argument for having it.
+
+## 6. Service boundaries
 
 Seven services inside each client instance, each independently testable, each
-behind a port.
+behind a port. **None of them names a channel** — they call the port in §5.
 
-### 5.1 Ingest
-Pulls Meta insights, Shopify orders, Stripe charges, GA4. Normalises to one
-schema. Idempotent by `(entity, date, breakdown)`. Owns rate limiting and
-backoff. **No AI.**
+### 6.1 Ingest
+Pulls channel entities and metrics via `Channel.pull()` / `Channel.metrics()`,
+plus store data from Shopify, Stripe and GA4. Normalises to one schema.
+Idempotent by `(entity, date, breakdown)`. Owns rate limiting and backoff, per
+tenant and per channel. **No AI.**
 
-The hardest part is not fetching — it is that Meta restates historical data for
-up to ~28 days as attribution windows resolve. Snapshots are therefore
-append-only with an `as_of` date, and any figure quoted to a customer carries
-the date it was true.
+The hardest part is not fetching — it is that platforms restate historical data
+as attribution windows resolve (Meta for up to ~28 days). Snapshots are
+therefore append-only with an `as_of` date, and any figure quoted to a customer
+carries the date it was true.
 
-### 5.2 Truth
+### 6.2 Truth
 Reconciles platform-reported conversions against store-recorded orders.
 Produces blended CAC, contribution margin, and a **reconciliation confidence**
 that gates everything downstream. **No AI.**
@@ -152,7 +269,11 @@ This is the service most agencies do not have and the reason their numbers are
 wrong. It is also entirely deterministic, which makes it cheap to get right and
 cheap to test.
 
-### 5.3 Signals
+Being the one place that sees every channel's spend against one store's revenue,
+Truth is also where blended CAC stops being per-channel arithmetic and becomes
+the number the client actually cares about.
+
+### 6.3 Signals
 Scheduled detectors over the metric store: fatigue (frequency and CTR decay),
 pacing (spend versus plan), anomalies (statistically significant movement, not
 "CPA went up"), budget concentration, policy warnings. **No AI.**
@@ -160,7 +281,7 @@ pacing (spend versus plan), anomalies (statistically significant movement, not
 Deliberately no AI: a signal is a threshold, and a model asked "is this
 anomalous" gives a different answer on different days.
 
-### 5.4 Creative
+### 6.4 Creative
 Brief → concept → asset generation → variant assembly → internal scoring →
 review queue. Heavily AI. Every output is an artefact with lineage: which
 brief, which angle, which hypothesis, which prior winner it derives from.
@@ -169,26 +290,34 @@ Scoring before human review is a *filter*, not a judgement — it removes the
 obviously broken (wrong aspect ratio, banned claim, off-brand palette) so the
 human reviews twenty candidates instead of two hundred.
 
-### 5.5 Decisions
+A concept is channel-neutral; a *rendition* is not. The same concept produces a
+4:5 static and a 9:16 six-second cut, and the channel adapter declares the
+format matrix it accepts. Lineage tracks the concept, so a winner on one channel
+is evidence for a brief on another.
+
+### 6.5 Decisions
 Diagnosis (AI) → proposal (AI, typed) → mandate check (code) → decision record.
 The mandate check is the safety boundary and it is pure, synchronous,
 side-effect-free code with exhaustive tests.
 
-### 5.6 Actuation
-The only service that writes to Meta. Idempotency keys, retries with backoff,
-reconciliation of desired versus actual, drift detection. **No AI.**
+### 6.6 Actuation
+The only service that calls `Channel.apply()`. Idempotency keys, retries with
+backoff, reconciliation of desired versus actual, drift detection. **No AI.**
 
 Isolating this means the number of code paths that can spend money is one, and
-it can be tested in isolation against a recorded API.
+it can be tested in isolation against recorded fixtures. In recommendation mode
+it is not invoked at all: the decision routes to delivery instead, which is a
+much stronger safety property than a feature flag inside it.
 
-### 5.7 Narrative
-Reports, briefings, client comms, the monthly review. AI writes the prose; every
-number is passed in, never generated. Same rule as the Jarvis briefing, where
-the model writes two sentences and the arithmetic decides everything else — and
-where the echo provider's output had to be explicitly rejected because it was
-short and plausible enough to pass every other guard.
+### 6.7 Narrative
+Reports, briefings, client comms, the monthly review, and the delivered
+recommendation list. AI writes the prose; every number is passed in, never
+generated. Same rule as the Jarvis briefing, where the model writes two
+sentences and the arithmetic decides everything else — and where the echo
+provider's output had to be explicitly rejected because it was short and
+plausible enough to pass every other guard.
 
-## 6. Departments map onto services
+## 7. Departments map onto services
 
 Departments are the customer-facing metaphor and the configuration namespace.
 They are not processes.
@@ -222,99 +351,139 @@ of the exercise.
 
 Full definitions in `04-DEPARTMENTS.md`.
 
-## 7. Data model
+## 8. Data model
 
 Core entities. Client-instance database unless marked *(control plane)*.
+
+**No table below names a channel.** Where a channel concept is unavoidable it is
+a foreign key to `Connection` plus an opaque `native` blob the adapter owns.
 
 **Identity and authority**
 ```
 Tenant            (control plane)  id, name, plan, state
-Mandate           (control plane)  tenant, scope, limits, granted_by, expires_at,
-                                   revoked_at, version
-Connection                         provider, external_account_id, token_ref (vault),
-                                   scopes, expires_at, health
+Mandate           (control plane)  tenant, channel, scope, limits, granted_by,
+                                   expires_at, revoked_at, version
+Connection                         channel_id, external_account_id, token_ref (vault),
+                                   granted_scopes, capabilities[], expires_at, health
 ```
+`capabilities[]` is derived from `granted_scopes` by the adapter and re-derived
+on every token refresh. It is the single source of truth for whether this client,
+on this channel, is in recommend or execute mode (§5.1).
 
-**The advertising graph** — mirrored external state plus our intent
+**The acquisition graph** — channel-neutral, mirrored external state plus our intent
 ```
-AdAccount                          external_id, currency, timezone, spend_cap
-Campaign                           external_id, objective, status, our_intent,
-                                   strategy_id, last_reconciled_at
-AdSet                              external_id, campaign, budget, targeting_hash
-Ad                                 external_id, adset, creative_id, status
+Account                            connection, external_id, currency, timezone,
+                                   spend_cap, display_kind, native
+Program                            account, external_id, objective, status,
+                                   our_intent, strategy_id, last_reconciled_at,
+                                   display_kind, native
+Group                              program, external_id, budget, targeting_hash,
+                                   status, our_intent, display_kind, native
+Placement                          group, external_id, variant_id, status,
+                                   our_intent, display_kind, native
 ```
-`our_intent` versus `status` is the drift detector: what we asked for versus
-what Meta reports.
+`our_intent` versus `status` is the drift detector: what we asked for versus what
+the channel reports. `display_kind` carries the client's vocabulary
+(`"Ad Set"`, `"Ad Group"`) so reports read naturally without the code caring.
 
-**Creative**
+**Creative** — channel-neutral concept, channel-shaped rendition
 ```
-Brief                              hypothesis, angle, audience, format, constraints
+Brief                              hypothesis, angle, audience, constraints
 Concept                            brief, angle, hook, rationale
 Asset                              concept, kind, uri, provider, cost, checksum
-Variant                            asset + copy + format, lineage[], approval_state
+Variant                            asset + copy, lineage[], approval_state
+Rendition                          variant, channel_id, format, aspect, duration,
+                                   external_creative_id
 ```
 `lineage` is what makes creative learning possible: this variant descends from
-that winner, changing this one variable.
+that winner, changing this one variable. Splitting `Rendition` off `Variant` is
+what lets one concept run on two channels and be compared as one thing.
 
 **Measurement**
 ```
-MetricSnapshot                     entity, date, as_of, breakdown, impressions,
-                                   spend, clicks, conversions, revenue
-StoreOrder                         external_id, at, revenue, cogs, new_customer,
-                                   attributed_source
-Reconciliation                     period, platform_conv, store_conv, delta,
-                                   confidence, method
+MetricSnapshot                     entity, channel_id, date, as_of, breakdown,
+                                   impressions, spend_minor, currency, clicks,
+                                   conversions, revenue_minor,
+                                   attribution_basis, modelled
+StoreOrder                         external_id, at, revenue_minor, cogs_minor,
+                                   new_customer, attributed_source
+Reconciliation                     period, channel_id | null, platform_conv,
+                                   store_conv, delta, confidence, method
 ```
+`attribution_basis` and `modelled` travel with every figure (§5.3). A
+`Reconciliation` with a null `channel_id` is the blended, cross-channel one —
+the number the client actually cares about.
 
 **The spine**
 ```
 Signal                             kind, entity, observed, threshold, severity
 Diagnosis                          signal[], hypothesis, evidence[], confidence
-Proposal                           diagnosis, action, target, magnitude,
+Proposal                           diagnosis, verb, target, magnitude,
                                    expected_effect, confidence
 Decision                           proposal, verdict, mandate_version, actor,
-                                   clamped_from
+                                   clamped_from, mode
 Action                             decision, idempotency_key, request, response,
                                    attempts, state
+Delivery                           decision, delivered_at, channel_of_record,
+                                   acknowledged_at, applied_by_client_at
 Outcome                            decision, horizon, expected, actual, verdict
 ```
+`Decision.mode` is `shadow | recommend | execute`. A decision in `recommend`
+mode gets a `Delivery` row instead of an `Action` row, and still gets an
+`Outcome` — measured the same way, because measuring needs only read access.
+That symmetry is what turns recommendation mode into the evidence that earns a
+write mandate.
 
 **Learning**
 ```
-KnowledgeCard                      claim, evidence[], scope, confidence,
-                                   supersedes, tenant_visible
+KnowledgeCard                      claim, evidence[], scope, channel_scope,
+                                   confidence, supersedes, tenant_visible
 Experiment                         hypothesis, design, holdout, result, power
 ```
+
+`channel_scope` is part of the claim, exactly as vertical and AOV are: *"held on
+Meta, untested elsewhere"* is a different card from *"held on Meta and TikTok."*
+A card recalled onto a channel it was never tested on is the cross-channel
+version of the transfer failure in §10.
 
 Knowledge cards are the only thing that crosses the tenant boundary, and only
 upward, only anonymised, only with the tenant's contractual permission.
 
-## 8. Events
+## 9. Events
 
 Phoenix publishes onto the Jarvis bus. Hierarchical topics, existing
 subscribers.
 
 ```
-ingest.completed          tenant, source, entities, as_of
+ingest.completed          tenant, channel, source, entities, as_of
 truth.reconciled          tenant, period, confidence
 signal.raised             tenant, kind, entity, severity
 diagnosis.formed          tenant, signal[], confidence
-proposal.made             tenant, action, magnitude
-decision.recorded         tenant, verdict, mandate_version
+proposal.made             tenant, verb, magnitude
+decision.recorded         tenant, verdict, mode, mandate_version
 decision.escalated        tenant, reason              → human console
-action.executed           tenant, external_id, attempts
-action.failed             tenant, error, will_retry
+decision.delivered        tenant, count, channel_of_record   (recommend mode)
+action.executed           tenant, channel, external_id, attempts
+action.failed             tenant, channel, error, will_retry
+action.unsupported        tenant, channel, verb       → adapter gap, not a fault
 action.drifted            tenant, expected, actual    → reconciliation
-outcome.measured          tenant, verdict, delta
+outcome.measured          tenant, mode, verdict, delta
 mandate.breached          tenant, attempted, limit    → page a human
-creative.shipped          tenant, variant, campaign
-knowledge.published       card, scope
+connection.capabilities_changed  tenant, channel, added[], removed[]
+creative.shipped          tenant, variant, channel, program
+knowledge.published       card, scope, channel_scope
 ```
 
 `mandate.breached` should never fire. If it does, something bypassed the check,
 and that is a P0.
 
-## 9. Memory
+`connection.capabilities_changed` is the event that moves a client between
+recommend and execute mode. It fires on grant, on revocation, and on a token
+refresh that comes back with fewer scopes than it went in with — which is how a
+client silently losing write access surfaces as a mode change rather than as a
+week of failing writes.
+
+## 10. Memory
 
 Three tiers, mapped to Jarvis's existing scoping.
 
@@ -338,38 +507,51 @@ memory that does not carry its scope will be recalled where it does not apply.
 *Survivorship* — storing only winners teaches nothing; the failures carry more
 information and cost the same to store.
 
-## 10. Integrations
+## 11. Integrations
 
 Official APIs, always. Browser automation only where no API exists, and never
 for anything that spends money.
 
+**Channel adapters** — behind the §5 port, one row each:
+
+| Channel | Status | Capabilities typically granted | Notes |
+|---|---|---|---|
+| **Meta** | first adapter | read from day one; write when the client grants it | App review + business verification for write. Start day one; nothing is blocked behind it. Rate limits are tiered — confirm current terms. |
+| Google Ads | designed for, not built | — | Second adapter. The port exists so this is weeks, not a redesign. |
+| TikTok | designed for, not built | — | Third. Format matrix differs most here. |
+
+**Everything else** — ordinary integrations, not channels:
+
 | Integration | Direction | Criticality | Notes |
 |---|---|---|---|
-| Meta Marketing API | R/W | **Critical path** | App review + business verification. Start day one. Rate limits are tiered — confirm current terms. |
-| Meta Conversions API | W | Critical | Server-side signal. Post-ATT this is not optional. |
+| Meta Conversions API | W | Critical | Server-side signal. Post-ATT this is not optional. Sits beside the channel adapter, not inside it. |
 | Shopify Admin | R | Critical | Revenue truth |
 | Stripe | R | High | Where Shopify is not the processor |
 | GA4 | R | Medium | Corroboration, not truth |
 | Creative generation | W | High | Multiple providers behind one port — terms and quality both move |
 | Obsidian | R/W | Medium | Already a Jarvis adapter |
-| Slack / email | W | Medium | Escalation and reports |
+| Slack / email | W | Medium | Escalation, reports, recommendation delivery |
 
-**Token lifecycle is a real subsystem, not a config field.** Meta tokens expire,
-get revoked when a user leaves the business, and fail in ways that look like
-rate limits. A dead connection must degrade that capability loudly, surface in
-the client's console, and never silently produce stale numbers.
+**Token lifecycle is a real subsystem, not a config field.** Tokens expire, get
+revoked when a user leaves the client's business, and fail in ways that look
+like rate limits. A dead connection must degrade that capability loudly, surface
+in the client's console, and never silently produce stale numbers. Under the
+agency model this is more likely, not less: the permissions live on the client's
+Business Manager and their staff changes are outside our control.
 
 **Every integration is a port with a recorded-fixture implementation.** The
 whole system runs offline against recorded API responses, which is Jarvis's
-existing offline-determinism requirement applied to third parties.
+existing offline-determinism requirement applied to third parties. For channels
+this does double duty: the fixture adapter is also the conformance test a second
+channel must pass before it ships.
 
-## 11. Security
+## 12. Security
 
 Inherits Jarvis's posture, plus what multi-tenancy demands.
 
 - **Isolation by database.** Not by query filter.
-- **Secrets in the vault.** Meta tokens are `${vault:meta.<tenant>}`; the model
-  names them and never holds them; resolved in the tool registry after the
+- **Secrets in the vault.** Channel tokens are `${vault:<channel>.<tenant>}`; the
+  model names them and never holds them; resolved in the tool registry after the
   audit write.
 - **The mandate is enforced in code**, before actuation, in one place, with
   exhaustive tests. It is not a prompt instruction. A prompt can be argued
@@ -380,12 +562,18 @@ Inherits Jarvis's posture, plus what multi-tenancy demands.
   emails are wrapped untrusted and can never elevate a permission or approve an
   action — Jarvis's existing prompt-injection posture, which matters far more
   here because the system spends money.
-- **Least privilege on Meta.** Request the narrowest scopes that work. Do not
-  hold billing permissions.
+- **Least privilege on every channel.** Request the narrowest scopes that work,
+  and request them incrementally — read first, write per action type as trust is
+  earned. **Never hold billing permissions**, which under the agency model is
+  both a safety property and the line that keeps us from being a spend reseller.
+- **The client owns the accounts.** Phoenix operates inside their Business
+  Manager as a granted partner. Every permission is theirs to revoke without
+  asking us, and revocation must degrade to recommendation mode cleanly rather
+  than error.
 - **PII.** Customer lists and CAPI payloads are hashed before transmission and
   never enter a prompt.
 
-## 12. Deployment
+## 13. Deployment
 
 **Control plane** — Postgres, the console, the fleet scheduler. Small, boring,
 always up.
@@ -394,23 +582,31 @@ always up.
 work is driven by the control plane rather than by an in-process loop per
 container, so a sleeping tenant costs nothing.
 
-**Environments** — dev (recorded fixtures, no network), staging (Meta sandbox +
-one real low-spend account), production.
+**Environments** — dev (recorded fixtures, no network), staging (channel sandbox
+plus one real low-spend account), production.
 
 **Migrations** — Alembic, per tenant, applied by the control plane in a rollout
 with a canary tenant first.
 
 **Observability** — the Jarvis event bus is already the substrate. What
 Phoenix adds: spend per tenant per day, decision latency, mandate-check reject
-rate, drift count, reconciliation confidence, AI cost per client. The last two
-are the health metrics nobody thinks to add and everybody needs.
+rate, `unsupported` verb rate per adapter, drift count, reconciliation
+confidence, recommendation adoption rate, AI cost per client. Reconciliation
+confidence and AI cost are the health metrics nobody thinks to add and everybody
+needs; recommendation adoption is the one that tells you whether a read-only
+client is getting value.
 
-## 13. Deliberately not built in v1
+## 14. Deliberately not built in v1
 
+- **A second channel adapter.** The port is built and the Meta adapter is
+  written *to* it; Google and TikTok wait for a client whose retention depends
+  on one. Depth before breadth — but the abstraction is not deferred, because
+  that is the part that gets expensive later (ADR 0006).
 - Multi-touch attribution modelling — expensive, contested, and holdout tests
   answer the real question better
 - Fine-tuning on client data
-- Google/TikTok/LinkedIn — the wedge is Meta; breadth after depth
 - Self-serve onboarding
 - A creative asset marketplace
-- Real-time bidding intervention — Meta's job, and we would lose
+- Real-time bidding intervention — the platform's job, and we would lose
+- Holding client ad accounts or reselling spend — the agency model is
+  deliberate, not a stepping stone

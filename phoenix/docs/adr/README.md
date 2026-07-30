@@ -11,6 +11,7 @@ documents get rewritten before code, not after.
 | [0003](0003-mandates-not-approvals.md) | Mandates, not per-action approvals | Approval fatigue that transfers liability without judgement |
 | [0004](0004-departments-are-a-metaphor.md) | Departments are a namespace; workflows are the spine | An undebuggable conversation between 21 agents |
 | [0005](0005-autonomy-is-earned-in-shadow.md) | Autonomy is earned in shadow, per action type | Granting spend authority on a feeling |
+| [0006](0006-channels-are-adapters.md) | Channels are adapters with declared capabilities; the acquisition workflow is the platform | A Meta-shaped data model, and a read-only mode that is a waiting room |
 
 They build on Jarvis Core's ADRs 0001–0015, particularly 0001 (offline
 determinism), 0002 (agents are data), 0005 (permissions are data), 0007

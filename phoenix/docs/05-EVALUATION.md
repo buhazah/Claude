@@ -37,7 +37,7 @@ rarely a surprise.
 
 ## 3. Layer 1 — unit
 
-Everything in `02-ARCHITECTURE.md §5` marked *no AI* is ordinary software with
+Everything in `02-ARCHITECTURE.md §6` marked *no AI* is ordinary software with
 ordinary tests. It is also the majority of what can hurt a client.
 
 Non-negotiable coverage:
@@ -51,8 +51,15 @@ Non-negotiable coverage:
 - **Reconciliation.** Including the awkward ones: refunds, partial refunds,
   currency changes mid-period, Meta restating history inside the attribution
   window.
-- **Drift detection.** Human edits in Ads Manager, Meta auto-pauses,
-  externally deleted entities.
+- **Drift detection.** Human edits in the platform's own UI, platform-initiated
+  auto-pauses, externally deleted entities.
+- **Channel conformance.** Every adapter runs the same suite against recorded
+  fixtures: entity mapping onto `Account/Program/Group/Placement`, metric
+  normalisation with attribution basis, capability derivation from granted
+  scopes, idempotent `apply()`, and correct `unsupported` for verbs it cannot
+  express. **An adapter that does not pass does not ship** — which is also how
+  we find out whether the port in ADR 0006 is actually general before betting a
+  quarter on it.
 
 **Target: 100% branch coverage on the mandate checker.** Not aspirational.
 
@@ -75,6 +82,12 @@ New suites, roughly:
 | `research` | 40 | Citation validity — does the cited source say what the brief claims? |
 | `report` | 40 | Does every number in the prose match the number it was passed? |
 | `client_comms` | 30 | Does the answer trace to the ledger? Does it avoid promising? |
+| `recommendation` | 40 | In recommend mode: is the delivered action unambiguous enough for the client's own buyer to execute exactly, without a follow-up question? |
+
+Cases are written against the neutral entity graph (`02-ARCHITECTURE.md §5.2`),
+so the same `diagnosis` and `proposal` suites run unchanged against a second
+channel adapter. A suite that has to be forked per channel is a sign the
+abstraction leaked.
 
 Two of these are load-bearing in a way the others are not:
 
@@ -114,6 +127,20 @@ counterfactual lift = what the shadow set implies vs what happened
 
 Both are reported per action type, because "80% accurate overall" hides
 "budget shifts 95%, pausing 45%" — and those need different tiers.
+
+**Recommendation mode is a stronger version of this layer, not a weaker one.**
+When a client executes a delivered recommendation themselves, the outcome is
+*real* rather than counterfactual — the same evidence shadow mode produces, with
+the estimate removed. Adoption is therefore tracked as an evaluation input:
+
+```
+adoption rate    = recommendations applied ÷ recommendations delivered
+realised accuracy = correct verdicts ÷ recommendations applied
+```
+
+A low adoption rate with high accuracy is a communication failure, not a
+reasoning one, and it is diagnosed by the `recommendation` corpus suite rather
+than by making the proposals more conservative.
 
 **The honest limitation:** a shadow proposal that was never executed has a
 counterfactual outcome, and counterfactuals are estimates. When Phoenix says a
@@ -187,9 +214,10 @@ Three outcomes, three responses:
 | Reported-figure errors | The trust invariant | **0** |
 | Policy strikes | The existential one | **0** |
 | Proposal accuracy | Whether autonomy is earned | >80% per action type |
+| Recommendation adoption | Whether read-only clients get value | >50% within 7 days |
 | Creative win rate | Whether §7 is true | >15% |
-| Human minutes/client/week | Whether it scales | <60 by Phase 5 |
-| AI cost/client/month | Whether it is software | <£250 |
+| Human minutes/client/week | Whether the service is deliverable at premium price | <90 by Phase 5 |
+| AI cost/client/month | Whether the unit economics hold | <£400 |
 | Reconciliation confidence | Whether anything downstream means anything | >0.9 |
 
 The first three are zero-tolerance. They are not averaged, not trended, and not

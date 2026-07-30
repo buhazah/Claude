@@ -7,31 +7,39 @@ Every phase has an exit criterion. A phase without one never ends.
 
 ---
 
-## Phase 0 — Access and foundations *(parallel, starts immediately)*
+## Phase 0 — Foundations *(parallel, starts immediately)*
 
-Mostly not code, and it is the critical path.
+Mostly not code. **No longer the critical path** — write access is a capability,
+not a gate (ADR 0006), so nothing downstream waits behind a review queue.
 
-- Meta app review and business verification. **Start on day one.** Weeks of
-  waiting outside our control, and Phases 3+ are blocked on it.
-- Legal: liability for autonomous spend, creative IP ownership, data
-  processing terms, whether we hold the ad accounts or the client does.
-- Decide the pricing, because `07-RISKS.md §3` is built on an assumed number.
+- **The channel port** and its conformance suite, written *before* the Meta
+  adapter. This is the two weeks that makes a second channel weeks rather than a
+  quarter, and it is only cheap now.
+- Meta app review and business verification. **Start on day one** anyway,
+  because it takes as long as it takes.
+- Legal: liability under the agency model, creative IP ownership, data
+  processing terms, the partner-permission model on the client's Business
+  Manager.
 - Control-plane skeleton: tenancy, provisioning, one isolated Jarvis instance.
 - Integration ports with recorded fixtures, so everything after this runs
   offline and deterministically.
 
-**Exit:** a client instance can be provisioned, connects to a real Meta account
-read-only, and the entire test suite runs with no network.
+**Exit:** a client instance can be provisioned, connects to a real ad account
+with read-only permissions on the client's Business Manager, the fixture adapter
+and the Meta adapter both pass the same conformance suite, and the entire test
+suite runs with no network.
 
-**Risk retired:** whether this is legally and technically possible at all.
+**Risk retired:** whether this is legally and technically possible at all — and
+whether the channel port is real, which is answered by two adapters passing one
+suite rather than by intention.
 
 ## Phase 1 — The Observatory *(read-only, sellable alone)*
 
 Ingest, normalise, reconcile, diagnose, report. Zero write access. Zero
-autonomy.
+autonomy. **This is the Insight tier, sold at full price.**
 
-- Meta insights ingest with `as_of` snapshots (Meta restates history for ~28
-  days — get this right now or every number is wrong later)
+- Channel ingest with `as_of` snapshots (platforms restate history for ~28 days
+  — get this right now or every number is wrong later)
 - Shopify and Stripe ingest
 - **The Truth service** — reconciliation and blended CAC from store data
 - Signal detectors (deterministic)
@@ -67,40 +75,53 @@ a month's ad spend rather than a year of engineering.
 > then a measurement product — still real, much smaller — and everything after
 > Phase 3 should be rewritten before it is built.
 
-## Phase 3 — The spine, in shadow
+## Phase 3 — The spine, in shadow *(and then in front of the client)*
 
-The decision loop, executing nothing.
+The decision loop, executing nothing. **This phase now ships revenue**, because
+its second half is the Recommend tier.
 
 - Signal → Diagnosis → Proposal → Mandate check → Decision, all persisted
-- The mandate model, with exhaustive tests
+- The mandate model, with exhaustive tests, channel-scoped and
+  capability-intersected
 - Shadow-mode scoring: outcomes measured at 7/14/28 days
 - Decision ledger, visible to the client
+- **Recommendation delivery**: the ranked, evidenced queue in `01-PRD.md §5.5`,
+  plus adoption tracking and outcome scoring on what the client applied
 - Human console for escalations
 
-**Exit:** 60 days of shadow across three accounts, ≥100 scored proposals, and
-proposal accuracy stated per action type with the counterfactual lift.
+**Exit:** 60 days across three accounts, ≥100 scored proposals, proposal accuracy
+stated per action type with the counterfactual lift — **and** ≥50% of delivered
+recommendations applied by clients within 7 days.
 
-**Risk retired:** are the decisions any good? Answered before a single pound
-moves.
+**Risk retired:** are the decisions any good, and will anyone act on them?
+Answered before a single pound moves, and the second half of that question is
+one the old plan never asked.
 
 ## Phase 4 — Actuation
 
-The first code path that can spend money.
+The first code path that can spend money. Note what it is *not*: a different
+system. It is `apply()` being called on a decision that already existed.
 
 - Actuation service: idempotency keys, retry, backoff
 - Reconciler: desired vs actual, drift surfaced not overwritten
-- Tier 1 autonomy (notify-after) for the two action types that scored best in
-  shadow — likely budget shifts and pausing
-- Immediate demotion on any breach
+- Tier 1 autonomy (notify-after) for the two action types that scored best at
+  tiers 0/R — likely budget shifts and pausing
+- Immediate demotion on any breach; capability loss drops to tier R without
+  demotion
 
 **Exit:** 30 days at tier 1, zero mandate breaches, zero unexplained drift, and
 one client who has voluntarily moved an action type to tier 2.
 
 **Risk retired:** can we act on real accounts without breaking them?
 
-## Phase 5 — The agency
+**Not a gate on anything before it.** If Meta write access is still pending when
+Phase 3 finishes, Phases 5 and 6 proceed and Phase 4 lands when permissions do.
+That reordering is the whole point of treating write access as a capability.
 
-The parts that make it a company rather than a tool.
+## Phase 5 — The operation
+
+The parts that make it a company rather than a tool. (The agency *model* was
+settled in Phase 0; this is the machinery that makes it deliverable.)
 
 - Onboarding workflow with reconciliation as the gate
 - Campaign creation and launch (mandate-gated, human approval in v1)
@@ -110,7 +131,8 @@ The parts that make it a company rather than a tool.
 - Billing and margin tracking
 
 **Exit:** a client onboarded end to end with under 8 hours of human time, and
-running with under 60 human minutes a week.
+running with under 90 human minutes a week — **flat across account sizes**, which
+is the number that actually decides scalability (`07-RISKS.md` R6).
 
 **Risk retired:** does it scale past the founder doing everything manually?
 
@@ -130,7 +152,7 @@ exceeds those onboarded before, at stated confidence.
 **Risk retired:** does the company actually get smarter, or does it just
 accumulate files?
 
-## Phase 7 — Scale
+## Phase 7 — Scale, and the second channel
 
 Only once the unit economics in `07-RISKS.md §3` are real numbers rather than
 estimates.
@@ -138,7 +160,10 @@ estimates.
 - Fleet scheduling and per-tenant cost attribution
 - Self-serve onboarding for qualified accounts
 - Tier 3 autonomy where earned
-- Possibly a second platform — but breadth only after depth
+- **The second channel adapter.** By now this is an adapter plus an evaluation
+  suite against a conformance suite that has existed since Phase 0 — weeks, not
+  a redesign. The trigger is commercial: the first client whose retention depends
+  on it.
 
 ---
 
@@ -146,13 +171,14 @@ estimates.
 
 | Phase | Risk it retires | Cost if wrong later |
 |---|---|---|
-| 0 | Legal and platform feasibility | Everything |
+| 0 | Legal feasibility, and whether the channel port is real | Everything |
 | 1 | Can we measure? | Every downstream number |
 | 2 | **Is AI creative good enough?** | The whole company |
-| 3 | Are the decisions good? | Client money and trust |
+| 3 | Are the decisions good, and will clients act on them? | Client money and trust |
 | 4 | Can we act safely? | An ad account, a client |
 | 5 | Does it scale past heroics? | The margin |
 | 6 | Does it compound? | The moat |
+| 7 | Is a second channel really weeks? | The platform-risk story in R7 |
 
 Phases 1 and 2 are deliberately ahead of the impressive machinery. They are
 cheap, they are independently sellable, and between them they answer whether
@@ -172,9 +198,16 @@ Same discipline as Jarvis:
 
 ## What is not on this roadmap
 
-Google Ads, TikTok, LinkedIn. Fine-tuning. A mobile app. A creative
-marketplace. Real-time bidding. Multi-touch attribution.
+Fine-tuning. A mobile app. A creative marketplace. Real-time bidding.
+Multi-touch attribution. Holding client ad accounts or reselling media spend.
 
-Each of them is a plausible good idea and each of them competes for the
+Each of the first four is a plausible good idea and each competes for the
 attention that Phases 1–3 need. They can be argued for again once there is a
-paying client whose retention depends on one.
+paying client whose retention depends on one. The last is not deferred; it is
+declined.
+
+**Google Ads and TikTok have moved off this list.** Not because they are being
+built now — the *adapters* wait until Phase 7 or until a client's retention
+demands one — but because the abstraction that makes them possible is Phase 0
+work. Deferring the abstraction and deferring the adapter are different
+decisions, and the first draft of this roadmap conflated them.

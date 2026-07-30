@@ -23,6 +23,11 @@ workflow spine in `02-ARCHITECTURE.md §4`. Departments supply capability to it.
 deterministic functions, and saying so is the most useful thing this document
 does.
 
+**No department names a channel.** Departments operate on the neutral entity
+graph and propose in neutral verbs (`02-ARCHITECTURE.md §5`); only the adapter
+below the port knows what Meta calls things. A department that would need
+rewriting for Google Ads is a department that has leaked.
+
 ---
 
 ## Reading the tables
@@ -74,7 +79,7 @@ monitoring is for.
 | | |
 |---|---|
 | **Mission** | The client always knows what is happening and never has to ask. |
-| **Responsibilities** | Weekly report delivery, inbound questions, expectation setting, onboarding shepherding |
+| **Responsibilities** | Weekly report delivery, recommendation-queue delivery and follow-up, inbound questions, expectation setting, onboarding shepherding |
 | **KPIs** | Response time, report open rate, satisfaction, questions-per-week (falling is good) |
 | **Inputs** | Reports, decision ledger, client history |
 | **Outputs** | Client comms, meeting notes, logged expectations |
@@ -134,7 +139,7 @@ The engine room. Three departments, one pipeline.
 | **Responsibilities** | Briefs, concepts, assets, copy, variant assembly, internal filtering |
 | **KPIs** | Variants shipped, win rate (>15%), cost per variant, brand-violation rate (zero) |
 | **Inputs** | Strategy hypotheses, research angles, winners' lineage, brand rules |
-| **Outputs** | Briefs → concepts → assets → variants, each with lineage |
+| **Outputs** | Briefs → concepts → assets → variants → per-channel renditions, each with lineage |
 | **Tools** | Image/video generation, `memory_search`, brand-rule validator |
 | **Memory** | `tenant:creative` |
 | **Boundary** | May generate anything as a **draft**. May not publish. Never autonomous past the review queue in v1. |
@@ -159,22 +164,30 @@ disclaimers: a validator, not a prompt. A prompt can be talked out of it.
 
 | | |
 |---|---|
-| **Mission** | Structure and run accounts so Meta's algorithm can do its job. |
-| **Responsibilities** | Campaign structure, budget allocation, launch, pacing, scaling |
-| **KPIs** | CAC vs target, pacing accuracy, launch latency, mandate breaches (zero) |
-| **Inputs** | Strategy, approved creative, mandate, performance |
-| **Outputs** | Proposals → decisions → actions |
-| **Tools** | Meta Marketing API via Actuation only |
+| **Mission** | Structure and run accounts so the platform's algorithm can do its job. |
+| **Responsibilities** | Program structure, budget allocation, launch, pacing, scaling |
+| **KPIs** | CAC vs target, pacing accuracy, launch latency, mandate breaches (zero), recommendation adoption |
+| **Inputs** | Strategy, approved creative, mandate, capabilities, performance |
+| **Outputs** | Proposals → decisions → actions **or** delivered recommendations |
+| **Tools** | The channel port, via Actuation only |
 | **Memory** | `tenant:media` |
-| **Boundary** | Everything through the mandate check. No direct API access from the agent — proposals only. |
+| **Boundary** | Everything through the mandate check. No adapter access from the agent — proposals only, in neutral verbs. |
 | **Escalates** | Anything outside the mandate; anything the reconciler flags |
-| **Evaluation** | Shadow-mode proposal accuracy; outcome verdicts |
+| **Evaluation** | Proposal accuracy at tiers 0/R; outcome verdicts; recommendation clarity |
 
 **Campaign Operations has no agent.** Launch, pacing checks and reconciliation
-are a deterministic workflow. Media Buying proposes; Operations executes; the
-mandate check sits between them.
+are a deterministic workflow. Media Buying proposes; Operations executes *or*
+delivers, depending on the connection's capabilities; the mandate check sits
+between them.
 
-Do not over-structure accounts. Meta's algorithm performs better with
+**This department is one capability, not the product.** It is the stage the
+brief was most excited about and the stage where the least defensible value
+sits — see `00-STRATEGY.md §3`. It proposes in channel-neutral verbs
+(`shift_budget`, `set_status`), which is what lets the same agent, the same
+prompts and the same evaluation cases work against a channel that does not exist
+yet.
+
+Do not over-structure accounts. Modern platform algorithms perform better with
 consolidated spend than with the fifteen-ad-set structures agencies built in
 2019 to justify their retainer.
 
