@@ -135,9 +135,9 @@ The engine room. Three departments, one pipeline.
 
 | | |
 |---|---|
-| **Mission** | Ship 30–50 tested, on-brand variants a month, each testing something. |
-| **Responsibilities** | Briefs, concepts, assets, copy, variant assembly, internal filtering |
-| **KPIs** | Variants shipped, win rate (>15%), cost per variant, brand-violation rate (zero) |
+| **Mission** | Move the performance frontier every generation. Volume is an output, not the goal. |
+| **Responsibilities** | Hypothesis discovery, briefs, concepts, assets, copy, variant assembly, internal filtering, fatigue and retirement |
+| **KPIs** | **Generational lift**, cost per *resolved hypothesis*, hypothesis resolution rate, prediction calibration, brand-violation rate (zero). Win rate is a floor (>15%), not a target |
 | **Inputs** | Strategy hypotheses, research angles, winners' lineage, brand rules |
 | **Outputs** | Briefs → concepts → assets → variants → per-channel renditions, each with lineage |
 | **Tools** | Image/video generation, `memory_search`, brand-rule validator |
@@ -146,11 +146,14 @@ The engine room. Three departments, one pipeline.
 | **Escalates** | Any claim needing substantiation; any third-party IP; anything the brand validator rejects |
 | **Evaluation** | Human review pass rate; live win rate; brand violations (must be zero) |
 
-Three points that make or break this:
+Full subsystem design in `09-CREATIVE.md`. Three points that make or break this:
 
-**Every variant tests one thing.** Lineage records the parent and the changed
-variable. Fifty random variants teach nothing; fifty variants each changing one
-element against a control teach a great deal.
+**Every variant tests one thing, and carries a falsifiable prediction.** Lineage
+records the parent and the changed variable; the prediction records the expected
+effect as an interval, the evidence that supports it, and what would kill it.
+Fifty random variants teach nothing; fifty variants each changing one element
+against a control, each with a stated expectation, teach a great deal — and can
+be scored afterwards, which is the part that compounds.
 
 **Internal scoring is a filter, not a judge.** It removes the mechanically
 broken — wrong ratio, banned claim, off-palette, text-heavy — so the human

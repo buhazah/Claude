@@ -86,6 +86,7 @@ New suites, roughly:
 | `proposal` | 60 | Does the proposal follow from the diagnosis? Is it typed, bounded, and does the magnitude have a stated reason? |
 | `brief` | 40 | Does the brief test one variable? Name a hypothesis? Carry a kill condition? |
 | `copy` | 60 | Brand rules, banned claims, format constraints, variant distinctness |
+| `hypothesis` | 40 | Is the discovered claim falsifiable, single-variable, and scoped? Does it carry a kill condition with a sample floor? |
 | `compliance` | 80 | **Recall** on known-violating ads. Precision second. |
 | `research` | 40 | Citation validity — does the cited source say what the brief claims? |
 | `report` | 40 | Does every number in the prose match the number it was passed? |
@@ -188,6 +189,14 @@ basis.
 budget, one variable. This is what the creative engine runs continuously, and
 it is how §7's central question gets answered.
 
+**Test structure determines learning weight, and is recorded before the result
+exists.** Platform delivery is not random — the algorithm allocates impressions
+to what it predicts will perform, so an observational read is confounded by the
+platform's own selection. Matched tests carry weight 1.0, cohort reads 0.5,
+observational 0.2, and **confounded reads 0.0 — reported to the client, never
+learned from** (`09-CREATIVE.md §11`). Half the wrong lessons in advertising come
+from comparing an ad that ran in November to one that ran in September.
+
 **What is deliberately not built:** multi-touch attribution modelling.
 Expensive, contested, and answers a worse version of the question a holdout
 answers directly.
@@ -230,7 +239,9 @@ Three outcomes, three responses:
 | Policy strikes | The existential one | **0** |
 | Proposal accuracy | Whether autonomy is earned | >80% per action type |
 | Recommendation adoption | Whether read-only clients get value | >50% within 7 days |
-| Creative win rate | Whether §7 is true | >15% |
+| Generational lift | Whether the frontier moves | ↓ CPA each generation |
+| Cost per resolved hypothesis | The price of knowledge | ↓ |
+| Creative win rate | Account health while learning | >15% — **a floor, not a target** (`09-CREATIVE.md §1`) |
 | Human minutes/client/week | Whether the service is deliverable at premium price | <90 by Phase 5 |
 | AI cost/client/month | Whether the unit economics hold | <£400 |
 | Reconciliation confidence | Whether anything downstream means anything | >0.9 |

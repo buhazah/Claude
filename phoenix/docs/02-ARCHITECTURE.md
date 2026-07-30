@@ -283,13 +283,26 @@ Deliberately no AI: a signal is a threshold, and a model asked "is this
 anomalous" gives a different answer on different days.
 
 ### 6.4 Creative
-Brief → concept → asset generation → variant assembly → internal scoring →
-review queue. Heavily AI. Every output is an artefact with lineage: which
-brief, which angle, which hypothesis, which prior winner it derives from.
+Hypothesis → brief → concept → asset generation → variant assembly → gates →
+ranking → review queue. Heavily AI, and the one service where the model is doing
+irreplaceable work. Every output is an artefact with lineage: which brief, which
+angle, which hypothesis, which prior winner it derives from — and every shipped
+variant carries a **typed, falsifiable prediction** whose rationale is the
+ranking's own score decomposition rather than prose written about it afterwards.
+
+Work is batched into **generations** shipped against a common control, with tier
+allocation fixed by policy so exploration cannot be ranked out of existence
+([ADR 0009](adr/0009-creative-is-a-portfolio.md)). Gates — brand, compliance,
+format, distinctness, claim provenance — are deterministic and pass/fail, never
+traded against expected lift.
 
 Scoring before human review is a *filter*, not a judgement — it removes the
 obviously broken (wrong aspect ratio, banned claim, off-brand palette) so the
-human reviews twenty candidates instead of two hundred.
+human reviews twenty candidates instead of two hundred. It is deliberately
+blocked from the explore tier, because a filter trained on past winners kills
+exactly the variants whose value is looking unlike them.
+
+Full design in `09-CREATIVE.md`.
 
 A concept is channel-neutral; a *rendition* is not. The same concept produces a
 4:5 static and a 9:16 six-second cut, and the channel adapter declares the
@@ -389,16 +402,32 @@ the channel reports. `display_kind` carries the client's vocabulary
 
 **Creative** — channel-neutral concept, channel-shaped rendition
 ```
+Hypothesis                         claim, support[], kill_condition, state,
+                                   executions[], resolved_at, verdict
+Generation                         index, control_variant, allocation, opened_at,
+                                   closed_at, seasonal_boundary
 Brief                              hypothesis, angle, audience, constraints
 Concept                            brief, angle, hook, rationale
 Asset                              concept, kind, uri, provider, cost, checksum
-Variant                            asset + copy, lineage[], approval_state
+Variant                            asset + copy, lineage[], parent, tests_variable,
+                                   tier, generation, approval_state
+CreativePrediction                 variant, expected_effect_range, confidence,
+                                   basis[], kill_condition, resolve_by
 Rendition                          variant, channel_id, format, aspect, duration,
                                    external_creative_id
+CreativeResult                     variant, effect, test_structure,
+                                   learning_weight, direction_correct,
+                                   magnitude_error, reason_confirmed
 ```
 `lineage` is what makes creative learning possible: this variant descends from
 that winner, changing this one variable. Splitting `Rendition` off `Variant` is
 what lets one concept run on two channels and be compared as one thing.
+
+`Hypothesis` is first-class and owns many variants, because a single failed
+execution falsifies nothing — only a hypothesis failing across three independent
+executions does. `CreativeResult.learning_weight` is set by test structure
+(matched test 1.0, cohort 0.5, observational 0.2, **confounded 0.0**), and a
+confounded result is reported to the client but never published to the fleet.
 
 **Measurement**
 ```
@@ -480,7 +509,13 @@ action.drifted            tenant, expected, actual    → reconciliation
 outcome.measured          tenant, mode, verdict, delta
 mandate.breached          tenant, attempted, limit    → page a human
 connection.capabilities_changed  tenant, channel, added[], removed[]
-creative.shipped          tenant, variant, channel, program
+creative.shipped          tenant, variant, channel, program, tier, test_structure
+generation.opened         tenant, index, control, allocation
+generation.resolved       tenant, index, frontier_lift, hypotheses_resolved
+hypothesis.resolved       tenant, hypothesis, verdict, executions
+creative.fatigued         tenant, variant, cohort_wide       → refresh vs retire
+creative.retired          tenant, variant, reason
+creative.revived          tenant, variant, rested_days
 observation.emitted       tenant, kind, scope[]        → outbox, pulled not pushed
 publication.gated         reason, generalised_to | suppressed
 knowledge.published       card, scope, channel_scope, supporting_tenants

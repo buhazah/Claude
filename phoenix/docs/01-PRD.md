@@ -115,9 +115,16 @@ Built on the same discipline as the Jarvis morning briefing: leads with the one
 thing, says what it could not measure, does not pad.
 
 ### 5.3 The creative pipeline
-Brief → concepts → generation → internal review → customer approval (first
-month; later by mandate) → launch → performance → kill or scale. Target: 30–50
-tested variants per month per client.
+Hypothesis → brief → concepts → generation → gates → internal review → customer
+approval (first month; later by mandate) → matched test → resolution → refresh,
+retire or scale. Shipped in **generations** of ~20 every fortnight, so "did this
+batch beat the last one" is a question with an answer.
+
+Throughput is ~40 tested variants per month, but that is an output rather than
+the target. **The goal is that each generation moves the frontier**, and the
+client-facing artefact is the generation brief: eight hypotheses, why we believe
+each one, what would falsify it — followed two weeks later by what happened to
+each. Full design in `09-CREATIVE.md`.
 
 ### 5.4 The decision ledger
 Every proposal Phoenix made, whether it executed or was delivered as a
@@ -215,7 +222,8 @@ client to execute.
 | Blended CAC | Total spend ÷ new customers, from **store data** | ↓ vs 90-day baseline |
 | Contribution margin | Revenue − COGS − spend | ↑ |
 | Incremental ROAS | Measured by holdout where volume allows | Stated with confidence interval, never a point estimate |
-| Creative win rate | Variants beating control ÷ variants shipped | >15% |
+| Generational lift | Top-quartile CPA of this batch vs the last | ↓ each generation |
+| Creative win rate | Variants beating control ÷ variants shipped | >15% — a **floor**; it falls as the control strengthens (`09-CREATIVE.md §1`) |
 | Time to first insight | Access granted → first reconciled diagnosis | <7 days |
 | Time to first launch | Onboarding start → live | <14 days |
 

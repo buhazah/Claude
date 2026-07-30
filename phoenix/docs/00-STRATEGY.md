@@ -102,10 +102,12 @@ largely theatre now. A product built around them is a product built around
 
 **Where the value actually is, in order:**
 
-1. **Creative throughput.** Accounts die of creative fatigue. An operation that
-   reliably ships 30–50 on-brand, on-strategy variants a week, and knows which
-   to kill, is doing the thing that still moves ROAS. This is genuinely hard
-   and genuinely valuable.
+1. **Creative throughput — and, more precisely, creative *learning rate*.**
+   Accounts die of creative fatigue. An operation that reliably ships on-brand,
+   on-strategy variants and knows which to kill is doing the thing that still
+   moves ROAS. But volume alone converges on a house style: the harder and more
+   valuable version is an engine whose *hit rate* rises because each generation
+   is built on measured outcomes rather than taste (`09-CREATIVE.md`).
 2. **Measurement that is correct.** Post-ATT, in-platform ROAS is a
    directional number, not a true one. An advertiser who knows their real
    blended CAC and incrementality is making better decisions than one who does

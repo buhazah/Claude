@@ -63,10 +63,15 @@ will tell you what is actually working"* is a product.
 Not infrastructure. An experiment, run cheaply, that decides whether the
 company is what `00-STRATEGY.md` says it is.
 
-- Brief → concept → generation pipeline, roughest viable version
-- Brand-rule validator (deterministic)
+- Hypothesis → brief → concept → generation pipeline, roughest viable version
+- Brand-rule validator and claim-provenance gate (both deterministic)
 - Human review queue
 - Manual upload — no API writes yet
+- **Predictions recorded from the very first variant.** Expected effect as an
+  interval, the evidence supporting it, and a kill condition. Nothing consumes
+  them yet; without them the bake-off's own result cannot be scored, and there is
+  no retroactive way to state a prediction after the outcome is known
+  (`09-CREATIVE.md §18`).
 - Run the design in `05-EVALUATION.md §7`: AI variants against a human control
   set, real spend, real account, ~3 weeks, ~£3–5k
 
@@ -95,6 +100,8 @@ its second half is the Recommend tier.
 - **Contribution ledger and publication outbox.** Empty of consumers until Phase
   6. Retrofitting provenance onto a knowledge base is the same class of refactor
   as retrofitting the channel abstraction, and it arrives after the data does.
+- **Creative generations**: tier allocation (ADR 0009), diversity constraints,
+  prediction scoring, fatigue detection, refresh-vs-retire
 
 **Exit:** 60 days across three accounts, ≥100 scored proposals, proposal accuracy
 stated per action type with the counterfactual lift — **and** ≥50% of delivered

@@ -37,6 +37,13 @@ The assumption everything rests on.
 **Mitigation:** Phase 2 tests it for ~£4k in week three, with a written
 decision rule for each of the three outcomes.
 
+**Reframed slightly by `09-CREATIVE.md`:** the question is not whether a model
+writes a better ad than a human — increasingly it will, for everyone, at no
+advantage to us. It is whether a system that generates, predicts, tests, scores
+and retires at volume moves a client's frontier faster than a studio does. That
+is a question about the machinery around the generation, not about the
+generation, and it is the version of R2 worth betting on.
+
 ### R3 — Nobody trusts an AI with their ad spend *(likely, now manageable)*
 Rational customer behaviour, not a marketing problem.
 
@@ -131,6 +138,9 @@ not the same as being diversified.
 | T17 | The fleet learns a house style rather than what works | Likely without a counterweight | Mandatory 15% exploration quota that bypasses the filter; the filter scored against live outcomes, never against reviewer agreement (`08-MOAT.md §13`) |
 | T18 | Stale cards recalled into briefs after the environment moved | Certain | Decay class with arithmetic confidence decay; platform-mechanical claims not stored as knowledge at all; `calibration.drifted` as the fleet-wide early warning |
 | T19 | We believe the moat exists because we built it | **The most probable failure here** | The prior-lift holdout is designed to be able to return "no" (`08-MOAT.md §14`), and it runs every fourth cycle rather than once |
+| T20 | **Exploration is ranked out of existence** while every decision looks correct | Certain under a single global score | Fixed tier allocation with a 10% hard floor (ADR 0009); explore-tier share of frontier jumps is a tracked diagnostic |
+| T21 | A hypothesis is credited for a win its execution earned | Likely | ≥3 independent executions before a hypothesis becomes knowledge (`09-CREATIVE.md §13`) |
+| T22 | A good angle is retired for execution fatigue | Likely without the check | Refresh ≠ retire; the cohort-wide exclusion means a market-wide decline is never diagnosed as fatigue |
 
 T1 and T2 are the two that must be solved before anything else is built on top
 of them. T13 is the one that is cheap now and very expensive in a year.
@@ -170,6 +180,7 @@ exists and is worse, this model assumes we buy the better one.
 | Line | Estimate | Notes |
 |---|---|---|
 | Creative generation | £150–400 | 40–60 variants using the best available models, not the cheapest. **The dominant and most variable line.** |
+| Exploration cost | *(in media, not COGS)* | ~20% of creative spend goes to variants expected to lose. The price of a moving frontier (ADR 0009), bounded by the share-of-spend-on-losers constraint |
 | LLM — research, strategy, briefs | £40–90 | Front-loaded at onboarding; frontier models, long context |
 | LLM — diagnosis and proposals | £30–70 | Daily. Frontier model on the reasoning step — this is the one that must be right |
 | LLM — reports and comms | £15–35 | Weekly, prose only |

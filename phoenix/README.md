@@ -47,7 +47,8 @@ The short version:
 | [06 — Roadmap](docs/06-ROADMAP.md) | Eight phases, ordered by risk retired, each with an exit criterion |
 | [07 — Risks](docs/07-RISKS.md) | Risk register, cost model, scaling, technical debt, kill criteria |
 | [08 — Moat](docs/08-MOAT.md) | What compounds when every feature has been copied, and how to prove it |
-| [ADRs](docs/adr/README.md) | The eight decisions everything else depends on |
+| [09 — Creative engine](docs/09-CREATIVE.md) | Discovery, prediction, generation, ranking, fatigue, retirement — and why win rate is the wrong goal |
+| [ADRs](docs/adr/README.md) | The nine decisions everything else depends on |
 
 ## The two ideas
 
@@ -107,6 +108,31 @@ The whole claim is falsifiable by one cheap experiment: run every new client's
 first creative cycle **twice** — once with fleet priors, once cold — and compare.
 If primed does not beat cold, the moat does not exist and the machinery should be
 deleted. [`docs/08-MOAT.md`](docs/08-MOAT.md).
+
+## The creative engine, in one paragraph
+
+Creative ships in **generations** — a batch built together, tested against a
+common control, resolved together — and every variant carries a **falsifiable
+prediction** whose rationale is the ranking's own score decomposition, not prose
+written about it afterwards. Tier allocation is fixed by policy rather than
+ranked, because a single global score puts exploratory variants last every cycle,
+correctly, until exploration is zero
+([ADR 0009](docs/adr/0009-creative-is-a-portfolio.md)).
+
+The counterintuitive part is the objective. **Win rate is a floor, not a target
+— and it should *fall* as the engine improves**, because the control is the
+frontier and the frontier is rising:
+
+```
+Generation 12   win rate 34%   control CPA £31   best new CPA £24
+Generation 13   win rate 29%   control CPA £24   best new CPA £21
+                     ↓                                  ↓
+               looks worse                        is better
+```
+
+The headline is frontier lift, and the metric worth putting on a wall is **cost
+per resolved hypothesis** — because the engine's product is knowledge, and that
+prices it. [`docs/09-CREATIVE.md`](docs/09-CREATIVE.md).
 
 ## The spine
 
