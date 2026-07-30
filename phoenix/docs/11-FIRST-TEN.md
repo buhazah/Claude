@@ -52,13 +52,12 @@ Beyond the charter's permanent refusals, five that are specific to being early:
 
 ### Where the first ten come from
 
-In order of expected yield, and none of it is a marketing machine:
-
-1. **Warm network.** Direct, named, one at a time.
-2. **Referrals from clients 1–3.** The strongest source, and the reason design
-   partners are chosen partly for who they know.
-3. **One narrow outbound motion** into a single vertical, leading with §2's
-   audit rather than with a pitch.
+**Fully specified in [`12-FOUNDER-LED-ACQUISITION.md §2`](12-FOUNDER-LED-ACQUISITION.md)**,
+along with buying triggers, outreach, the sales conversation and objection
+handling. In short: referral partners who serve the same customer without
+competing — fractional CFOs and ecommerce accountants first — then warm network,
+then referrals from clients 1–3, then communities, then narrow trigger-scraped
+outbound.
 
 **Not paid acquisition.** We would be spending on a channel we have not yet
 proven we are good at, with no results to point to. When we can show three
@@ -391,7 +390,8 @@ Everything above is instrumentation for one sentence:
 > **What is the thing our clients would be most upset to lose?**
 
 Ask it directly at every monthly review, in these words, and write down the
-answer verbatim rather than paraphrasing it into a category.
+answer verbatim rather than paraphrasing it into a category —
+[`DISCOVERY-LOG.md §4`](DISCOVERY-LOG.md).
 
 If five of ten give the same answer, that is the product, and the next twelve
 months build around it. If the answers scatter, we have ten consulting

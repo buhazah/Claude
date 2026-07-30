@@ -39,11 +39,16 @@ eventually; the charter should not be. **It outranks every document below it.**
 > checkable, or more accountable to the person paying us? If it only makes us
 > more capable, it is not yet a reason to build it.*
 
-**[`docs/11-FIRST-TEN.md`](docs/11-FIRST-TEN.md)** — the operating plan. Who the
-first ten customers are, what we sell them, the fourteen-day onboarding with its
-day-five gate, the weekly rhythm, the five verbs of product that actually get
-built, and what stays manual on purpose. This is the document you run a Monday
-from. [`10-VALIDATION.md`](docs/10-VALIDATION.md) is the reasoning behind it.
+**[`docs/12-FOUNDER-LED-ACQUISITION.md`](docs/12-FOUNDER-LED-ACQUISITION.md)** —
+**the current phase.** Who the first ten customers are and which buying triggers
+put them in market, where they are found, the outreach, the thirty-minute sales
+conversation, objection handling, how the first audits are delivered by hand, and
+the system that captures what customers say. Delivery mechanics are in
+[`11-FIRST-TEN.md`](docs/11-FIRST-TEN.md); the reasoning is in
+[`10-VALIDATION.md`](docs/10-VALIDATION.md).
+
+**No new product capability ships during this phase.** Five verbs: ingest,
+reconcile, report, generate, record.
 
 > The one question the whole phase is instrumentation for: **what is the thing
 > our clients would be most upset to lose?** If five of ten give the same answer,
@@ -73,10 +78,12 @@ The short version:
 | | |
 |---|---|
 | **[CHARTER](CHARTER.md)** | **The company, not the software. Outranks everything below.** |
-| **[11 — First ten](docs/11-FIRST-TEN.md)** | **The operating plan. ICP, offer, onboarding, weekly rhythm, what stays manual. Run Monday from this one.** |
+| **[12 — Founder-led acquisition](docs/12-FOUNDER-LED-ACQUISITION.md)** | **The current phase. ICP with buying triggers, outreach, the sales conversation, objections, the manual audit, and the learning system.** |
+| **[11 — First ten](docs/11-FIRST-TEN.md)** | The delivery spec. Offer, onboarding, weekly rhythm, what stays manual |
 | **[10 — Validation](docs/10-VALIDATION.md)** | The freeze, six hypotheses, three cohorts |
-| [DEFICIENCIES](docs/DEFICIENCIES.md) | Where a client's name unfreezes something |
+| [DISCOVERY LOG](docs/DISCOVERY-LOG.md) | What customers say, verbatim. The phase's actual output |
 | [EFFORT LEDGER](docs/EFFORT-LEDGER.md) | Every human minute. Becomes the automation backlog |
+| [DEFICIENCIES](docs/DEFICIENCIES.md) | Where a client's name unfreezes something |
 | [00 — Strategy](docs/00-STRATEGY.md) | What I would change, and why. Read first. |
 | [01 — PRD](docs/01-PRD.md) | ICP, jobs, scope, non-goals, lifecycle, success metrics |
 | [02 — Architecture](docs/02-ARCHITECTURE.md) | Topology, service boundaries, data model, events, memory, integrations, security, deployment |
