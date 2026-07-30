@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Evidence — Phoenix{% endblock %}
+{% block body %}
+
+<h1>Evidence</h1>
+<p class="sub">
+  Captured verbatim, grouped weekly. One client saying something is a conversation; three is a finding.
+</p>
+<p class="sub">
+  <a href="/evidence">all kinds</a>
+  {% for k in kinds %} · <a href="/evidence?kind={{ k }}" {% if filter_kind == k %}class="on"{% endif %}>{{ k }}</a>{% endfor %}
+</p>
+
+<h2>Findings — cleared the rule of three</h2>
+{% if findings %}
+  {% for c in findings %}
+  <div class="panel">
+    <div class="flex">
+      <span class="tag {{ 'urgent' if c.kind == 'objection' else '' }}">{{ c.kind }}</span>
+      <strong>{{ c.client_count }} clients</strong>
+      <span class="muted">· {{ c.members|length }} statements</span>
+    </div>
+    {% for _, client_id, text in c.members %}
+      <div class="verbatim">{{ text }}<div class="muted" style="font-size: 12px; margin-top: 2px">{{ names.get(client_id, '—') }}</div></div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="panel empty">
+    Nothing yet said by three different clients. Grouping is lexical, so it will miss two people
+    saying the same thing in different words — the Friday synthesis is where that gets caught.
+  </div>
+{% endif %}
+
+<h2>Emerging — two clients</h2>
+<div class="panel">
+  {% set pairs = clusters | selectattr('client_count', 'equalto', 2) | list %}
+  {% if pairs %}
+    <table>
+      {% for c in pairs %}
+      <tr><td style="width: 120px"><span class="tag">{{ c.kind }}</span></td><td>{{ c.label }}</td><td class="muted" style="width: 60px">2</td></tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <div class="empty">Nothing at two clients yet.</div>
+  {% endif %}
+</div>
+
+<h2>Everything captured</h2>
+<div class="panel">
+  <table>
+    <tr><th>Kind</th><th>Client</th><th>Their words</th><th></th></tr>
+    {% for e in items %}
+    <tr>
+      <td style="width: 130px"><span class="tag">{{ e.kind }}</span></td>
+      <td style="width: 150px"><a href="/clients/{{ e.client_id }}">{{ names.get(e.client_id, '—') }}</a></td>
+      <td>
+        {{ e.verbatim }}
+        {% if e.note %}<div class="muted" style="font-size: 12px">{{ e.note }}</div>{% endif %}
+      </td>
+      <td style="width: 110px">
+        {% if e.would_pay is not none %}<span class="tag {{ 'ok' if e.would_pay else '' }}">{{ 'would pay' if e.would_pay else 'no pay' }}</span>{% endif %}
+        {% if e.answered_well is false %}<span class="tag urgent">answered badly</span>{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="empty">Nothing captured yet. Evidence is added from a client's page.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

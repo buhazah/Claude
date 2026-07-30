@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }} — Phoenix{% endblock %}
+{% block body %}
+
+<h1>{{ client.name }}</h1>
+<p class="sub">
+  <span class="tag {% if client.status == 'active' %}active{% endif %}">{{ client.status }}</span>
+  {% if client.website %} · <a href="//{{ client.website }}">{{ client.website }}</a>{% endif %}
+  {% if client.contact_name %} · {{ client.contact_name }}{% endif %}
+  {% if client.spend_band %} · {{ client.spend_band }}/mo spend{% endif %}
+  {% if client.reconciliation_confidence is not none %}
+    · reconciliation
+    <strong style="color: {{ 'var(--ok)' if client.reconciliation_confidence >= 0.9 else 'var(--urgent)' }}">
+      {{ '%.2f'|format(client.reconciliation_confidence) }}</strong>
+  {% endif %}
+</p>
+
+<div class="grid two">
+
+  <div>
+    <h2>Log a conversation</h2>
+    <div class="panel">
+      <form action="/clients/{{ client.id }}/interactions" method="post" class="stack">
+        <div class="row">
+          <div style="flex: 1"><label>Kind</label>
+            <select name="kind">{% for k in kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}</select>
+          </div>
+          <div style="flex: 1"><label>Date</label><input type="date" name="occurred_on" value="{{ today }}"></div>
+        </div>
+        <div><label>Summary — for scanning later</label><input name="summary"></div>
+        <div>
+          <label>Verbatim — what they actually said. Do not paraphrase</label>
+          <textarea name="verbatim" placeholder="Q1 — how do you know last month worked?&#10;&gt; &#10;&#10;Q3 — does that match your accountant?&#10;&gt; &#10;&#10;Q7 — last thing your agency did that annoyed you?&#10;&gt; "></textarea>
+        </div>
+        <div><button type="submit">Log it</button></div>
+      </form>
+    </div>
+
+    <h2>Capture evidence</h2>
+    <div class="panel">
+      <form action="/clients/{{ client.id }}/evidence" method="post" class="stack">
+        <div class="row">
+          <div style="flex: 1"><label>Kind</label>
+            <select name="kind">{% for k in evidence_kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}</select>
+          </div>
+          <div style="flex: 1"><label>Would pay more? <span class="muted">(requests)</span></label>
+            <select name="would_pay"><option value="">—</option><option value="yes">yes</option><option value="no">no</option></select>
+          </div>
+          <div style="flex: 1"><label>Answered well? <span class="muted">(objections)</span></label>
+            <select name="answered_well"><option value="">—</option><option value="yes">yes</option><option value="no">no</option></select>
+          </div>
+        </div>
+        <div><label>Their words, exactly</label><textarea name="verbatim" required style="min-height: 54px"></textarea></div>
+        <div><label>My note <span class="muted">(kept separate from what they said)</span></label><input name="note"></div>
+        <div><button type="submit">Capture</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <h2>Status &amp; next action</h2>
+    <div class="panel">
+      <form action="/clients/{{ client.id }}" method="post" class="stack">
+        <div class="row">
+          <div style="flex: 1"><label>Status</label>
+            <select name="status">{% for s in statuses %}<option value="{{ s }}" {% if client.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+          </div>
+          <div style="flex: 1"><label>Trigger</label>
+            <select name="trigger">{% for t in triggers %}<option value="{{ t }}" {% if client.trigger == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <div><label>Next action</label><input name="next_action" value="{{ client.next_action }}"></div>
+        <div class="row">
+          <div style="flex: 1"><label>Due</label><input type="date" name="next_action_due" value="{{ client.next_action_due or '' }}"></div>
+          <div style="flex: 1"><label>Audit fee</label><input name="audit_fee" value="{{ client.audit_fee or '' }}"></div>
+          <div style="flex: 1"><label>Monthly fee</label><input name="monthly_fee" value="{{ client.monthly_fee or '' }}"></div>
+        </div>
+        <div class="row">
+          <div style="flex: 1"><label>Audit started</label><input type="date" name="audit_started_on" value="{{ client.audit_started_on or '' }}"></div>
+          <div style="flex: 1"><label>Active since</label><input type="date" name="active_since" value="{{ client.active_since or '' }}"></div>
+        </div>
+        <div>
+          <label>Reconciliation confidence <span class="muted">— below 0.90 we do not proceed</span></label>
+          <input name="reconciliation_confidence" value="{{ client.reconciliation_confidence if client.reconciliation_confidence is not none else '' }}" placeholder="0.94">
+        </div>
+        <details>
+          <summary>Churn</summary>
+          <div style="margin-top: 8px">
+            <label>Churned on</label><input type="date" name="churned_on" value="{{ client.churned_on or '' }}">
+            <label style="margin-top: 6px">Exit interview — their words</label>
+            <textarea name="churn_reason">{{ client.churn_reason }}</textarea>
+          </div>
+        </details>
+        <div><label>Notes</label><textarea name="notes">{{ client.notes }}</textarea></div>
+        <div><button type="submit">Save</button></div>
+      </form>
+    </div>
+
+    {% if open_tasks %}
+    <h2>Open tasks</h2>
+    <div class="panel">
+      {% for t in open_tasks %}
+      <form action="/tasks/{{ t.id }}/done" method="post" class="row" style="margin-bottom: 8px">
+        <input type="hidden" name="back" value="/clients/{{ client.id }}">
+        <div style="flex: 2">{{ t.title }}{% if t.due_on %} <span class="muted">— due {{ t.due_on }}</span>{% endif %}</div>
+        <div style="width: 80px"><label>Mins</label><input name="minutes" type="number" required></div>
+        <div style="width: 70px"><label>Cat</label>
+          <select name="category"><option>A</option><option>B</option><option>C</option></select>
+        </div>
+        <button type="submit" class="quiet">Done</button>
+      </form>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Timeline</h2>
+<div class="panel">
+  {% for when, kind, item in timeline %}
+    <div style="padding: 10px 0; border-bottom: 1px solid var(--line)">
+      <div class="flex">
+        <span class="muted" style="font-size: 12px; width: 90px">{{ when.strftime('%d %b %y') }}</span>
+        {% if kind == 'interaction' %}
+          <span class="tag">{{ item.kind }}</span>
+          <strong>{{ item.summary or 'conversation' }}</strong>
+        {% elif kind == 'evidence' %}
+          <span class="tag">{{ item.kind }}</span>
+          {% if item.would_pay is not none %}<span class="tag {{ 'ok' if item.would_pay else '' }}">{{ 'would pay' if item.would_pay else 'would not pay' }}</span>{% endif %}
+          {% if item.answered_well is false %}<span class="tag urgent">answered badly</span>{% endif %}
+        {% else %}
+          <span class="tag {{ 'ok' if item.is_done }}">task{{ ' · done' if item.is_done else '' }}</span>
+          <strong>{{ item.title }}</strong>
+          {% if item.minutes %}<span class="muted">{{ item.minutes }}m · {{ item.category }}</span>{% endif %}
+        {% endif %}
+      </div>
+      {% if kind == 'interaction' and item.verbatim %}<div class="verbatim">{{ item.verbatim }}</div>{% endif %}
+      {% if kind == 'evidence' %}
+        <div class="verbatim">{{ item.verbatim }}</div>
+        {% if item.note %}<div class="muted" style="font-size: 13px; padding-left: 14px">{{ item.note }}</div>{% endif %}
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="empty">Nothing recorded yet.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

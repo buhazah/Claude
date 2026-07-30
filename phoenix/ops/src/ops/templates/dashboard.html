@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Today — Phoenix{% endblock %}
+{% block body %}
+
+<h1>Today</h1>
+<p class="sub">{{ today.strftime('%A %d %B %Y') }}</p>
+
+<div class="grid four">
+  {% for status in ['prospect', 'conversation', 'audit', 'active'] %}
+  <div class="panel">
+    <div class="big">{{ funnel.get(status, 0) }}</div>
+    <div class="muted">{{ status }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<h2>Needs attention</h2>
+{% if attention %}
+<div class="panel">
+  <table>
+    {% for a in attention %}
+    <tr>
+      <td style="width: 70px"><span class="tag {{ a.label }}">{{ a.label }}</span></td>
+      <td style="width: 200px"><a href="/clients/{{ a.client_id }}">{{ a.client_name }}</a></td>
+      <td>{{ a.reason }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<div class="panel empty">Nothing is overdue. Either everything is in hand, or nothing is being recorded.</div>
+{% endif %}
+
+{% if loose_tasks %}
+<h2>Overdue, no client</h2>
+<div class="panel">
+  <table>
+    {% for t in loose_tasks %}
+    <tr><td>{{ t.title }}</td><td class="muted" style="width: 120px">due {{ t.due_on }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="grid two">
+  <div>
+    <h2>Findings — three or more clients</h2>
+    {% if findings %}
+      {% for c in findings %}
+      <div class="panel">
+        <div class="flex">
+          <span class="tag">{{ c.kind }}</span>
+          <span class="muted">{{ c.client_count }} clients · {{ c.members|length }} statements</span>
+        </div>
+        <div class="verbatim">{{ c.label }}</div>
+      </div>
+      {% endfor %}
+      <p class="muted" style="font-size: 13px">Full list on <a href="/evidence">Evidence</a>.</p>
+    {% else %}
+      <div class="panel empty">Nothing said by three different clients yet. That is the point of the phase — keep capturing.</div>
+    {% endif %}
+  </div>
+
+  <div>
+    <h2>Where the time goes</h2>
+    <div class="panel">
+      <table>
+        <tr><th>Category</th><th>Minutes</th><th>Meaning</th></tr>
+        <tr><td>A</td><td>{{ effort.A }}</td><td class="muted">the instrument — stays manual</td></tr>
+        <tr><td>B</td><td>{{ effort.B }}</td><td class="muted">cheap for now — automate later</td></tr>
+        <tr><td>C</td><td>{{ effort.C }}</td><td class="muted">unsafe to automate yet</td></tr>
+      </table>
+    </div>
+
+    <h2>Automation backlog (category B)</h2>
+    {% if candidates %}
+    <div class="panel">
+      <table>
+        <tr><th>Activity</th><th>Minutes</th><th>Times</th></tr>
+        {% for name, minutes, count in candidates %}
+        <tr><td>{{ name }}</td><td>{{ minutes }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% else %}
+    <div class="panel empty">Complete some tasks with a category and this becomes the backlog, sorted by cost.</div>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Latest captured</h2>
+{% if recent %}
+<div class="panel">
+  <table>
+    {% for e in recent %}
+    <tr>
+      <td style="width: 130px"><span class="tag">{{ e.kind }}</span></td>
+      <td style="width: 160px"><a href="/clients/{{ e.client_id }}">{{ names.get(e.client_id, '—') }}</a></td>
+      <td>{{ e.verbatim }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<div class="panel empty">No evidence captured yet.</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Clients — Phoenix{% endblock %}
+{% block body %}
+
+<h1>Clients</h1>
+<p class="sub">
+  <a href="/clients">all</a>
+  {% for s in statuses %} · <a href="/clients?status={{ s }}" {% if filter_status == s %}class="on"{% endif %}>{{ s }}</a>{% endfor %}
+</p>
+
+<div class="panel">
+  <table>
+    <tr><th>Name</th><th>Status</th><th>Trigger</th><th>Spend</th><th>Fee</th><th>Next action</th></tr>
+    {% for c in clients %}
+    <tr>
+      <td><a href="/clients/{{ c.id }}">{{ c.name }}</a>{% if c.industry %}<div class="muted" style="font-size: 12px">{{ c.industry }}</div>{% endif %}</td>
+      <td><span class="tag {% if c.status == 'active' %}active{% endif %}">{{ c.status }}</span></td>
+      <td class="muted">{{ c.trigger if c.trigger != 'none' else '—' }}</td>
+      <td class="muted">{{ c.spend_band or '—' }}</td>
+      <td class="muted">{{ '£{:,}'.format(c.monthly_fee) if c.monthly_fee else '—' }}</td>
+      <td>
+        {{ c.next_action or '' }}
+        {% if c.next_action_due %}<span class="muted">— {{ c.next_action_due }}</span>{% endif %}
+        {% if not c.next_action and c.status in ['conversation', 'audit', 'active'] %}<span class="tag urgent">none set</span>{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">No clients yet. Add the first prospect below.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Add</h2>
+<div class="panel">
+  <form action="/clients" method="post" class="stack">
+    <div class="grid two">
+      <div><label>Name</label><input name="name" required autofocus></div>
+      <div><label>Website</label><input name="website" placeholder="example.com"></div>
+      <div><label>Contact</label><input name="contact_name"></div>
+      <div><label>Email</label><input name="contact_email" type="email"></div>
+      <div><label>Industry</label><input name="industry" placeholder="apparel"></div>
+      <div><label>Revenue band</label><input name="revenue_band" placeholder="£1–5m"></div>
+      <div><label>Ad spend band</label><input name="spend_band" placeholder="£15–60k/mo"></div>
+      <div><label>Source</label><input name="source" placeholder="referral — accountant"></div>
+      <div>
+        <label>Buying trigger</label>
+        <select name="trigger">{% for t in triggers %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select>
+      </div>
+      <div>
+        <label>Status</label>
+        <select name="status">{% for s in statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    <div><button type="submit">Add client</button></div>
+  </form>
+</div>
+
+{% endblock %}

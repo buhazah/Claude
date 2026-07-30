@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Search — Phoenix{% endblock %}
+{% block body %}
+
+<h1>Search</h1>
+<p class="sub">{% if q %}“{{ q }}”{% else %}Across clients, conversations, evidence and tasks.{% endif %}</p>
+
+{% if q %}
+  {% set total = results.clients|length + results.interactions|length + results.evidence|length + results.tasks|length %}
+  {% if total == 0 %}
+    <div class="panel empty">Nothing matches.</div>
+  {% endif %}
+
+  {% if results.clients %}
+  <h2>Clients</h2>
+  <div class="panel"><table>
+    {% for c in results.clients %}
+    <tr><td><a href="/clients/{{ c.id }}">{{ c.name }}</a></td><td><span class="tag">{{ c.status }}</span></td></tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+
+  {% if results.evidence %}
+  <h2>Evidence</h2>
+  <div class="panel"><table>
+    {% for e in results.evidence %}
+    <tr>
+      <td style="width: 130px"><span class="tag">{{ e.kind }}</span></td>
+      <td style="width: 150px"><a href="/clients/{{ e.client_id }}">{{ names.get(e.client_id, '—') }}</a></td>
+      <td>{{ e.verbatim }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+
+  {% if results.interactions %}
+  <h2>Conversations</h2>
+  <div class="panel">
+    {% for i in results.interactions %}
+    <div style="padding: 8px 0; border-bottom: 1px solid var(--line)">
+      <div class="flex">
+        <span class="muted" style="font-size: 12px">{{ i.occurred_at.strftime('%d %b %y') }}</span>
+        <span class="tag">{{ i.kind }}</span>
+        <a href="/clients/{{ i.client_id }}">{{ names.get(i.client_id, '—') }}</a>
+        <strong>{{ i.summary }}</strong>
+      </div>
+      {% if i.verbatim %}<div class="verbatim">{{ i.verbatim }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if results.tasks %}
+  <h2>Tasks</h2>
+  <div class="panel"><table>
+    {% for t in results.tasks %}
+    <tr><td>{{ t.title }}</td><td class="muted" style="width: 110px">{{ 'done' if t.is_done else 'open' }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

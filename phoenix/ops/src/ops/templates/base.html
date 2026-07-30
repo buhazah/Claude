@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Phoenix Ops{% endblock %}</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #fff; --ink: #1a1a19; --muted: #6b6b66;
+    --line: #e5e4e0; --accent: #7c4a2d; --urgent: #b3402c; --soon: #a8792a;
+    --ok: #3f7a4a; --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a; --panel: #1e2022; --ink: #e8e6e3; --muted: #96948e;
+      --line: #2e3134; --accent: #d99a72; --urgent: #e5715c;
+      --soon: #d6a94e; --ok: #6fb37f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  header {
+    border-bottom: 1px solid var(--line); background: var(--panel);
+    position: sticky; top: 0; z-index: 5;
+  }
+  nav { max-width: 1080px; margin: 0 auto; padding: 10px 20px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  nav .brand { font-weight: 650; letter-spacing: -0.01em; margin-right: 6px; }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover, nav a.on { color: var(--ink); }
+  nav form { margin-left: auto; }
+  main { max-width: 1080px; margin: 0 auto; padding: 22px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h2 { font-size: 15px; margin: 26px 0 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+  h3 { font-size: 15px; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
+  .grid { display: grid; gap: 12px; }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .grid.four { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  a { color: var(--accent); }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .tag.urgent { color: var(--urgent); border-color: var(--urgent); }
+  .tag.soon { color: var(--soon); border-color: var(--soon); }
+  .tag.watch { color: var(--muted); }
+  .tag.active, .tag.ok { color: var(--ok); border-color: var(--ok); }
+  .muted { color: var(--muted); }
+  .big { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; }
+  .verbatim { border-left: 2px solid var(--accent); padding: 2px 0 2px 12px; margin: 6px 0; white-space: pre-wrap; font-size: 14px; }
+  form.stack { display: grid; gap: 8px; }
+  form.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
+  input, select, textarea, button {
+    font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; width: 100%;
+  }
+  textarea { min-height: 70px; resize: vertical; }
+  button { background: var(--accent); color: #fff; border-color: transparent; cursor: pointer; width: auto; padding: 6px 14px; }
+  button.quiet { background: transparent; color: var(--muted); border-color: var(--line); }
+  details > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .empty { color: var(--muted); font-style: italic; padding: 10px 0; }
+  .flex { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header><nav>
+  <span class="brand">Phoenix</span>
+  <a href="/">Today</a>
+  <a href="/clients">Clients</a>
+  <a href="/evidence">Evidence</a>
+  <a href="/tasks">Tasks</a>
+  <form action="/search" method="get" class="row">
+    <input type="search" name="q" placeholder="Search everything" value="{{ q|default('') }}" style="width: 220px">
+  </form>
+</nav></header>
+<main>{% block body %}{% endblock %}</main>
+</body>
+</html>

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Tasks — Phoenix{% endblock %}
+{% block body %}
+
+<h1>Tasks</h1>
+<p class="sub">Completing a task records the minutes. There is no separate time log, so it cannot drift.</p>
+
+<h2>Open</h2>
+<div class="panel">
+  {% for t in open_tasks %}
+  <form action="/tasks/{{ t.id }}/done" method="post" class="row" style="padding: 6px 0; border-bottom: 1px solid var(--line)">
+    <div style="flex: 2; min-width: 240px">
+      <strong>{{ t.title }}</strong>
+      <div class="muted" style="font-size: 12px">
+        {% if t.client_id %}<a href="/clients/{{ t.client_id }}">{{ names.get(t.client_id, '—') }}</a> · {% endif %}
+        {% if t.due_on %}due {{ t.due_on }}{% if t.due_on <= today %} <span class="tag urgent">overdue</span>{% endif %}{% else %}no date{% endif %}
+      </div>
+    </div>
+    <div style="width: 90px"><label>Minutes</label><input name="minutes" type="number" min="1" required></div>
+    <div style="width: 80px"><label>Category</label>
+      <select name="category"><option>A</option><option>B</option><option>C</option></select>
+    </div>
+    <div style="width: 150px"><label>Activity</label><input name="activity" value="{{ t.activity }}" placeholder="report_edit"></div>
+    <button type="submit" class="quiet">Done</button>
+  </form>
+  {% else %}
+  <div class="empty">Nothing open.</div>
+  {% endfor %}
+</div>
+
+<h2>Add</h2>
+<div class="panel">
+  <form action="/tasks" method="post" class="row">
+    <div style="flex: 2; min-width: 220px"><label>Title</label><input name="title" required></div>
+    <div style="width: 180px"><label>Client</label>
+      <select name="client_id"><option value="">— none —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+    </div>
+    <div style="width: 150px"><label>Activity</label><input name="activity" placeholder="creative_review"></div>
+    <div style="width: 150px"><label>Due</label><input type="date" name="due_on"></div>
+    <button type="submit">Add</button>
+  </form>
+</div>
+
+<div class="grid two">
+  <div>
+    <h2>Effort by category</h2>
+    <div class="panel">
+      <table>
+        <tr><th>Cat</th><th>Minutes</th><th>Meaning</th></tr>
+        <tr><td>A</td><td>{{ effort.A }}</td><td class="muted">the instrument — never automated on hours alone</td></tr>
+        <tr><td>B</td><td>{{ effort.B }}</td><td class="muted">cheap at ten clients — the backlog</td></tr>
+        <tr><td>C</td><td>{{ effort.C }}</td><td class="muted">unsafe to automate without evidence</td></tr>
+      </table>
+    </div>
+  </div>
+  <div>
+    <h2>Automation backlog</h2>
+    <div class="panel">
+      {% if candidates %}
+      <table>
+        <tr><th>Activity</th><th>Minutes</th><th>Times</th></tr>
+        {% for name, minutes, count in candidates %}
+        <tr><td>{{ name }}</td><td>{{ minutes }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">Category B only. Nothing recorded yet.</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<h2>Recently done</h2>
+<div class="panel">
+  <table>
+    {% for t in done_tasks %}
+    <tr>
+      <td>{{ t.title }}</td>
+      <td class="muted" style="width: 140px">{{ names.get(t.client_id, '—') if t.client_id else '' }}</td>
+      <td class="muted" style="width: 60px">{{ t.minutes }}m</td>
+      <td style="width: 40px"><span class="tag">{{ t.category }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td class="empty">Nothing completed yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}
