@@ -213,6 +213,44 @@ Whether an answer reasons *well* is not a keyword question, so ten probes run
 with no verdict at all and their transcripts are printed for a human. Anything
 key-shaped is scrubbed on the way out.
 
+## Chief of Staff
+
+Jarvis looks for what you have not asked about.
+
+```bash
+curl localhost:8000/v1/recommendations
+```
+
+```
+[ 20.0] major    / blocking   Approve or refuse: browser_click
+[  8.4] major    / this_week  Fix the cause: 3 recorded failures in coding
+[  4.8] major    / soon       Decide what happens to Northbound
+         · nothing written to Projects/Northbound.md in 13 weeks
+```
+
+Nine detectors over what Jarvis already has: approvals blocking a run, failures
+nobody returned to, workflows suspended and forgotten, projects gone cold,
+goals stated and never mentioned again, deadlines, repeated mistakes, budget
+pressure, knowledge stranded in the vault.
+
+**Ranking is arithmetic, not a model's opinion** — `impact × urgency ×
+confidence`, with the evidence attached. Handing everything to a model and
+asking "what should I do today" reads better and cannot be corrected when it is
+wrong. This can: either the evidence is wrong, or the number is. It also costs
+nothing and works with no key.
+
+The hard part is not noticing. A sweep surfaces at most ten things, at most two
+per kind, and says how many it held back — because an assistant that surfaces
+forty observations gets muted in a week and then notices nothing at all. A cold
+project is treated as important and *never urgent*, which is exactly why it
+went cold.
+
+Ask the Chief of Staff to handle something spanning several specialists and it
+now actually delegates — decomposing the request, dispatching to the agents in
+its `collaborators`, and writing one answer from what comes back. Off by
+default for every other agent, one level deep, and it falls back to ordinary
+single-agent routing whenever the split cannot be made.
+
 ## Memory you own
 
 Point Jarvis at an Obsidian vault and its memory becomes markdown files:

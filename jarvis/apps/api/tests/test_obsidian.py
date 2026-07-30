@@ -638,3 +638,38 @@ async def test_a_completed_run_leaves_knowledge_in_the_vault(tmp_path: Path) -> 
     assert "gross margin" in written.lower()
     assert "run:" in written
     assert any("Journal" in path.parts for path in notes), "and it should be on the day"
+
+
+@pytest.mark.asyncio
+async def test_a_journal_pointer_is_not_a_second_memory(
+    store: ObsidianStore, vault: VaultManager
+) -> None:
+    """An episodic memory lands in two files, and exactly one of them is the
+    memory. Counting the journal line too meant every decision was recalled
+    twice, ranked twice and recommended twice — which is how the Chief of Staff
+    came to report one lease renewal as two separate deadlines.
+    """
+    await store.remember(
+        "Decided to drop the subscription tier",
+        kind=MemoryKind.DECISION,
+        tags=["project/Northbound"],
+    )
+    assert await store.count() == 1
+
+    recalls = await store.search("subscription tier")
+    assert len(recalls) == 1
+
+    # The line is still in the journal for a human to read.
+    assert "subscription tier" in (vault.root / "Journal" / "2026-07-29.md").read_text()
+
+
+@pytest.mark.asyncio
+async def test_a_journal_line_does_not_link_to_a_filing_detail(
+    store: ObsidianStore, vault: VaultManager
+) -> None:
+    """An area note is named after a scope. "→ [[global]]" points at a filing
+    detail the reader does not care about."""
+    await store.remember("Something happened today", kind=MemoryKind.EVENT)
+    journal = (vault.root / "Journal" / "2026-07-29.md").read_text()
+    assert "[[global]]" not in journal
+    assert "Something happened today" in journal

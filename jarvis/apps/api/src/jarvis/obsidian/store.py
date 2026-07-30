@@ -93,6 +93,12 @@ class ObsidianStore:
         Content comes from the body and metadata from the frontmatter, and when
         they disagree the body wins — that is the rule that makes a hand-edited
         note correct rather than corrupt.
+
+        Journal pointers are skipped. A journal line is a *reference* to a
+        memory that lives on a topic page, not a second memory: counting it
+        would mean every episodic fact was recalled twice, ranked twice and
+        recommended twice — which is exactly what the Chief of Staff found when
+        it reported the same lease renewal as two separate deadlines.
         """
         if orphaned := note.prune():
             log.debug("vault_blocks_deleted_by_hand", path=note.path, count=len(orphaned))
@@ -100,6 +106,8 @@ class ObsidianStore:
         memories: list[Memory] = []
         for block in note.anchored():
             meta = note.blocks.get(block.memory_id, {})
+            if meta.get("pointer"):
+                continue
             kind = _kind(meta.get("kind"), block.text)
             memories.append(
                 Memory(
@@ -294,14 +302,24 @@ class ObsidianStore:
         user corrects is never the one recall reads. So the journal is an index
         of the day — what happened, and where the detail is — which is also
         what makes it readable a year later.
+
+        Marked `pointer` in the frontmatter, so recall skips it. Without that
+        an episodic memory is returned twice by every search and counted twice
+        by everything downstream.
         """
         today: date = self._clock.now().date()
         path = naming.journal_path(today)
         note = self._vault.read(path)
         note.path = path
+        # Only link when the origin is a real topic page. An area note is named
+        # after a scope — "global", "business/sales" — and "→ [[global]]" is
+        # noise pointing at a filing detail the reader does not care about.
         title = naming.title_for(origin)
-        pointer = f"{memory.content} → [[{title}]]" if origin != path else memory.content
-        note.upsert_block(f"{memory.id}-j", pointer, naming.heading_for(memory.kind))
+        linkable = origin != path and naming.type_for(origin) not in ("area", "journal")
+        pointer = f"{memory.content} → [[{title}]]" if linkable else memory.content
+        block_id = f"{memory.id}-j"
+        if note.upsert_block(block_id, pointer, naming.heading_for(memory.kind)):
+            note.blocks[block_id] = {"pointer": True, "of": memory.id}
         note.properties.setdefault("title", today.isoformat())
         note.properties["type"] = "journal"
         note.properties["created"] = today

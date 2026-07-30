@@ -308,6 +308,27 @@ async def forget(memory_id: str, request: Request) -> None:
         raise HTTPException(status_code=404, detail=f"unknown memory: {memory_id}")
 
 
+@router.get("/v1/recommendations")
+async def recommendations(request: Request) -> dict[str, Any]:
+    """What Jarvis thinks is worth doing, ranked and evidenced.
+
+    Free and deterministic: no model is consulted. Ranking is
+    `impact × urgency × confidence`, so a recommendation you disagree with
+    points at the data that produced it rather than at an opinion you cannot
+    argue with.
+    """
+    jarvis = _jarvis(request)
+    return (await jarvis.chief.sweep(jarvis)).to_dict()
+
+
+@router.post("/v1/recommendations/{recommendation_id}/dismiss", status_code=204)
+async def dismiss_recommendation(recommendation_id: str, request: Request) -> None:
+    """ "Not now." Held for a week, then allowed to ask again — because a
+    recommendation worth detecting is worth raising eventually, and a permanent
+    dismissal is how a system quietly stops mentioning what later goes wrong."""
+    _jarvis(request).chief.dismiss(recommendation_id)
+
+
 @router.get("/v1/vault")
 async def vault_status(request: Request) -> dict[str, Any]:
     """What the vault holds and where it is neglected.

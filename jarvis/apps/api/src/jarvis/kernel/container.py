@@ -14,9 +14,11 @@ from typing import Any
 
 import structlog
 
+from jarvis.agents.delegation import Delegator
 from jarvis.agents.orchestrator import Orchestrator
 from jarvis.agents.registry import AgentRegistry
 from jarvis.agents.runtime import AgentRuntime
+from jarvis.chief.engine import RecommendationEngine
 from jarvis.computer.policy import ComputerPolicy
 from jarvis.computer.ports import Computer, UnavailableComputer
 from jarvis.computer.session import ComputerSession
@@ -169,6 +171,8 @@ class Jarvis:
     composer: DocumentComposer
     vault: Vault
     governor: CostGovernor
+    chief: RecommendationEngine
+    delegator: Delegator | None = None
     clock: Clock = SYSTEM_CLOCK
     database: Database | None = None
     # Present only when a vault is configured. Typed loosely on purpose: the
@@ -215,6 +219,10 @@ class Jarvis:
             runs=self.runs,
             bus=self.bus,
             use_arbiter=self.settings.use_llm_arbiter,
+            # The same delegator: it decomposes against whichever registry it
+            # is handed, so a mode's narrowing applies to who can be delegated
+            # to exactly as it applies to who can be routed to (ADR 0010).
+            delegator=self.delegator,
         )
 
     @property
@@ -423,6 +431,7 @@ def build(
         bus=bus,
         clock=clock,
     )
+    delegator = Delegator(router) if settings.enable_delegation else None
     orchestrator = Orchestrator(
         registry=agents,
         runtime=runtime,
@@ -430,6 +439,7 @@ def build(
         runs=runs,
         bus=bus,
         use_arbiter=settings.use_llm_arbiter,
+        delegator=delegator,
     )
 
     composer = DocumentComposer(
@@ -506,6 +516,8 @@ def build(
         composer=composer,
         vault=vault,
         governor=governor,
+        chief=RecommendationEngine(bus=bus, clock=clock),
+        delegator=delegator,
         clock=clock,
         database=database,
         obsidian=obsidian,

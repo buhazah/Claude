@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_base_url: str = "https://api.openai.com/v1"
 
+    # Delegation. The Chief of Staff and the Planner can split a request across
+    # specialists; every other agent is unaffected because delegation is opt-in
+    # via `collaborators`. Off makes Jarvis behave exactly as it did before
+    # M11.5 — one agent per request.
+    enable_delegation: bool = True
+
     # Obsidian. Empty means no vault, and Jarvis remembers into whichever store
     # the database switch selected — the integration is entirely opt-in and
     # nothing in the kernel knows it exists.

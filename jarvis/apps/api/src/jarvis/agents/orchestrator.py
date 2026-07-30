@@ -13,13 +13,14 @@ from collections.abc import AsyncIterator
 
 import structlog
 
+from jarvis.agents.delegation import Assignment, Contribution, Delegator
 from jarvis.agents.registry import AgentRegistry
 from jarvis.agents.runtime import AgentDelta, AgentRuntime
 from jarvis.agents.spec import AgentMatch, AgentSpec
 from jarvis.kernel.bus import EventBus
 from jarvis.llm.base import CompletionRequest, Message, Role, RoutingPolicy
 from jarvis.llm.router import ModelRouter
-from jarvis.runs.models import RunStore, StepKind
+from jarvis.runs.models import Run, RunState, RunStore, StepKind
 
 log = structlog.get_logger(__name__)
 
@@ -46,6 +47,7 @@ class Orchestrator:
         runs: RunStore,
         bus: EventBus,
         use_arbiter: bool = True,
+        delegator: Delegator | None = None,
     ) -> None:
         self._registry = registry
         self._runtime = runtime
@@ -53,6 +55,10 @@ class Orchestrator:
         self._runs = runs
         self._bus = bus
         self._use_arbiter = use_arbiter
+        # Absent means the system never delegates — which is what M1 through
+        # M11.4 did, and what a mode gets when it narrows away the coordinating
+        # agents entirely.
+        self._delegator = delegator
 
     async def _arbitrate(self, request: str, candidates: list[AgentMatch]) -> AgentMatch:
         """Ask a cheap, fast model to decide when lexical scoring cannot.
@@ -144,8 +150,9 @@ class Orchestrator:
         *,
         agent_id: str | None = None,
         history: list[Message] | None = None,
+        delegate: bool = True,
     ) -> AsyncIterator[AgentDelta]:
-        """Route a request and stream the chosen agent's work."""
+        """Route a request and stream the work — by one agent, or by several."""
         if agent_id:
             matches = [AgentMatch(agent_id=agent_id, confidence=1.0, reasons=["explicit"])]
         else:
@@ -165,5 +172,114 @@ class Orchestrator:
                 "candidates": [m.model_dump() for m in matches],
             },
         )
+
+        assignments: list[Assignment] = []
+        if delegate and self._delegator and self._delegator.should_consider(spec, request):
+            assignments = await self._delegator.decompose(
+                request, spec=spec, registry=self._registry
+            )
+
+        if assignments:
+            async for delta in self._delegate(request, spec, assignments, run):
+                yield delta
+            return
+
         async for delta in self._runtime.stream(spec, request, history=history, run=run):
             yield delta
+
+    async def _delegate(
+        self,
+        request: str,
+        spec: AgentSpec,
+        assignments: list[Assignment],
+        run: Run,
+    ) -> AsyncIterator[AgentDelta]:
+        """Run the specialists, then let the owner write the answer.
+
+        Specialists run **sequentially and silently**. Sequentially because
+        their tokens would otherwise interleave into an unreadable stream;
+        silently because the user asked one question and wants one answer, not
+        four drafts and a summary. What is streamed is the delegation itself —
+        who was asked what — so the work is visible while it happens, and then
+        the synthesised answer.
+
+        A specialist that fails does not fail the request. Its report becomes
+        "could not finish, because…", which the synthesis is instructed to pass
+        on: a partial answer that says what is missing beats no answer.
+        """
+        assert self._delegator is not None
+        yield AgentDelta(
+            "delegation",
+            data={
+                "owner": spec.id,
+                "assignments": [{"agent": a.agent_id, "task": a.task} for a in assignments],
+            },
+        )
+        self._bus.publish(
+            "routing.delegated",
+            {"owner": spec.id, "to": [a.agent_id for a in assignments]},
+            run_id=run.id,
+        )
+
+        contributions: list[Contribution] = []
+        for assignment in assignments:
+            worker = self._registry.get(assignment.agent_id)
+            step = self._runs.start_step(run, StepKind.AGENT, f"delegate → {worker.id}")
+            parts: list[str] = []
+            error = ""
+            cost = 0.0
+            async for delta in self._runtime.stream(
+                worker, assignment.task, run=run, remember=False
+            ):
+                if delta.type == "token":
+                    parts.append(delta.text)
+                elif delta.type == "error":
+                    error = delta.text
+                elif delta.type == "done":
+                    reported = (delta.data or {}).get("cost_usd")
+                    cost = float(reported) if isinstance(reported, int | float) else 0.0
+                elif delta.type in ("tool", "tool_result"):
+                    yield delta  # tool activity stays visible; prose does not
+            output = "".join(parts).strip()
+            self._runs.end_step(step, result_preview=(error or output)[:200])
+            contributions.append(
+                Contribution(
+                    agent_id=worker.id,
+                    task=assignment.task,
+                    output=output,
+                    cost_usd=cost,
+                    error=error,
+                )
+            )
+            yield AgentDelta(
+                "delegation_result",
+                data={"agent": worker.id, "ok": not error, "words": len(output.split())},
+            )
+
+        step = self._runs.start_step(run, StepKind.MODEL, f"{spec.id} synthesis")
+        try:
+            answer = await self._delegator.synthesise(request, contributions, spec=spec)
+        except Exception as exc:
+            # The specialists' work is done and paid for. Losing it because the
+            # last call failed would be the worst possible outcome, so their
+            # reports are handed over raw rather than discarded.
+            log.warning("synthesis_failed", error=str(exc))
+            self._runs.end_step(step, state=RunState.FAILED, error=str(exc))
+            answer = "\n\n".join(f"**{c.agent_id}**\n{c.error or c.output}" for c in contributions)
+        else:
+            self._runs.end_step(step)
+
+        for chunk in answer.splitlines(keepends=True):
+            yield AgentDelta("token", text=chunk)
+
+        self._runs.finish(run, state=RunState.SUCCEEDED, output=answer)
+        await self._runs.persist(run)
+        yield AgentDelta(
+            "done",
+            data={
+                "run_id": run.id,
+                "agent": spec.id,
+                "delegated_to": [c.agent_id for c in contributions],
+                "cost_usd": round(sum(c.cost_usd for c in contributions), 6),
+            },
+        )
