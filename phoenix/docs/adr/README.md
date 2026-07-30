@@ -1,8 +1,9 @@
 # Phoenix — architecture decision records
 
-Proposed, not accepted. Nothing is built yet, and each of these is a decision
-the blueprint depends on. Reject any of them and say so — the affected
-documents get rewritten before code, not after.
+0001–0009 are **proposed and now frozen** (ADR 0010). They are decisions the
+blueprint depends on, and they stop being re-argued in the abstract: from here
+they change when a named client exposes a named deficiency, filed in
+[`DEFICIENCIES.md`](../DEFICIENCIES.md).
 
 | # | Decision | What it prevents |
 |---|---|---|
@@ -15,6 +16,7 @@ documents get rewritten before code, not after.
 | [0007](0007-knowledge-crosses-as-gated-claims.md) | Knowledge crosses tenants as gated claims, never as data | Confidentiality living inside a prompt instead of a validator |
 | [0008](0008-learning-lives-in-data-not-weights.md) | Learning lives in data, not in weights — no fine-tuning on client data | A departing client's data being permanently unremovable |
 | [0009](0009-creative-is-a-portfolio.md) | Creative is a portfolio with fixed tier allocation, not a ranked queue | Exploration reaching zero by correct arithmetic, three generations at a time |
+| **[0010](0010-architecture-is-frozen.md)** | **Architecture is frozen until a customer exposes a deficiency** *(accepted)* | An architecture that keeps improving at answering questions nobody asked |
 
 0007 and 0008 are the pair that makes cross-client learning survivable: the first
 says a model never decides what crosses a tenant boundary, the second says
@@ -24,6 +26,10 @@ with `08-MOAT.md`.
 0009 is the one most likely to be quietly abandoned under pressure, because the
 thing it protects — exploration — is always the easiest line to cut and never
 looks wrong to cut. Read it with `09-CREATIVE.md §1`.
+
+0010 governs all of them, and is the only one that is accepted rather than
+proposed. It exists because the last two ADRs were written before anyone had run
+a campaign, and the marginal value of the eleventh would have been negative.
 
 They build on Jarvis Core's ADRs 0001–0015, particularly 0001 (offline
 determinism), 0002 (agents are data), 0005 (permissions are data), 0007

@@ -384,7 +384,12 @@ scheduled function rather than an agent.
 
 ## What happens if you disagree
 
-These are recommendations, not conditions. Tell me which ones you reject and I
+> **As of ADR 0010, this argument is closed and the architecture is frozen.**
+> Disagreement from here needs a client's name attached — file it in
+> `DEFICIENCIES.md`. The section below is kept as the record of how the argument
+> was settled.
+
+These were recommendations, not conditions. Tell me which ones you reject and I
 will build what you asked for.
 
 The one I would push back on twice is **§1**. Building a multi-client agency on

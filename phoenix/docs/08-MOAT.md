@@ -3,6 +3,17 @@
 How the system is materially better at campaign 10,000 than at campaign 100,
 and why a competitor who copies everything visible does not get there.
 
+> **⛔ Frozen and almost entirely unbuilt (ADR 0010).** The gate here requires
+> five supporting tenants to clear a single claim; at twenty clients it clears
+> none. Everything in §7–§14 waits.
+>
+> **What survives the freeze is §17's recording carve-out only:** observations
+> emitted into an outbox, the contribution ledger, override reason codes. Nothing
+> reads them. Three days of work against a permanent loss.
+>
+> This document is a hypothesis about what will compound, written before anyone
+> had run a campaign. `10-VALIDATION.md` is what happens instead.
+
 ---
 
 ## 1. The premise

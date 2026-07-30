@@ -297,6 +297,15 @@ way Jarvis enforces its kernel rule — by a test in CI, not by intention.
 with a trigger. A debt without a trigger is not debt; it is a decision nobody
 admitted to making.
 
+**Under the architecture freeze (ADR 0010) this table gets busier, on purpose.**
+Shipping to the first twenty clients will produce per-client special cases, and
+the deal is explicit: a hack is fine, a hack nobody wrote down is how the
+untangling later becomes impossible. Manual effort is the preferred workaround
+and is tracked in the effort ledger (`10-VALIDATION.md §6`), which keeps the
+codebase clean and converts each gap into data. The eight invariants above are
+the part that does not bend — shipping pressure is precisely the condition they
+were written for.
+
 ## 6. What would make me abandon this
 
 Stated in advance, because the time to write the kill criteria is before you

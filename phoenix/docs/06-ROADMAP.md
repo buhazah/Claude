@@ -5,6 +5,19 @@ assumptions are tested before the expensive machinery is built around them.
 
 Every phase has an exit criterion. A phase without one never ends.
 
+> **⛔ Under the architecture freeze (ADR 0010), this roadmap is not the plan —
+> [`10-VALIDATION.md`](10-VALIDATION.md) is.**
+>
+> | Phase | Status |
+> |---|---|
+> | 0, 1 | **Active.** Build these now, against one real ad account. |
+> | 2, 3, 4 | **Client-driven.** Build only as far as the cohorts in `10-VALIDATION.md §5` require. |
+> | 5, 6, 7 | **Frozen and unbuilt.** Nothing above the tenant boundary pays off below ~50 clients. |
+>
+> The recording carve-out survives in full: the vocabulary, observation
+> extractor, prediction records, override reason codes and contribution ledger
+> ship on schedule. Nothing that *consumes* them gets built.
+
 ---
 
 ## Phase 0 — Foundations *(parallel, starts immediately)*

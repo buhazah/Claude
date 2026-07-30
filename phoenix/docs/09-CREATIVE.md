@@ -8,6 +8,19 @@ the decision spine, mandates, the learning plane. This document is only the
 creative engine, and it is the one place in Phoenix where the AI is doing the
 irreplaceable work rather than assisting deterministic work.
 
+> **⛔ Frozen (ADR 0010), and mostly still worth building** — unlike `08-MOAT.md`,
+> most of this engine works at n=1 and therefore sits **inside** the tenant
+> boundary, where the freeze says build freely.
+>
+> **Live:** hypotheses, briefs, predictions, generations, tier allocation, gates,
+> diversity, prediction scoring, fatigue, refresh/retire/revive, per-client
+> metrics. All of it pays off for a single account.
+>
+> **Frozen:** §10's learned review filter (needs hundreds of operator rejections
+> — capture them, train nothing) and §14's fleet publication (needs five
+> tenants). Human review stays fully manual through the first twenty clients,
+> which is also how we find out what the filter should learn.
+
 ---
 
 ## 1. The objective, and the trap inside it

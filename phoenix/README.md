@@ -4,18 +4,36 @@ An AI-operated customer acquisition function, sold as a premium managed service,
 built on Jarvis Core. **Meta is the first execution channel, not the
 foundation.**
 
-**Nothing is implemented.** This is the blueprint. The first deliverable is an
+**Nothing is implemented.** This is the blueprint. The first deliverable was an
 architecture coherent enough to build against, and a set of decisions worth
 disagreeing with before code exists rather than after.
 
-*Revision 2 — incorporates the five directions given after the first draft: own
-the complete acquisition workflow, operate as an agency on the client's own
-accounts, price as a premium managed service, treat write access as a capability
-rather than a phase, and keep the core channel-agnostic.*
+> ## ⛔ The architecture is frozen
+>
+> **Design is done. It unfreezes when a named client exposes a named
+> deficiency** — [ADR 0010](docs/adr/0010-architecture-is-frozen.md),
+> [`docs/10-VALIDATION.md`](docs/10-VALIDATION.md).
+>
+> **Build freely inside the tenant boundary. Freeze everything that crosses it.**
+> One client justifies onboarding, reconciliation, the report, diagnosis,
+> recommendations and creative generations. Nothing above the tenant boundary
+> pays off below ~50 clients — the publication gate needs five supporting tenants
+> to clear a single claim.
+>
+> Gaps are filed in [`docs/DEFICIENCIES.md`](docs/DEFICIENCIES.md) with a
+> client's name on them. Three clients hitting the same wall unfreezes it.
+>
+> **The goal is no longer to design the perfect AI advertising company. It is to
+> find out what makes someone pay us again next month.**
 
 ---
 
 ## Start here
+
+**[`docs/10-VALIDATION.md`](docs/10-VALIDATION.md)** — what happens now: the
+freeze, six hypotheses about why anyone would keep paying, three cohorts of
+clients, and four cheap instruments to answer them. Read this before the design
+documents; they are the record of a decided argument, and this is the open one.
 
 **[`docs/00-STRATEGY.md`](docs/00-STRATEGY.md)** — the memo that argues with the
 brief. Eight sections, one of them still a blocker. Everything else follows from
@@ -36,8 +54,12 @@ The short version:
 
 ## The documents
 
+**Frozen** unless a client exposes a deficiency. `10` is the live one.
+
 | | |
 |---|---|
+| **[10 — Validation](docs/10-VALIDATION.md)** | **The freeze, and the first twenty clients. The only open document.** |
+| [DEFICIENCIES](docs/DEFICIENCIES.md) | Where a client's name unfreezes something |
 | [00 — Strategy](docs/00-STRATEGY.md) | What I would change, and why. Read first. |
 | [01 — PRD](docs/01-PRD.md) | ICP, jobs, scope, non-goals, lifecycle, success metrics |
 | [02 — Architecture](docs/02-ARCHITECTURE.md) | Topology, service boundaries, data model, events, memory, integrations, security, deployment |
@@ -48,7 +70,7 @@ The short version:
 | [07 — Risks](docs/07-RISKS.md) | Risk register, cost model, scaling, technical debt, kill criteria |
 | [08 — Moat](docs/08-MOAT.md) | What compounds when every feature has been copied, and how to prove it |
 | [09 — Creative engine](docs/09-CREATIVE.md) | Discovery, prediction, generation, ranking, fatigue, retirement — and why win rate is the wrong goal |
-| [ADRs](docs/adr/README.md) | The nine decisions everything else depends on |
+| [ADRs](docs/adr/README.md) | Nine decisions the design depends on, and one that freezes them |
 
 ## The two ideas
 
@@ -170,6 +192,12 @@ Phases 1, 3 and 4 anyway: a vocabulary, an observation extractor, a contribution
 ledger. An outcome not recorded in a resolvable shape is gone forever, and two
 years of unrecorded history is the same mistake as Meta-shaped rows, made in a
 different dimension.
+
+**Under the freeze, Phases 0–1 are the whole plan.** Phases 5–7 are frozen and
+unbuilt; Phases 2–4 proceed only as far as the client cohorts in
+[`docs/10-VALIDATION.md §5`](docs/10-VALIDATION.md) require. The plumbing
+carve-out survives — record observations, predictions, overrides and provenance
+from day one, build nothing that consumes them.
 
 Phases 1 and 2 come before the machinery because they are cheap, independently
 sellable, and between them they decide whether the rest is worth building. The
