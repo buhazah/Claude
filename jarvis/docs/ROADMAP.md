@@ -16,6 +16,19 @@ begins before the previous one's suite is green.
 | **M9** | **Modes** | Business / Coding / Research mode surfaces + document generation | ✅ **done** |
 | **M10** | **Hardening** | Vault, audit chain, cost governance, CI/CD, load + chaos tests, packaging | ✅ **done** |
 
+**Phase 11 — intelligence.** The platform is stable; from here the work is
+making Jarvis *smarter*, not larger.
+
+| # | Milestone | Contents | State |
+|---|---|---|---|
+| **M11.1** | **Intelligence audit** | Every prompt, routing rule and system instruction reviewed; the structurally provable defects fixed | ✅ **done** |
+| **M11.2** | **Evaluation corpus** | 288 cases across ten dimensions, confidence-weighted scoring, committed baseline, CI gate | ✅ **done** |
+| **M11.3** | **Measured prompt work** | The behavioural half of the audit, proven against the corpus | ⏸ **needs a provider key** |
+| **M11.4** | **Obsidian memory** | A vault behind the `MemoryStore` port — the files *are* the memory | ✅ **done** |
+| **M11.5** | **Chief of Staff** | Delegation, and a recommendation engine with no model in the loop | ✅ **done** |
+| **M11.6** | **Morning briefing** | Executive read assembled from the same arithmetic | ✅ **done** |
+| **M11.7** | **Documentation** | ADRs 0012–0015, prompt strategy, architecture deltas | ✅ **done** |
+
 ## Milestone 1 — delivered
 
 **Built**
@@ -305,6 +318,86 @@ document all survived.
 **Found by testing** — the router only caught `ProviderError`, so an adapter
 raising a connection reset or an unwrapped decode error killed the request with
 no fallback at all — the exact failure a fallback chain exists for.
+
+## Phase 11 — delivered
+
+**M11.1 — the audit.** Eleven findings in `docs/INTELLIGENCE-AUDIT.md`, six
+fixed, separated by what it takes to prove them: structural defects are
+arithmetic and were fixed immediately; behavioural ones are hypotheses and wait
+for a corpus. That ordering is a deliberate correction to the phase plan —
+improving prompts before expanding the evaluation would mean building the ruler
+after cutting the wood.
+
+- **The two-stage router had become a one-stage router.** M10 raised the
+  ambiguity threshold to 0.55 to stop homonyms deciding; nothing raised the
+  *scores*, and one keyword tops out at 0.40. 78% of requests were escalating
+  to the arbiter — latency and spend, never an error, so nothing said so. The
+  threshold was not wrong; the score was measuring how much text matched rather
+  than how much the match *distinguished* an agent (ADR 0012). Escalation
+  78% → 48%, accepted 13 → 18, actively wrong 3 → 1.
+- **Fourteen agents declared tools nothing implemented**, twelve with none that
+  resolved, while `needs_tools` routed them to tool-capable models to use them.
+  The Memory Agent's tool was `memory`; the registered ones are `memory_search`
+  and `memory_write`, so the agent that curates memory could only talk about
+  curating it.
+- **Wiring those tools exposed a hole in the mode narrowing.** `memory_search`
+  called the store with no scope, which means every scope — one path to memory
+  honoured the narrowing and another, reachable by the model, did not.
+
+**M11.2 — the corpus.** 288 cases across routing, planning, tool selection,
+memory, research, execution, workflows, documents, coding and business, each
+carrying expected behaviour, defensible and actively-wrong agents, expected
+tools, success criteria and a confidence (ADR 0015). Two-thirds are free, so CI
+runs them on every push against a committed baseline; the exit code answers
+"did this change make things worse".
+
+**Found by building it** — recall ranking scored a stopword hit exactly like a
+real one, so "what are the margins like" ranked a memory about consulting above
+the one stating the gross margin, which scored zero and never appeared.
+Underneath: the router had matched by prefix since M1 while recall matched by
+equality.
+
+**M11.4 — the vault.** `ObsidianStore` behind the existing `MemoryStore` port.
+The design turns on one question — which copy is the truth when the user edits
+a note — and the answer is that there is only one copy (ADR 0013). A memory is
+a line carrying an Obsidian block reference; the body belongs to the user and
+the frontmatter to Jarvis; unrecognised frontmatter is preserved verbatim
+because a vault has plugins.
+
+"Every completed task leaves knowledge behind" needed no hook: the runtime has
+written a memory after every run since M1, and pointing memory at a vault was
+all it took.
+
+**M11.5 — the Chief of Staff.** Delegation closes audit finding F4:
+`collaborators` had been read by nothing while two prompts promised
+coordination, so every multi-specialist request produced a *description* of the
+delegation. And a recommendation engine with no model in the loop — nine
+deterministic detectors, ranked `impact × urgency × confidence`, because a
+model's opinion cannot be corrected when it is wrong (ADR 0014).
+
+**Found by building it** — an episodic memory lands in two files, and the
+journal *pointer* was being counted as a second memory, so every episodic fact
+was recalled twice and one lease renewal appeared as two deadlines. It took a
+subsystem *consuming* memory to notice there were two of everything.
+
+**M11.6 — the briefing.** "Feels like it was written by an experienced
+executive chief of staff" decomposes into four checkable properties: it leads
+with the one thing, it says what it does not know, it does not pad, and it is
+short. A model writes the opener; everything else is the arithmetic.
+
+**Found by the browser suite** — the echo provider's output was being served as
+the opener. It echoes the prompt, it is short and plausible, and it passed every
+guard, so the briefing opened with `[echo:52f8ee68] Today: …` and reported
+itself model-written. The fallback chain means that happens whenever a real
+provider is configured but failing, which is exactly when nobody is watching.
+Also a 500 on dismissing everything, and duplicate React keys silently omitting
+children.
+
+**What is not done.** M11.3 — the behavioural half of the audit (output
+contracts, tool-aware prompting, the house rule that contradicts the planning
+agents) — needs a provider key. The corpus is built and calibrated; a full pass
+costs a few dollars. Rewriting prompts without it would be exactly the habit
+this phase exists to break.
 
 ## Definition of done (every milestone)
 

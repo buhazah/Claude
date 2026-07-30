@@ -10,13 +10,14 @@ system you can hand an outcome to — "handle it" — and get the outcome back.
 - [Roadmap](docs/ROADMAP.md) — milestones and what each one delivers
 - [Interface design](docs/UI-DESIGN.md) — the design language and frames
 - [Evaluation](docs/EVALUATION.md) — how intelligence is measured rather than guessed
+- [Prompt strategy](docs/PROMPTS.md) — what Jarvis tells a model, and why
 - [Obsidian](docs/OBSIDIAN.md) — the vault as long-term memory you own
 - [Intelligence audit](docs/INTELLIGENCE-AUDIT.md) — what the prompts and router got wrong
-- [Decisions](docs/adr/) — architecture decision records
+- [Decisions](docs/adr/README.md) — architecture decision records
 
 ## Status
 
-**All ten milestones are complete.**
+**Ten milestones built the platform. Phase 11 is making it smarter.**
 
 *M1 — kernel*: event bus, model router with fallback and circuit breaking,
 30-agent catalog with a spec-driven runtime, tiered memory with hybrid recall,
@@ -74,6 +75,17 @@ than reported after; and durable backings for the vault, approvals, documents
 and agent metrics.
 583 tests, including load and chaos, and durability verified across a real
 process restart.
+
+*Phase 11 — intelligence*: an audit of every prompt and routing rule that found
+eleven defects in code that read perfectly well; a 288-case evaluation corpus
+that CI runs on every push; an Obsidian vault where the files *are* the memory
+rather than an export of it; delegation, closing a promise the prompts had been
+making since M1; a recommendation engine with no model in the loop; and a
+morning briefing.
+686 tests · 9 Playwright suites · the router's escalation rate down from 78%
+to 48% with accuracy up.
+One piece outstanding — the behavioural prompt work needs a provider key, and
+doing it without one would be the guessing this phase exists to stop.
 
 ## Run it
 
@@ -339,7 +351,9 @@ make eval       # the whole corpus against a real model
 
 ```
 jarvis/
-├── docs/                ARCHITECTURE · ROADMAP · UI-DESIGN · adr/
+├── docs/                ARCHITECTURE · ROADMAP · UI-DESIGN ·
+│                        EVALUATION · PROMPTS · OBSIDIAN ·
+│                        INTELLIGENCE-AUDIT · adr/
 └── apps/
     ├── api/             FastAPI service
     │   ├── src/jarvis/
@@ -347,6 +361,8 @@ jarvis/
     │   │   ├── llm/     provider port · router · adapters
     │   │   ├── agents/  spec · runtime · registry · catalog · orchestrator
     │   │   ├── memory/  store · embeddings · ranking · categorisation
+    │   │   ├── obsidian/  note format · vault · naming · links · index · sync
+    │   │   ├── chief/   situation · signals · engine · briefing
     │   │   ├── knowledge/  extract · chunk · ingest · store
     │   │   ├── workflows/  engine · triggers · scheduler · catalog
     │   │   ├── tools/   registry · tiers · approvals · system · MCP
@@ -358,15 +374,17 @@ jarvis/
     │   │   ├── runs/    run records · durable store
     │   │   ├── persistence/  schema · engine · migrations
     │   │   └── api/     routes · schemas · SSE
+    │   ├── eval/        checks · scoring · corpus · runner · report
     │   └── tests/
     └── web/             Next.js client
-        ├── src/app/      dashboard · chat · agents · memory · knowledge ·
-        │                 workflows · runs · tools · documents · computer ·
-        │                 settings
+        ├── src/app/      dashboard · briefing · chat · agents · memory ·
+        │                 knowledge · workflows · runs · tools · documents ·
+        │                 computer · settings
         ├── src/components/  shell · command palette · activity rail · ui
         ├── src/lib/      typed API client · incremental SSE parser
         └── e2e/          Playwright: smoke · approval · knowledge ·
-                          workflows · voice · computer · modes · settings
+                          workflows · voice · computer · modes · settings ·
+                          briefing
 ```
 
 ## Design notes
@@ -394,6 +412,12 @@ tomorrow, in a different process, and the run continues.
 **Permissions are data.** Tools declare a blast-radius tier; grants are checked
 at call time. An agent cannot widen its own reach by reasoning about it, and a
 `dangerous` tool suspends for a human rather than failing or proceeding.
+
+**Judgement with a rule is arithmetic.** Routing between thirty agents has no
+rule, so an arbiter decides when lexical scoring cannot. "Is this project
+neglected" has one — nobody has written to the note in six weeks — so no model
+is asked, the answer is the same twice, and when it is wrong there is something
+to correct.
 
 **Connectors are MCP servers.** Rather than a hand-written adapter per SaaS
 product, Jarvis speaks Model Context Protocol and mounts each server as a tool

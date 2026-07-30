@@ -16,6 +16,8 @@
 | **Ports & adapters** | `Protocol` at the boundary, adapters behind it: `LLMProvider`, `MemoryStore`, `Tool`, `EventBus`. Swapping SQLite → Postgres+pgvector is a config change. |
 | **Human-in-the-loop by default** | Any tool marked `requires_approval` suspends the run and emits an approval event. "Jarvis, handle it" is earned per-capability, not assumed. |
 | **Local-first where possible** | Secrets never leave the vault; memory and documents can live entirely on-device; provider selection can be constrained by a `privacy` floor per request. |
+| **A model for judgement with no rule; arithmetic for judgement with one** | Routing between thirty agents has no rule, so an arbiter decides when lexical scoring cannot. "Is this project neglected" has a rule — nobody has written to it in six weeks — so no model is asked, and the answer can be audited and corrected. |
+| **Measured, not guessed** | A prompt change is answerable with "eleven cases improved and two broke" against a committed baseline, not with an impression. |
 
 ## 2. Topology
 
@@ -29,6 +31,7 @@
 │  API LAYER — FastAPI, fully async                                      │
 │  /v1/chat (stream)  /v1/agents  /v1/memory  /v1/models  /v1/runs       │
 │  /v1/tools  /v1/workflows  /v1/events (SSE firehose)                   │
+│  /v1/briefing  /v1/recommendations  /v1/vault                          │
 └───────────────┬───────────────────────────────────────────────────────┘
                 │
 ┌───────────────▼───────────────────────────────────────────────────────┐
@@ -81,9 +84,23 @@ router, streams deltas onto the bus, executes tool calls with permission
 checks, and records `AgentMetrics` (runs, success rate, p50/p95 latency,
 tokens, cost, rolling confidence).
 
-Routing is a two-stage funnel: cheap lexical/capability scoring produces
-candidates, then an LLM arbiter picks and can decompose into a multi-agent
-plan. Stage one alone is enough offline and is unit-tested deterministically.
+Routing is a two-stage funnel: cheap lexical scoring produces candidates, then
+an LLM arbiter decides when that pass is genuinely ambiguous. Stage one alone is
+enough offline and is unit-tested deterministically.
+
+Stage one scores **how much a match distinguishes an agent**, not how much text
+matched (ADR 0012). Each keyword's weight is divided by how many agents in the
+registry claim it, counted per registry so a mode's narrowing makes a contested
+word exclusive where it has become so. That is what lets the ambiguity
+threshold sit high enough to catch homonyms without escalating every precisely
+worded request with them.
+
+**Delegation** (ADR 0014) is opt-in per agent via `collaborators`, which until
+Phase 11 was read by nothing while two prompts promised it. A coordinating
+agent's request may be decomposed into assignments, run sequentially and
+silently, and synthesised into one answer. One level deep, only against *this*
+registry, and it falls back to ordinary single-agent routing whenever the
+split cannot be parsed.
 
 ### 3.4 Memory (`jarvis.memory`)
 Four tiers, one interface:
@@ -96,9 +113,20 @@ Four tiers, one interface:
 | Procedural | learned workflows, mistakes, successes | relational + vector |
 
 Writes are auto-categorized (`MemoryKind` × topic) and scored for salience;
-recall blends lexical BM25-ish scoring with vector similarity and recency
-decay. The `EmbeddingModel` port has a deterministic hash-embedding
-implementation so recall is testable without network.
+recall blends lexical scoring with vector similarity and recency decay. The
+`EmbeddingModel` port has a deterministic hash-embedding implementation so
+recall is testable without network. Lexical matching drops stopwords and
+matches by prefix, because a stopword hit is not a hit and the router had been
+matching by prefix since M1 while recall matched by equality — two opinions
+about what a word is, with the weaker one governing what the user could
+remember.
+
+An **Obsidian vault** can be the store (ADR 0013). Not an export: the files
+*are* the memory, a memory is a line carrying an Obsidian block reference, and
+when the user's edit and Jarvis's record disagree the user is right. Ranking is
+the same `jarvis.memory.ranking` code every backend uses, so recall order
+cannot depend on which one is deployed. `jarvis/obsidian/` is an adapter behind
+the port; a test walks every module's AST to prove nothing in core imports it.
 
 ### 3.5 Tools (`jarvis.tools`)
 A tool is a name, JSON schema, permission tier, and an async callable. The
@@ -164,6 +192,41 @@ authorisation and after the audit write.
 estimate, in the model router — the one place every call passes through. A soft
 ceiling routes into the approval gate; a hard ceiling refuses outright.
 
+### 3.12 Chief of Staff (`jarvis.chief`)
+Proactive intelligence with **no model in the loop** (ADR 0014). Nine
+deterministic detectors read one snapshot of state — approvals blocking a run,
+failures nobody returned to, workflows suspended and forgotten, projects gone
+cold, goals stated and never mentioned, deadlines, repeated mistakes, budget
+pressure, knowledge stranded in the vault — and ranking is
+`impact × urgency × confidence` with the evidence attached.
+
+Handing everything to a model and asking "what should they do today" reads
+better and is unauditable, non-deterministic, unavailable offline and
+unfalsifiable. Arithmetic can be corrected: either the evidence is wrong or the
+number is.
+
+The hard part is restraint. Each detector caps its own output, a sweep surfaces
+at most ten and at most two per signal, and the report says how many it held
+back. Recommendation ids are stable across sweeps so "not now" means something;
+dismissals expire after a week so it does not mean "never".
+
+The **morning briefing** composes from the same sweep. A model writes the
+two-sentence opener when one is configured — facts are never asked of it — with
+a deterministic fallback that is plainer and never wrong. Empty sections are
+absent rather than empty, and sources Jarvis cannot read (mail, calendar,
+absent a connector) are named rather than silently omitted.
+
+### 3.13 Evaluation (`eval/`)
+Not a test suite (ADR 0015). 288 cases across ten dimensions, each carrying
+expected behaviour, defensible and actively-wrong agents, expected tools,
+success criteria and a confidence. A check answers yes, no or **not
+applicable**, and skipped checks carry no weight — so a provider outage
+produces a smaller sample rather than a perfect score.
+
+Two-thirds never touch a model, so CI runs them on every push against a
+committed baseline. The exit code answers "did this change make things worse",
+not "is the corpus perfect".
+
 ## 4. Technology decisions
 
 | Choice | Why | Rejected alternative |
@@ -196,18 +259,23 @@ ceiling routes into the approval gate; a hard ceiling refuses outright.
 
 ```
 jarvis/
-├── docs/                   ARCHITECTURE · ROADMAP · UI-DESIGN · adr/
+├── docs/                   ARCHITECTURE · ROADMAP · UI-DESIGN ·
+│                        EVALUATION · PROMPTS · OBSIDIAN ·
+│                        INTELLIGENCE-AUDIT · adr/
 ├── apps/
 │   ├── api/                FastAPI service (Python)
 │   │   ├── src/jarvis/
 │   │   │   ├── kernel/     bus · ids · clock · errors · container
 │   │   │   ├── llm/        base · router · providers/
 │   │   │   ├── agents/     spec · runtime · registry · catalog/ · orchestrator
-│   │   │   ├── memory/     store · embeddings · categorizer
+│   │   │   ├── memory/     store · embeddings · ranking · categorizer
+│   │   │   ├── obsidian/   note · vault · naming · links · store · index · sync
+│   │   │   ├── chief/      situation · signals · engine · briefing
 │   │   │   ├── tools/      registry · builtins/
 │   │   │   ├── runs/       run store · timeline
 │   │   │   ├── api/        routes/ · schemas · sse
 │   │   │   └── observability/
+│   │   ├── eval/           checks · scoring · corpus/ · runner · report
 │   │   └── tests/
 │   └── web/                Next.js client
 └── infra/                  docker-compose · migrations · CI
