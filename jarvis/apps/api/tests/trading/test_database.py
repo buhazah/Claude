@@ -108,6 +108,21 @@ async def test_market_snapshot_round_trips(store: TradingStore):
     await store.save_market_snapshot(snapshot)  # does not raise
 
 
+async def test_latest_market_snapshot_returns_none_when_empty(store: TradingStore):
+    assert await store.latest_market_snapshot() is None
+
+
+async def test_latest_market_snapshot_returns_the_most_recent(store: TradingStore):
+    await store.save_market_snapshot(
+        make_market(timestamp=datetime(2026, 3, 10, 10, 0, tzinfo=UTC))
+    )
+    latest = make_market(timestamp=datetime(2026, 3, 10, 12, 0, tzinfo=UTC))
+    await store.save_market_snapshot(latest)
+    fetched = await store.latest_market_snapshot()
+    assert fetched is not None
+    assert fetched.timestamp == latest.timestamp
+
+
 async def test_options_snapshot_round_trips(store: TradingStore):
     snapshot = OptionsSnapshot(
         timestamp=datetime(2026, 3, 10, tzinfo=UTC),

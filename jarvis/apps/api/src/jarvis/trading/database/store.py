@@ -39,6 +39,8 @@ from jarvis.trading.models import (
 class TradingStore(Protocol):
     async def save_market_snapshot(self, snapshot: MarketSnapshot) -> None: ...
 
+    async def latest_market_snapshot(self) -> MarketSnapshot | None: ...
+
     async def save_options_snapshot(self, snapshot: OptionsSnapshot) -> None: ...
 
     async def save_signal(self, signal: Signal) -> Signal: ...
@@ -93,6 +95,11 @@ class InMemoryTradingStore:
 
     async def save_market_snapshot(self, snapshot: MarketSnapshot) -> None:
         self._market_snapshots.append(snapshot.model_copy(deep=True))
+
+    async def latest_market_snapshot(self) -> MarketSnapshot | None:
+        if not self._market_snapshots:
+            return None
+        return self._market_snapshots[-1].model_copy(deep=True)
 
     async def save_options_snapshot(self, snapshot: OptionsSnapshot) -> None:
         self._options_snapshots.append(snapshot.model_copy(deep=True))
@@ -204,6 +211,12 @@ class SqlTradingStore:
                 )
             )
             await session.commit()
+
+    async def latest_market_snapshot(self) -> MarketSnapshot | None:
+        statement = select(MarketSnapshotRow).order_by(MarketSnapshotRow.timestamp.desc()).limit(1)
+        async with self._db.session() as session:
+            row = (await session.execute(statement)).scalars().first()
+        return MarketSnapshot.model_validate(row.payload) if row else None
 
     async def save_options_snapshot(self, snapshot: OptionsSnapshot) -> None:
         async with self._db.session() as session:
