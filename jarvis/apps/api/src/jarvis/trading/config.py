@@ -33,6 +33,7 @@ class TradingSettings(BaseSettings):
     # has not yet been pointed at a real vendor.
     market_data_provider: str = "simulated"
     market_data_api_key: str = ""
+    market_data_base_url: str = ""
     options_data_provider: str = "simulated"
     options_data_api_key: str = ""
 
@@ -48,9 +49,21 @@ class TradingSettings(BaseSettings):
     max_iv_rank_for_entry: float = 95.0
     min_risk_reward_ratio: float = 0.15
 
-    # Workflow cadence.
+    # Workflow cadence. Jarvis's scheduler fires on a fixed interval rather
+    # than a time-of-day cron, so "before market open" is approximated by a
+    # ~24h cadence anchored to whenever the trigger was created — a real
+    # deployment schedules the process itself (e.g. a cron-launched restart)
+    # for a time-of-day guarantee.
     market_scan_interval_seconds: float = 300.0
-    daily_report_hour_utc: int = 13  # ~08:00 ET, before the open
+    daily_report_interval_seconds: float = 86_400.0
+    daily_report_hour_utc: int = 13  # ~08:00 ET, before the open — documentation only, see above
+    signal_monitor_interval_seconds: float = 300.0
+
+    # Position management (Signal Monitoring Workflow). Fractions of spread
+    # width used to decide early management before expiration; both are
+    # systematic, price-only rules — no re-pricing via IV is needed.
+    target_profit_width_fraction: float = 0.5
+    stop_loss_width_fraction: float = 0.5
 
     # Rate limiting (Telegram command surface).
     rate_limit_per_minute: int = 20
