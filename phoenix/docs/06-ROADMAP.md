@@ -45,6 +45,10 @@ autonomy. **This is the Insight tier, sold at full price.**
 - Signal detectors (deterministic)
 - Diagnosis agent, grounded in snapshots
 - Weekly report
+- **The controlled vocabulary and the observation extractor.** Nothing consumes
+  them yet. They ship now because an outcome not recorded in a resolvable shape
+  is gone, and the first two years of history are the seed corpus for Phase 6
+  (`08-MOAT.md §17`).
 
 **Exit:** for three real accounts, Phoenix reproduces the client's own revenue
 to within 2%, and a human reviewer agrees with its diagnosis of what moved in
@@ -88,6 +92,9 @@ its second half is the Recommend tier.
 - **Recommendation delivery**: the ranked, evidenced queue in `01-PRD.md §5.5`,
   plus adoption tracking and outcome scoring on what the client applied
 - Human console for escalations
+- **Contribution ledger and publication outbox.** Empty of consumers until Phase
+  6. Retrofitting provenance onto a knowledge base is the same class of refactor
+  as retrofitting the channel abstraction, and it arrives after the data does.
 
 **Exit:** 60 days across three accounts, ≥100 scored proposals, proposal accuracy
 stated per action type with the counterfactual lift — **and** ≥50% of delivered
@@ -108,6 +115,9 @@ system. It is `apply()` being called on a decision that already existed.
   tiers 0/R — likely budget shifts and pausing
 - Immediate demotion on any breach; capability loss drops to tier R without
   demotion
+- **Override capture with reason codes** at internal review and at client
+  decline. Costs a dropdown; it is the input to the model that eventually keeps
+  human review time flat as accounts grow (`08-MOAT.md §13`).
 
 **Exit:** 30 days at tier 1, zero mandate breaches, zero unexplained drift, and
 one client who has voluntarily moved an action type to tier 2.
@@ -138,19 +148,33 @@ is the number that actually decides scalability (`07-RISKS.md` R6).
 
 ## Phase 6 — Learning
 
-The moat, built only once there is something to learn from.
+The moat, built only once there is something to learn from — which is why the
+*plumbing* for it ships in Phases 1, 3 and 4 and the *intelligence* waits until
+here. Full design in `08-MOAT.md`.
 
-- Outcome scoring across all clients
-- Knowledge cards: claim, evidence, **scope**, confidence
-- Anonymised publication to agency memory
-- Contradiction detection
-- Cards fed into briefs, and measured on whether they change outcomes
+- **Publication gate** (ADR 0007) — deterministic, k=5, exhaustively tested,
+  same discipline as the mandate checker
+- Claim store: cards with scope, evidence, confidence, **decay class**
+- Contradiction detection and **scope splitting** — the mechanism that makes the
+  taxonomy finer over time
+- **Calibration service** — reliability curves per action type, and the
+  `calibration.drifted` alert that notices when the world moved
+- Cards retrieved into briefs, with **utilisation persisted** so §14's metrics
+  are computable
+- **Unlearning**: contribution withdrawal recomputes the fleet (ADR 0008)
 
-**Exit:** creative win rate for clients onboarded after this phase measurably
-exceeds those onboarded before, at stated confidence.
+**Exit — two numbers, both required:**
+
+1. **Prior-lift holdout is positive at stated confidence.** Primed briefs beat
+   cold briefs across ≥10 clients. This is the moat's value as a percentage, and
+   the experiment is designed to be able to return *no*.
+2. **Cohort curves separate.** Clients onboarded this quarter beat clients
+   onboarded four quarters ago, compared at equal tenure, on time-to-first-win
+   and 30-day creative win rate.
 
 **Risk retired:** does the company actually get smarter, or does it just
-accumulate files?
+accumulate files? If both numbers come back flat, the honest response is to
+delete the machinery rather than to call it an investment.
 
 ## Phase 7 — Scale, and the second channel
 
@@ -177,8 +201,13 @@ estimates.
 | 3 | Are the decisions good, and will clients act on them? | Client money and trust |
 | 4 | Can we act safely? | An ad account, a client |
 | 5 | Does it scale past heroics? | The margin |
-| 6 | Does it compound? | The moat |
+| 6 | Does it compound? | The moat — and two years of unrecorded history |
 | 7 | Is a second channel really weeks? | The platform-risk story in R7 |
+
+Phase 6 is late on purpose and its *plumbing* is early on purpose. Below ~50
+clients the learning machinery is overhead that cannot clear a k=5 gate; but an
+outcome that was never recorded in a resolvable shape cannot be recovered, so the
+vocabulary, the extractor and the ledger ship years before anything reads them.
 
 Phases 1 and 2 are deliberately ahead of the impressive machinery. They are
 cheap, they are independently sellable, and between them they answer whether

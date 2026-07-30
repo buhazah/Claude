@@ -46,7 +46,8 @@ The short version:
 | [05 — Evaluation](docs/05-EVALUATION.md) | Four layers, and the hardest measurement problem in the project |
 | [06 — Roadmap](docs/06-ROADMAP.md) | Eight phases, ordered by risk retired, each with an exit criterion |
 | [07 — Risks](docs/07-RISKS.md) | Risk register, cost model, scaling, technical debt, kill criteria |
-| [ADRs](docs/adr/README.md) | The six decisions everything else depends on |
+| [08 — Moat](docs/08-MOAT.md) | What compounds when every feature has been copied, and how to prove it |
+| [ADRs](docs/adr/README.md) | The eight decisions everything else depends on |
 
 ## The two ideas
 
@@ -81,6 +82,32 @@ permissions the client granted:
 One code path, two booleans. That is why read-only is a product rather than a
 waiting room ([ADR 0006](docs/adr/0006-channels-are-adapters.md)).
 
+## The moat, in one paragraph
+
+Assume every workflow, screen, prompt and adapter is copied within two years —
+they will be. What does not copy is a stock of **outcome-labelled judgment**:
+what we proposed, what we expected, what actually happened, and how often we were
+wrong. The engine is a rate, not an archive:
+
+```
+        evidence accrual rate in a scope
+  ρ  =  ───────────────────────────────────
+        decay rate of knowledge in that scope
+```
+
+Below ρ = 1 a claim rots before enough evidence accrues to make it. Scale moves
+ρ — at 10 clients you can only say *"video performs"*; at 500 you can resolve a
+claim narrow enough to be surprising, and keep resolving it as the world moves.
+Knowledge crosses tenants only as claims aggregated over ≥5 businesses through a
+deterministic gate ([ADR 0007](docs/adr/0007-knowledge-crosses-as-gated-claims.md)),
+and lives in data rather than weights so a departing client can take their
+contribution with them ([ADR 0008](docs/adr/0008-learning-lives-in-data-not-weights.md)).
+
+The whole claim is falsifiable by one cheap experiment: run every new client's
+first creative cycle **twice** — once with fleet priors, once cold — and compare.
+If primed does not beat cold, the moat does not exist and the machinery should be
+deleted. [`docs/08-MOAT.md`](docs/08-MOAT.md).
+
 ## The spine
 
 Every automated action passes through the same seven-stage pipeline:
@@ -110,6 +137,13 @@ Not the impressive part.
    as recommendations**. Ships revenue without write access.
 5. **Phase 4** — the first code path that can spend money. Blocks nothing before
    it; lands when permissions do.
+
+Phase 6 builds the moat, and it is late on purpose — below ~50 clients the
+learning machinery cannot clear its own anonymity gate. Its **plumbing** ships in
+Phases 1, 3 and 4 anyway: a vocabulary, an observation extractor, a contribution
+ledger. An outcome not recorded in a resolvable shape is gone forever, and two
+years of unrecorded history is the same mistake as Meta-shaped rows, made in a
+different dimension.
 
 Phases 1 and 2 come before the machinery because they are cheap, independently
 sellable, and between them they decide whether the rest is worth building. The

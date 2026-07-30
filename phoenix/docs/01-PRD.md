@@ -228,6 +228,8 @@ client to execute.
 | Proposal accuracy, per action type | Whether autonomy is earned |
 | Recommendation adoption rate | Whether read-only clients are getting value, or politely ignoring us |
 | Mandate breach count | Must be zero. Not "low." |
+| **Prior lift vs cold briefs** | Whether the moat exists, as a percentage (`08-MOAT.md §14`) |
+| **Cohort separation at equal tenure** | Whether client 10,000 starts better than client 100 |
 | Client retention at 6 months | The only real verdict |
 
 **Metrics deliberately not targeted:** in-platform ROAS (unreliable
@@ -243,7 +245,12 @@ a platform reports that the store cannot corroborate.
   trail, and an actor. Inherited from Jarvis's audit log and computer-control
   design.
 - **Tenant isolation.** A client's data cannot reach another client's context.
-  Enforced by separate databases, not by a `WHERE` clause.
+  Enforced by separate databases, not by a `WHERE` clause. Knowledge crosses only
+  as claims aggregated over five or more businesses, through a deterministic gate
+  a model never touches (ADR 0007).
+- **Revocable contribution.** A departing client can require that what was
+  learned from them be removed, and Phoenix can honour it by recomputation rather
+  than by promise. Nothing is fine-tuned, ever (ADR 0008).
 - **Idempotency.** Every external write carries an idempotency key. A retry
   after a timeout must not double a budget.
 - **Reconciliation.** External state drifts — the client's own team edits in the

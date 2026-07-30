@@ -23,7 +23,10 @@ is dropped in `00-STRATEGY.md §3`.
 
 **Mitigation:** keep the defensible layer — measurement against the client's own
 revenue, offer strategy, operational safety, and cross-channel knowledge — and
-make sure none of it lives inside an adapter.
+make sure none of it lives inside an adapter. Over time the layer that actually
+compounds is the accumulated judgment in `08-MOAT.md`: a platform can commoditise
+a capability, but it cannot hand a competitor ten thousand outcome-labelled
+decisions taken on advertisers' behalf.
 
 **Leading indicator:** creative win rate against the platform's own generated
 assets. Track from Phase 2.
@@ -124,6 +127,10 @@ not the same as being diversified.
 | T13 | **The channel abstraction leaks** — a Meta concept reaches strategy, mandates or memory | Likely without enforcement | Import-graph test in CI (ADR 0006); `native` in a prompt or report is a bug; conformance suite is written before the first adapter |
 | T14 | The neutral graph cannot express something a channel needs | Certain, eventually | `native` escape hatch and adapter-namespaced verbs, both opt-in; `unsupported` verdict rate is tracked so the gap is visible rather than worked around |
 | T15 | Capabilities and mandates drift apart — we believe we can write and cannot | Likely | Capabilities re-derived on every token refresh; authority is the intersection, never the union; action type falls to tier R rather than failing |
+| T16 | **A claim leaks a client** through a scope narrow enough to identify them | Possible | Deterministic publication gate: k=5 tenants, controlled vocabulary, no verbatim, generalise-or-suppress (ADR 0007). Tested like the mandate checker. Irreversible if it happens. |
+| T17 | The fleet learns a house style rather than what works | Likely without a counterweight | Mandatory 15% exploration quota that bypasses the filter; the filter scored against live outcomes, never against reviewer agreement (`08-MOAT.md §13`) |
+| T18 | Stale cards recalled into briefs after the environment moved | Certain | Decay class with arithmetic confidence decay; platform-mechanical claims not stored as knowledge at all; `calibration.drifted` as the fleet-wide early warning |
+| T19 | We believe the moat exists because we built it | **The most probable failure here** | The prior-lift holdout is designed to be able to return "no" (`08-MOAT.md §14`), and it runs every fourth cycle rather than once |
 
 T1 and T2 are the two that must be solved before anything else is built on top
 of them. T13 is the one that is cheap now and very expensive in a year.
@@ -251,7 +258,9 @@ Debt is a loan. The question is only whether it is recorded and priced.
 | Instance-per-tenant | Isolation beats efficiency, and premium pricing pays for it | >200 clients, or infra cost >10% of revenue |
 | **One adapter**, not one architecture | Depth before breadth — but the *port* is not deferred | A client's retention depends on a second channel |
 | Manual creative review | We do not know what to automate yet, and at this price we can afford not to | Review time >4h/client/week, or rising with account size |
-| No fine-tuning | Removes a class of leakage argument | Only if measured lift justifies it |
+| No fine-tuning on client data | Unlearning is impossible in weights and mechanical in data (ADR 0008) | **Never** for tenant data. Task-specific models trained on *published cards only*, with a retrain-from-ledger path, may be revisited if measured lift justifies it |
+| k-anonymity + suppression rather than formal differential privacy | DP with a meaningful ε destroys signal at our n; claims are already ≥5-tenant aggregates in buckets | 500+ tenants, where cell sizes make DP affordable (ADR 0007) |
+| No federated learning | Solves a problem we do not have, at complexity we cannot justify | Same trigger as above |
 | Counterfactual scoring in shadow | Cheaper than universal holdouts | When a decision's stakes justify a real holdout |
 | Human onboarding | The first fifty teach us the workflow | >2 onboardings/week |
 
@@ -263,8 +272,10 @@ Debt is a loan. The question is only whether it is recorded and priced.
 - a model computing a number that reaches a client
 - an approval path around the hard floor in `03-AUTONOMY.md §3`
 - a channel concept above the channel port
+- a model deciding what crosses the tenant boundary
+- learned state that cannot be recomputed without a departing tenant
 
-Those six are the invariants. Everything else is negotiable under deadline.
+Those eight are the invariants. Everything else is negotiable under deadline.
 
 The last one is new and is the easiest to breach under deadline, because every
 individual breach looks harmless: one Meta field on a report, one `campaign_id`
@@ -294,6 +305,11 @@ are emotionally invested:
    cannot measure correctly, we cannot optimise honestly, and the central
    promise fails. This is the one that would end it fastest, because
    recommendation mode makes measurement the *whole* product for some clients.
+5. **The prior-lift holdout stays flat through Phase 6 and beyond ~100 clients.**
+   Primed briefs do not beat cold briefs, and cohort curves do not separate.
+   Phoenix is then a well-built services business with no compounding advantage —
+   which is a real company, and not one worth the learning machinery. Delete the
+   machinery, keep the client moat, and price accordingly.
 
 Each has a phase that tests it and a number that answers it. That is the point
 of the ordering in `06-ROADMAP.md`.

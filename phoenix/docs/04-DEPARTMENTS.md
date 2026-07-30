@@ -157,6 +157,13 @@ broken — wrong ratio, banned claim, off-palette, text-heavy — so the human
 reviews twenty candidates rather than two hundred. It does not predict
 performance, because nothing does.
 
+Over time the filter also learns from operator rejections, which is the loop with
+the clearest financial return in the whole system (`08-MOAT.md §13`): same output,
+a quarter of the review time, and that lands on the cost line R6 says decides the
+business. It comes with a hard counterweight — **15% of shipped variants bypass
+the filter entirely**, non-negotiable, because a filter trained on reviewer taste
+converges on a house style and a falling win rate if nothing forces exploration.
+
 **Brand rules are deterministic.** Palette, logo, banned words, required
 disclaimers: a validator, not a prompt. A prompt can be talked out of it.
 
@@ -273,18 +280,20 @@ appealed on our timetable.
 
 | | |
 |---|---|
-| **Mission** | The company is better at client fifty than at client five. |
-| **Responsibilities** | Outcome scoring, knowledge cards, anonymised publication, contradiction detection |
-| **KPIs** | Cards published; cards *used* in later briefs; win-rate trend across cohorts |
-| **Inputs** | Outcomes, creative lineage, experiments, decision ledger |
-| **Outputs** | Knowledge cards with evidence, scope, confidence |
-| **Tools** | `memory_write`, Obsidian, statistics |
-| **Memory** | `tenant:knowledge` → publishes to agency memory |
-| **Boundary** | May publish anonymised claims. **May never move raw client data across the tenant boundary.** |
-| **Escalates** | A new card contradicting an established one |
+| **Mission** | The company is better at client fifty than at client five, and better still at client five thousand. |
+| **Responsibilities** | Outcome scoring, observation extraction, gated publication, calibration curves, contradiction detection and scope splitting, vocabulary maintenance |
+| **KPIs** | Prior lift vs cold briefs; cohort separation at equal tenure; card utilisation; card kill rate (non-zero); calibration error |
+| **Inputs** | Outcomes, creative lineage, experiments, decision ledger, human overrides |
+| **Outputs** | Observations → gated claims with evidence, scope, decay class, confidence |
+| **Tools** | `memory_write`, Obsidian, statistics, the publication gate |
+| **Memory** | `tenant:knowledge` → publishes to agency memory through the gate |
+| **Boundary** | May *propose* observations. **May never decide what crosses the tenant boundary** — that is the deterministic gate in ADR 0007. |
+| **Escalates** | A new card contradicting an established one; fleet-wide calibration drift |
 | **Evaluation** | Do cards predict? A card that never changes a decision is noise. |
 
-Three disciplines that separate this from a folder of "insights":
+**The only department whose output is measured by an experiment rather than by a
+reviewer.** Full design in `08-MOAT.md`; the disciplines that separate it from a
+folder of "insights":
 
 **Scope is part of the claim.** *"Hook framing X beat control in 7 of 9 tests
 across 4 apparel brands, £20–60 AOV"* — not *"question hooks work."* A claim
@@ -292,10 +301,22 @@ without scope will be recalled where it does not apply, which is worse than no
 claim.
 
 **Failures are stored.** They cost the same and carry more information.
-Storing only winners is survivorship bias with a database.
+Storing only winners is survivorship bias with a database — and the public record
+of advertising is *entirely* survivorship bias, which is precisely why the
+negative space is defensible.
 
-**Contradictions surface rather than overwrite.** Two cards disagreeing is a
-finding — usually that the scope on one of them is wrong.
+**Contradictions split scopes rather than picking winners.** Two cards
+disagreeing usually means one has the wrong scope, and the resolver's default is
+to split and re-test both halves. This is how the taxonomy gets finer over time,
+driven by data rather than by a theory of advertising — and it is superlinear in
+fleet size, because splitting halves the evidence per cell and only a large fleet
+can afford to split and still resolve.
+
+**Claims decay on a clock.** Every card carries a decay class and its confidence
+falls arithmetically with age. Platform-mechanical claims are not stored as
+knowledge at all — they are thresholds re-derived from recent data, because
+encoding auction folklore is how a system ends up confidently applying 2026 to
+2028.
 
 ---
 

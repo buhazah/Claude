@@ -31,9 +31,12 @@ a different cost.
 | **Corpus** | Do the AI components behave? | cents | every commit / nightly |
 | **Shadow** | Would the decisions have been right? | free | continuous, per client |
 | **Live** | Did it actually work? | real money | per campaign |
+| **Fleet** | Is the system getting *better*? | free | quarterly, from Phase 6 |
 
 Only the fourth measures the business. The first three exist so the fourth is
-rarely a surprise.
+rarely a surprise. The fifth measures the moat and is designed in `08-MOAT.md
+§14`; it is the only layer that can return "the last two years of learning
+machinery bought nothing," which is precisely why it exists.
 
 ## 3. Layer 1 — unit
 
@@ -53,6 +56,11 @@ Non-negotiable coverage:
   window.
 - **Drift detection.** Human edits in the platform's own UI, platform-initiated
   auto-pauses, externally deleted entities.
+- **The publication gate.** Every threshold, every boundary, every off-by-one on
+  k-anonymity, independence, vocabulary membership and consent expiry. Plus the
+  unlearning invariant: a fleet recomputed after a tenant withdraws must be
+  identical to one built having never seen them (ADR 0008). A leak here is a
+  confidentiality incident and, unlike a bad budget change, cannot be reversed.
 - **Channel conformance.** Every adapter runs the same suite against recorded
   fixtures: entity mapping onto `Account/Program/Group/Placement`, metric
   normalisation with attribution basis, capability derivation from granted
@@ -106,6 +114,13 @@ proposal and outcome Phoenix produces becomes a candidate case once the outcome
 is known. The corpus grows by operating, which is the same property that makes
 shadow mode work — and it means the ruler improves alongside the thing it
 measures.
+
+**The corpus is itself a moat asset**, and an underrated one. A few thousand real
+cases with known-correct answers means a new foundation model can be adopted in a
+week *with evidence*, while a competitor adopts it on impression and finds out in
+production. **Time-to-safe-adoption** is tracked as a compounding metric in
+`08-MOAT.md §14` for exactly that reason: speed of safe change compounds, and
+nothing about it is copyable.
 
 ## 5. Layer 3 — shadow
 
@@ -237,6 +252,11 @@ nobody checks:
   about the version tested.
 - **Long-horizon effects.** Aggressive prospecting can win on CAC this quarter
   and cost LTV next year. Nothing in this framework sees that.
+- **Whether the fleet is learning the right lessons.** The prior-lift holdout in
+  `08-MOAT.md §14` measures whether priors *help*, not whether they are *true*.
+  A fleet can converge on a house style that beats cold briefs and still be
+  narrower than the market — which is why the 15% exploration quota is
+  deterministic and not a tunable.
 
 The framework's job is to make the *measurable* failures rare enough that human
 attention is available for the ones that are not.

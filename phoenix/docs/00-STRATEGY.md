@@ -344,6 +344,12 @@ managed service.
 **What you deliberately do not sell yet:** autonomous campaign creation, offer
 changes, or beating Meta's auction.
 
+**What defends it once every competitor has copied the product:** not the
+features — all of them copy — but the stock of outcome-labelled judgment that
+only operating produces, and the rate at which it is resolved against decay.
+Designed in `08-MOAT.md`, and deliberately falsifiable: if primed briefs do not
+beat cold briefs, there is no moat and the machinery should go.
+
 The twenty-one departments in the brief still get built. They get built in the
 order that de-risks the business, and several of them turn out to be a
 scheduled function rather than an agent.

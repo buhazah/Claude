@@ -27,7 +27,8 @@ See [ADR 0002](adr/0002-ai-proposes-code-disposes.md).
 │  CONTROL PLANE  (the agency)                                             │
 │                                                                          │
 │  Tenancy · Billing · Mandate registry · Human console · Fleet scheduler  │
-│  Knowledge exchange (anonymised, one-way in)                             │
+│  LEARNING PLANE  publication gate · contribution ledger · claim store    │
+│                  calibration service · corpus builder      (§10, ADR 0007)│
 │                                                                          │
 │  Postgres (agency)              never holds client ad data               │
 └───────────────┬──────────────────────────────────────────────────────────┘
@@ -436,10 +437,19 @@ write mandate.
 
 **Learning**
 ```
-KnowledgeCard                      claim, evidence[], scope, channel_scope,
-                                   confidence, supersedes, tenant_visible
+KnowledgeCard   (control plane)    claim, evidence[], scope, channel_scope,
+                                   confidence, decay_class, as_of,
+                                   supporting_tenants, contributions[],
+                                   supersedes, contradicts[], tenant_visible
 Experiment                         hypothesis, design, holdout, result, power
 ```
+
+`decay_class` is `structural | behavioural` and sets the half-life over which
+confidence falls arithmetically; platform-mechanical claims are **not stored as
+knowledge at all** — they are thresholds re-derived from recent data, because
+encoding auction folklore is how a system ends up confidently applying 2026 to
+2028 (`08-MOAT.md §10`). `contributions[]` is what makes a card recomputable
+without a departing tenant.
 
 `channel_scope` is part of the claim, exactly as vertical and AOV are: *"held on
 Meta, untested elsewhere"* is a different card from *"held on Meta and TikTok."*
@@ -471,7 +481,13 @@ outcome.measured          tenant, mode, verdict, delta
 mandate.breached          tenant, attempted, limit    → page a human
 connection.capabilities_changed  tenant, channel, added[], removed[]
 creative.shipped          tenant, variant, channel, program
-knowledge.published       card, scope, channel_scope
+observation.emitted       tenant, kind, scope[]        → outbox, pulled not pushed
+publication.gated         reason, generalised_to | suppressed
+knowledge.published       card, scope, channel_scope, supporting_tenants
+knowledge.contradicted    card_a, card_b, proposed_split
+knowledge.decayed         card, confidence_now         → fell below recall threshold
+contribution.withdrawn    tenant, cards_recomputed, cards_suppressed
+calibration.drifted       action_type, scope, delta    → the world may have moved
 ```
 
 `mandate.breached` should never fire. If it does, something bypassed the check,
@@ -482,6 +498,12 @@ recommend and execute mode. It fires on grant, on revocation, and on a token
 refresh that comes back with fewer scopes than it went in with — which is how a
 client silently losing write access surfaces as a mode change rather than as a
 week of failing writes.
+
+`calibration.drifted` is the fleet's early-warning system. When stated confidence
+stops matching observed accuracy **across many tenants at once**, the most likely
+explanation is that the environment changed, not that one account got unlucky —
+and it fires earlier than any single client's performance would
+(`08-MOAT.md §12`).
 
 ## 10. Memory
 
@@ -496,9 +518,10 @@ anonymised, structured claims with evidence and confidence. *"Hook framing X
 beat control in 7 of 9 tests across 4 apparel brands, mean lift 14%, CI
 ±6%."* Never raw creative, never client names, never account data.
 
-**Model memory** — none. Nothing is fine-tuned on client data in v1. It removes
-an entire class of leakage and compliance argument for a benefit we have not
-demonstrated we need.
+**Model memory** — none. Nothing is fine-tuned on client data, in any tier, ever.
+Unlearning is impossible in weights and mechanical in data, and a client who
+leaves must be able to take their contribution with them
+([ADR 0008](adr/0008-learning-lives-in-data-not-weights.md)).
 
 **Why knowledge cards rather than "store winning creatives":** three failure
 modes the naive version has. *Confidentiality* — a winning ad is the client's
@@ -506,6 +529,32 @@ IP. *Transfer* — what works for supplements does not work for furniture, and a
 memory that does not carry its scope will be recalled where it does not apply.
 *Survivorship* — storing only winners teaches nothing; the failures carry more
 information and cost the same to store.
+
+**How a card gets made, and how it crosses.** A tenant emits *observations* into
+an append-only outbox; the control plane **pulls** and runs them through a
+deterministic **publication gate** — k-anonymity ≥ 5 tenants, ≥ 3 independent
+tests, controlled vocabulary, no verbatim content, consent live. A model may
+propose an observation; a model never decides what crosses a tenant boundary.
+Claims that are too narrow to be anonymous generalise upward or stay tenant-local
+rather than failing. No control-plane service holds a tenant database credential,
+so the blast radius of a compromised control plane is the outboxes — which
+contain only publication-shaped rows. Full design in
+[ADR 0007](adr/0007-knowledge-crosses-as-gated-claims.md) and `08-MOAT.md`.
+
+**Learning-plane stores** (control plane, alongside the claim store):
+
+```
+Observation      kind, scope[], features[], treatment, control, effect, ci, n,
+                 measurement_confidence, as_of, vocabulary_version, contribution_id
+Contribution     contribution_id → tenant, observation, withdrawn_at
+                 (append-only; the ledger that makes unlearning mechanical)
+Calibration      action_type, vertical, spend_band, channel,
+                 stated_confidence_bucket, observed_accuracy, n
+Vocabulary       version, term, kind, parent          (the learned taxonomy)
+```
+
+`Contribution` is the table that lets a departing tenant be removed by
+recomputation rather than by promise. Cards are derived, never authored.
 
 ## 11. Integrations
 
