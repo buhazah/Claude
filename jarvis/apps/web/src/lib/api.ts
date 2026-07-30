@@ -299,8 +299,57 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+export interface Recommendation {
+  id: string;
+  signal: string;
+  headline: string;
+  impact: number;
+  impact_name: string;
+  urgency: number;
+  urgency_name: string;
+  confidence: number;
+  score: number;
+  evidence: string[];
+  action: string;
+  agent: string;
+  refs: string[];
+  at: string | null;
+}
+
+export interface Sweep {
+  at: string;
+  recommendations: Recommendation[];
+  considered: number;
+  suppressed: number;
+  dismissed: number;
+  unavailable: string[];
+  by_signal: Record<string, number>;
+}
+
+export interface BriefingSection {
+  title: string;
+  lines: string[];
+  note: string;
+}
+
+export interface Briefing {
+  day: string;
+  opener: string;
+  quiet: boolean;
+  generated_by: string;
+  sections: BriefingSection[];
+  recommendations: Recommendation[];
+  unavailable: Record<string, string>;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
+  briefing: () => get<Briefing>("/v1/briefing"),
+  recommendations: () => get<Sweep>("/v1/recommendations"),
+  dismiss: (id: string) =>
+    fetch(`${API_BASE}/v1/recommendations/${encodeURIComponent(id)}/dismiss`, {
+      method: "POST",
+    }).then((r) => r.ok),
   agents: () => get<Agent[]>("/v1/agents"),
   models: () => get<Model[]>("/v1/models"),
   tools: () => get<Tool[]>("/v1/tools"),

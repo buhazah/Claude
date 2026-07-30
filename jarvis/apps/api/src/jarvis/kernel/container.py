@@ -18,6 +18,7 @@ from jarvis.agents.delegation import Delegator
 from jarvis.agents.orchestrator import Orchestrator
 from jarvis.agents.registry import AgentRegistry
 from jarvis.agents.runtime import AgentRuntime
+from jarvis.chief.briefing import BriefingComposer
 from jarvis.chief.engine import RecommendationEngine
 from jarvis.computer.policy import ComputerPolicy
 from jarvis.computer.ports import Computer, UnavailableComputer
@@ -172,6 +173,7 @@ class Jarvis:
     vault: Vault
     governor: CostGovernor
     chief: RecommendationEngine
+    briefings: BriefingComposer
     delegator: Delegator | None = None
     clock: Clock = SYSTEM_CLOCK
     database: Database | None = None
@@ -517,6 +519,7 @@ def build(
         vault=vault,
         governor=governor,
         chief=RecommendationEngine(bus=bus, clock=clock),
+        briefings=BriefingComposer(router),
         delegator=delegator,
         clock=clock,
         database=database,

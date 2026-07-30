@@ -213,6 +213,25 @@ Whether an answer reasons *well* is not a keyword question, so ten probes run
 with no verdict at all and their transcripts are printed for a human. Anything
 key-shaped is scrubbed on the way out.
 
+## The morning briefing
+
+```
+GET /v1/briefing        →  http://localhost:3000/briefing
+```
+
+One opener, then only the sections that have something in them. A quiet day
+gets a single line — the instinct to fill nine headings whatever the state of
+the world is what makes generated briefings unreadable.
+
+It says what it could not see. Jarvis has no mail or calendar unless you mount
+a connector, and a briefing that invents "3 emails need you" is *confidently*
+useless — so absent sources are named at the bottom rather than silently
+omitted, because a missing calendar section reads as "nothing on today".
+
+A model writes the two sentences at the top, when one is configured. Everything
+else — what is on the list, in what order, with what evidence — is the
+arithmetic below.
+
 ## Chief of Staff
 
 Jarvis looks for what you have not asked about.
@@ -310,7 +329,7 @@ make lint     # ruff + eslint
 make types    # mypy --strict + tsc
 make check    # everything
 make e2e-serve  # one API with everything the suites need (separate shell)
-make e2e        # all 8 Playwright suites — what CI runs
+make e2e        # all 9 Playwright suites — what CI runs
 make eval-free  # the free two-thirds of the corpus — no key, no network
 make eval-plan  # what a full evaluation would cost — spends nothing
 make eval       # the whole corpus against a real model

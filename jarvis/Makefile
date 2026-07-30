@@ -40,7 +40,7 @@ check: lint types test
 e2e:
 	cd $(WEB) && pnpm e2e:all
 
-# All eight suites against one API started with everything they need. This is
+# All nine suites against one API started with everything they need. This is
 # what CI runs. `JARVIS_BROWSER_EXECUTABLE` is only needed where a preinstalled
 # Chromium does not match the version playwright expects — on a clean install,
 # `playwright install chromium` puts one where it will be found and the setting

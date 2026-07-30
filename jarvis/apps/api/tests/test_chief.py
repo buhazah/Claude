@@ -342,17 +342,20 @@ def test_an_empty_system_recommends_nothing() -> None:
 class _Router:
     """A router that says exactly what the test wants, once."""
 
-    def __init__(self, reply: str) -> None:
+    def __init__(self, reply: str, *, provider: str = "anthropic") -> None:
         self.reply = reply
+        self.provider = provider
         self.calls = 0
 
     async def complete(self, request: Any) -> Any:
         self.calls += 1
 
+        @dataclass
         class _Completion:
-            text = self.reply
+            text: str
+            provider: str
 
-        return _Completion()
+        return _Completion(text=self.reply, provider=self.provider)
 
 
 def test_only_agents_whose_prompts_promise_coordination_delegate() -> None:
@@ -528,3 +531,277 @@ async def test_the_api_ranks_and_dismisses() -> None:
         assert "recommendations" in body
         assert "considered" in body
         assert client.post("/v1/recommendations/rec_made_up/dismiss").status_code == 204
+
+
+# ── The morning briefing ──────────────────────────────────────────────────────
+
+
+def _sweep_of(*recommendations: Recommendation, suppressed: int = 0) -> Any:
+    from jarvis.chief.engine import Sweep
+
+    return Sweep(at=NOW, recommendations=list(recommendations), suppressed=suppressed)
+
+
+@pytest.mark.asyncio
+async def test_a_quiet_morning_gets_one_line() -> None:
+    """The instinct to fill nine headings whatever the state of the world is
+    what makes generated briefings unreadable, and it is the easiest way to
+    train somebody to stop opening them."""
+    from jarvis.chief.briefing import BriefingComposer
+
+    briefing = await BriefingComposer().compose(_sweep_of(), Situation(now=NOW))
+    assert briefing.quiet
+    assert briefing.opener == "Nothing needs you this morning."
+    assert briefing.sections == []
+    assert briefing.to_markdown().count("##") == 0
+
+
+@pytest.mark.asyncio
+async def test_the_briefing_leads_with_the_one_thing() -> None:
+    """A good chief of staff opens with 'the lease decision is the thing
+    today', not with nine categories in fixed order."""
+    from jarvis.chief.briefing import BriefingComposer
+
+    blocking = Recommendation(
+        id="a",
+        signal=Signal.APPROVAL,
+        headline="Approve or refuse: browser_click",
+        impact=Impact.MAJOR,
+        urgency=Urgency.BLOCKING,
+        evidence=["requested by shopping and still waiting"],
+    )
+    minor = Recommendation(
+        id="b",
+        signal=Signal.LOOSE_KNOWLEDGE,
+        headline="Reconnect stranded notes",
+        impact=Impact.TRIVIAL,
+        urgency=Urgency.WHENEVER,
+    )
+    briefing = await BriefingComposer().compose(_sweep_of(blocking, minor), Situation(now=NOW))
+
+    assert briefing.opener.startswith("Approve or refuse: browser_click is the thing today")
+    titles = [s.title for s in briefing.sections]
+    assert titles[0] == "Today"
+    assert "Blocked" in titles
+    # The trivial one is not a priority, and the section says so by omission.
+    today = next(s for s in briefing.sections if s.title == "Today")
+    assert len(today.lines) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_briefing_says_what_it_could_not_see() -> None:
+    """Nobody senior pretends to have read the mail. A briefing that invents
+    "3 emails need you" is confidently useless, and every later section
+    inherits the doubt."""
+    from jarvis.chief.briefing import BriefingComposer
+
+    briefing = await BriefingComposer().compose(
+        _sweep_of(), Situation(now=NOW, unavailable=["vault"])
+    )
+    assert "email" in briefing.unavailable
+    assert "calendar" in briefing.unavailable
+    assert briefing.unavailable["vault"] == "could not be read"
+    assert "Not covered:" in briefing.to_markdown()
+
+
+@pytest.mark.asyncio
+async def test_an_empty_section_is_absent_rather_than_empty() -> None:
+    from jarvis.chief.briefing import BriefingComposer
+
+    only_trivial = Recommendation(
+        id="a",
+        signal=Signal.LOOSE_KNOWLEDGE,
+        headline="Tidy up",
+        impact=Impact.TRIVIAL,
+        urgency=Urgency.WHENEVER,
+        action="link the orphans",
+        agent="memory",
+    )
+    briefing = await BriefingComposer().compose(_sweep_of(only_trivial), Situation(now=NOW))
+    titles = [s.title for s in briefing.sections]
+    assert "Blocked" not in titles
+    assert "Worth watching" not in titles
+    assert "Suggested next" in titles
+
+
+@pytest.mark.asyncio
+async def test_every_suggested_action_can_be_handed_straight_back() -> None:
+    """The difference between a briefing and a to-do list: each line is
+    something the reader can act on by pressing one button, because the
+    recommendation already knows which agent should get it."""
+    from jarvis.chief.briefing import BriefingComposer
+
+    recommendation = Recommendation(
+        id="a",
+        signal=Signal.COLD_PROJECT,
+        headline="Decide what happens to Northbound",
+        impact=Impact.MAJOR,
+        urgency=Urgency.SOON,
+        action="Review Northbound: what is the state, and what is next?",
+        agent="chief_of_staff",
+    )
+    briefing = await BriefingComposer().compose(_sweep_of(recommendation), Situation(now=NOW))
+    suggested = next(s for s in briefing.sections if s.title == "Suggested next")
+    assert suggested.lines == [
+        "`chief_of_staff` — Review Northbound: what is the state, and what is next?"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_rambling_model_opener_falls_back_to_the_plain_one() -> None:
+    """The plain sentence is never wrong, so it is the floor. A model that
+    returns a page has not written an executive summary."""
+    from jarvis.chief.briefing import BriefingComposer
+
+    recommendation = Recommendation(
+        id="a",
+        signal=Signal.APPROVAL,
+        headline="Decide",
+        impact=Impact.MAJOR,
+        urgency=Urgency.TODAY,
+    )
+    rambling = BriefingComposer(_Router("word " * 200))
+    briefing = await rambling.compose(_sweep_of(recommendation), Situation(now=NOW))
+    assert briefing.generated_by == "arithmetic"
+    assert briefing.opener.startswith("Decide is the thing today")
+
+    concise = BriefingComposer(_Router("The approval is blocking a run. Clear it first."))
+    written = await concise.compose(_sweep_of(recommendation), Situation(now=NOW))
+    assert written.generated_by == "model"
+    assert written.opener == "The approval is blocking a run. Clear it first."
+
+
+@pytest.mark.asyncio
+async def test_a_failed_opener_call_does_not_fail_the_briefing() -> None:
+    from jarvis.chief.briefing import BriefingComposer
+
+    class _Broken:
+        async def complete(self, request: Any) -> Any:
+            raise RuntimeError("provider down")
+
+    recommendation = Recommendation(
+        id="a",
+        signal=Signal.APPROVAL,
+        headline="Decide",
+        impact=Impact.MAJOR,
+        urgency=Urgency.TODAY,
+    )
+    briefing = await BriefingComposer(_Broken()).compose(  # type: ignore[arg-type]
+        _sweep_of(recommendation), Situation(now=NOW)
+    )
+    assert briefing.generated_by == "arithmetic"
+    assert briefing.opener
+
+
+@pytest.mark.asyncio
+async def test_the_briefing_endpoint_serves_json_and_markdown() -> None:
+    from fastapi.testclient import TestClient
+
+    from jarvis.config import Settings
+    from jarvis.main import create_app
+
+    with TestClient(create_app(Settings(environment="test", enable_scheduler=False))) as client:
+        body = client.get("/v1/briefing").json()
+        assert "opener" in body
+        assert "sections" in body
+        assert body["unavailable"]["email"]
+
+        text = client.get("/v1/briefing", params={"format": "markdown"}).text
+        assert text.startswith("# ")
+        assert "Not covered:" in text
+
+
+def test_a_deadline_does_not_say_the_date_twice() -> None:
+    """ "Due 2026-08-01: the lease is due 2026-08-01" is what a template
+    produces. A person would not write it."""
+    found = deadlines(
+        Situation(
+            now=NOW,
+            memories=[_memory("The office lease renewal is due 2026-08-01", kind=MemoryKind.EVENT)],
+        )
+    )
+    assert found[0].headline == "Due 2026-08-01: The office lease renewal is due"
+
+
+def test_filing_jargon_stays_out_of_the_evidence() -> None:
+    """ "recorded for global" names an implementation detail. A real scope is
+    worth mentioning; the default one is not."""
+    default = deadlines(
+        Situation(now=NOW, memories=[_memory("Lease due 2026-08-01", kind=MemoryKind.EVENT)])
+    )
+    assert default[0].why == "'2026-08-01' in a note"
+
+    scoped = deadlines(
+        Situation(
+            now=NOW,
+            memories=[_memory("Lease due 2026-08-01", kind=MemoryKind.EVENT, scope="business")],
+        )
+    )
+    assert scoped[0].why == "'2026-08-01' in a note under business"
+
+
+def test_wikilink_markup_never_reaches_prose() -> None:
+    """A memory read out of the vault carries `[[Northbound]]`, which is
+    correct in a note and is markup leaking anywhere else — a briefing, a
+    notification, a spoken answer."""
+    found = open_goals(
+        Situation(
+            now=NOW,
+            memories=[
+                _memory(
+                    "Goal: get [[Northbound]] to 10k revenue",
+                    kind=MemoryKind.GOAL,
+                    days_ago=40,
+                )
+            ],
+        )
+    )
+    assert "[[" not in found[0].headline
+    assert "Northbound" in found[0].headline
+    assert "[[" not in found[0].action
+
+
+def test_echo_output_never_becomes_the_briefing_opener() -> None:
+    """Found by the browser test, not by review.
+
+    The offline provider echoes the prompt back. It is short, plausible-looking,
+    and passed every other guard — so the briefing opened with
+    "[echo:52f8ee68] Today: - [major/this_week]…" and reported itself as
+    model-written. The fallback chain means this happens whenever a real
+    provider is *configured but failing*, which is exactly when nobody is
+    watching the output.
+    """
+    import asyncio
+
+    from jarvis.chief.briefing import BriefingComposer
+
+    recommendation = Recommendation(
+        id="a",
+        signal=Signal.APPROVAL,
+        headline="Decide the approval",
+        impact=Impact.MAJOR,
+        urgency=Urgency.TODAY,
+    )
+    echoed = _Router("[echo:52f8ee68] Today: - [major/today] Decide", provider="echo")
+    briefing = asyncio.run(
+        BriefingComposer(echoed).compose(_sweep_of(recommendation), Situation(now=NOW))
+    )
+    assert briefing.generated_by == "arithmetic"
+    assert "echo:" not in briefing.opener
+
+
+def test_a_briefing_survives_everything_being_dismissed() -> None:
+    """Reached by acting on the briefing, which used to index an empty list and
+    return a 500 — the worst possible moment for it to break."""
+    import asyncio
+
+    from jarvis.chief.briefing import BriefingComposer
+
+    context_only = Situation(
+        now=NOW,
+        memories=[_memory("Decided to raise prices", kind=MemoryKind.DECISION, days_ago=0)],
+    )
+    briefing = asyncio.run(BriefingComposer().compose(_sweep_of(), context_only))
+    assert briefing.opener == "Nothing needs a decision this morning. Some context below."
+    assert not briefing.quiet, "there is context to read, so this is not an empty day"
+    assert [s.title for s in briefing.sections] == ["Recorded since yesterday"]

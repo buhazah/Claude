@@ -16,6 +16,7 @@ import {
   MonitorSmartphone,
   FileText,
   Settings,
+  Sunrise,
   Search,
   Wrench,
 } from "lucide-react";
@@ -27,15 +28,16 @@ import { ModeSwitcher } from "./mode-switcher";
 
 const NAV = [
   { href: "/", label: "Home", icon: Home, key: "1" },
-  { href: "/chat", label: "Chat", icon: MessageSquare, key: "2" },
-  { href: "/agents", label: "Agents", icon: Bot, key: "3" },
-  { href: "/memory", label: "Memory", icon: Brain, key: "4" },
-  { href: "/knowledge", label: "Knowledge", icon: Library, key: "5" },
-  { href: "/workflows", label: "Workflows", icon: WorkflowIcon, key: "6" },
-  { href: "/runs", label: "Runs", icon: Activity, key: "7" },
-  { href: "/tools", label: "Tools", icon: Wrench, key: "8" },
-  { href: "/documents", label: "Documents", icon: FileText, key: "9" },
-  { href: "/computer", label: "Computer", icon: MonitorSmartphone, key: "0" },
+  { href: "/briefing", label: "Briefing", icon: Sunrise, key: "2" },
+  { href: "/chat", label: "Chat", icon: MessageSquare, key: "3" },
+  { href: "/agents", label: "Agents", icon: Bot, key: "4" },
+  { href: "/memory", label: "Memory", icon: Brain, key: "5" },
+  { href: "/knowledge", label: "Knowledge", icon: Library, key: "6" },
+  { href: "/workflows", label: "Workflows", icon: WorkflowIcon, key: "7" },
+  { href: "/runs", label: "Runs", icon: Activity, key: "8" },
+  { href: "/tools", label: "Tools", icon: Wrench, key: "9" },
+  { href: "/documents", label: "Documents", icon: FileText, key: "0" },
+  { href: "/computer", label: "Computer", icon: MonitorSmartphone, key: "-" },
   { href: "/settings", label: "Settings", icon: Settings, key: "," },
 ];
 

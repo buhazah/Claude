@@ -280,11 +280,14 @@ def deadlines(situation: Situation) -> list[Recommendation]:
             ahead = when - situation.now
             if ahead < timedelta(0) or ahead > DEADLINE_HORIZON:
                 continue
+            # The date is already in the prefix; leaving it in the excerpt too
+            # produces "Due 2026-08-01: the lease is due 2026-08-01".
+            without_date = _DATE.sub("", memory.content).replace("  ", " ").strip(" ,.:;-")
             out.append(
                 Recommendation(
                     id=_id(Signal.DEADLINE, f"{memory.id}:{match.group(0)}"),
                     signal=Signal.DEADLINE,
-                    headline=f"Due {when.date().isoformat()}: {_short(memory.content)}",
+                    headline=f"Due {when.date().isoformat()}: {_short(without_date)}",
                     impact=Impact.MAJOR,
                     urgency=(
                         Urgency.TODAY
@@ -294,8 +297,13 @@ def deadlines(situation: Situation) -> list[Recommendation]:
                         else Urgency.SOON
                     ),
                     confidence=0.8,
-                    evidence=[f"'{match.group(0)}' in a memory recorded for {memory.scope}"],
-                    action=f"What is outstanding for: {_short(memory.content)}?",
+                    # The scope is only worth naming when it is one — "recorded
+                    # for global" is filing jargon, not evidence.
+                    evidence=[
+                        f"'{match.group(0).strip()}' in a note"
+                        + (f" under {memory.scope}" if memory.scope != "global" else "")
+                    ],
+                    action=f"What is outstanding for: {_short(without_date)}?",
                     agent="planner",
                     refs=[memory.id],
                     at=when,
@@ -323,16 +331,19 @@ def repeated_mistakes(situation: Situation) -> list[Recommendation]:
         if count < 3:
             continue
         examples = [m.content for m in mistakes if m.scope == scope][:3]
+        # "in global" names a default, not a place. Same jargon leak as the
+        # deadline evidence: a scope is only worth saying when it is one.
+        where = f" in {scope}" if scope != "global" else ""
         out.append(
             Recommendation(
                 id=_id(Signal.REPEATED_MISTAKE, scope),
                 signal=Signal.REPEATED_MISTAKE,
-                headline=f"Fix the cause: {count} recorded failures in {scope}",
+                headline=f"Fix the cause: {count} recorded failures{where}",
                 impact=Impact.MAJOR,
                 urgency=Urgency.THIS_WEEK,
                 confidence=0.7,
                 evidence=[_short(text) for text in examples],
-                action=f"What keeps going wrong in {scope}, and what would stop it?",
+                action=f"What keeps going wrong{where}, and what would stop it?",
                 agent="chief_of_staff",
                 refs=[scope],
                 at=situation.now,
@@ -418,8 +429,18 @@ DETECTORS: tuple[Detector, ...] = (
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
+_WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
+
+
 def _short(text: str, limit: int = 90) -> str:
-    flat = " ".join(text.split())
+    """Trim, and unwrap wikilinks.
+
+    A memory read out of the vault carries `[[Northbound]]`, which is correct
+    in a note and is markup leaking into prose anywhere else — a briefing, a
+    notification, a spoken answer. The link belongs to the file format, not to
+    the sentence.
+    """
+    flat = " ".join(_WIKILINK.sub(lambda m: m.group(1), text).split())
     return flat if len(flat) <= limit else flat[: limit - 1].rstrip() + "…"
 
 

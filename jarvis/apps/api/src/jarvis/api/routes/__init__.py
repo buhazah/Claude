@@ -14,7 +14,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import PlainTextResponse, Response, StreamingResponse
 
 from jarvis.api.schemas import (
     AgentSummary,
@@ -30,6 +30,7 @@ from jarvis.api.schemas import (
     WorkflowRunRequest,
 )
 from jarvis.api.sse import HEADERS, frame
+from jarvis.chief.situation import gather
 from jarvis.documents.models import DocumentKind
 from jarvis.documents.render import MEDIA_TYPES, RENDERERS
 from jarvis.kernel.container import Jarvis
@@ -306,6 +307,24 @@ async def remember(body: RememberRequest, request: Request) -> dict[str, Any]:
 async def forget(memory_id: str, request: Request) -> None:
     if not await _jarvis(request).memory.forget(memory_id):
         raise HTTPException(status_code=404, detail=f"unknown memory: {memory_id}")
+
+
+@router.get("/v1/briefing")
+async def briefing(request: Request, format: str = "json") -> Any:
+    """The morning read.
+
+    Facts come from the same arithmetic the recommendations do; a model is
+    asked only for the two-sentence opener, and only when one is configured.
+    `format=markdown` returns it as text, which is what the vault and any
+    scheduled delivery want.
+    """
+    jarvis = _jarvis(request)
+    situation = await gather(jarvis)
+    sweep = jarvis.chief.rank(situation)
+    composed = await jarvis.briefings.compose(sweep, situation)
+    if format == "markdown":
+        return PlainTextResponse(composed.to_markdown())
+    return composed.to_dict()
 
 
 @router.get("/v1/recommendations")

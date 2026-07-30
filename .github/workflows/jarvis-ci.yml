@@ -142,6 +142,7 @@ jobs:
           node e2e/modes.mjs
           node e2e/computer.mjs
           node e2e/settings.mjs
+          node e2e/briefing.mjs
 
       # A browser failure is almost always visual, and the screenshot each suite
       # takes is the fastest way to see it without reproducing locally.
